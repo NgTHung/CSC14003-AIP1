@@ -1,6 +1,4 @@
-def main():
-    print("Hello from csc14003-aip1!")
-
-
-if __name__ == "__main__":
-    main()
+import numpy as np
+from problems import Ackley
+a = Ackley()
+print(a.eval(a.sample()))

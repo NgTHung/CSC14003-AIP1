@@ -19,8 +19,8 @@ class Problem(ABC):
         If True, the objective is to minimize the fitness function.
         If False, the objective is to maximize it.
     """
-    name: str = "Base Problem"
-    minimize: bool = True
+    _name: str = "Base Problem"
+    _minimize: bool = True
 
     def __init__(self, name: str, is_minimize_problem: bool):
         """
@@ -34,8 +34,8 @@ class Problem(ABC):
             Flag indicating the optimization goal. True for minimization,
             False for maximization.
         """
-        self.name = name
-        self.minimize = is_minimize_problem
+        self._name = name
+        self._minimize = is_minimize_problem
 
     @abstractmethod
     def sample(self, pop_size: int = 1) -> np.ndarray:
@@ -60,7 +60,7 @@ class Problem(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def eval(self, values: np.ndarray) -> np.float128 | np.ndarray:
+    def eval(self, values: np.ndarray) -> float | np.ndarray:
         """
         Calculate the fitness or cost of solution(s).
 
@@ -73,7 +73,7 @@ class Problem(ABC):
 
         Returns
         -------
-        np.float128 or np.ndarray
+        float or np.ndarray
             The calculated fitness or cost value(s). Returns a scalar if a
             single solution is provided, or an array if a batch is provided.
         """

@@ -1,1 +1,1 @@
-from .base_problem import Problem, OptimizationProblem
+from .continuous import *
