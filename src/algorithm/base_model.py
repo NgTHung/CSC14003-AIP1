@@ -1,31 +1,61 @@
-from typing import Generic, TypeVar
-import numpy as np
-from problems import Problem,OptimizationProblem
+"""Base model abstractions for optimization algorithms.
 
-T = TypeVar("T",default=np.ndarray)
-TR = TypeVar("TR",default=np.ndarray)
-Opt = TypeVar("Opt", default=dict[str, np.float128])
-Prob = TypeVar("Prob", Problem, OptimizationProblem)
+Defines a generic `Model` interface that stores configuration, problem
+instances, and solution history for algorithm implementations.
+"""
 
-class Model(Generic[Prob,T,TR,Opt]):
+from ..problems import Problem
+
+
+class Model[Prob: Problem, T, Tr, Opt]:
+    """Generic optimization model interface.
+
+    Type parameters
+    -------
+    Prob: A `Problem` subclass describing the optimization task.
+    T: The solution representation type.
+    TR: The fitness/score type returned by the problem.
+    Opt: The configuration/options type for the algorithm.
+
+    Attributes
+    -------
+    history: Collected solutions or states during execution.
+    best_solution: The best solution found so far.
+    conf: Algorithm configuration/options.
+    bestFitness: Best fitness value observed.
+    problem: Problem instance to solve.
+    name: Human-readable name of the algorithm.
+    """
+
     history: list[T]
     best_solution: T
     conf: Opt
-    bestFitness: TR
+    bestFitness: Tr
     problem: Prob
-    
     name: str = "Generic Model"
-    
+
     def __init__(self, configuration: Opt, problem: Prob):
+        """
+        Initialize the base model with configuration and problem instance.
+
+        Parameters
+        -------
+        configuration (Opt): The optimization configuration object containing
+            algorithm parameters and settings.
+        problem (Prob): The problem instance to be solved by the algorithm.
+        """
         self.conf = configuration
         self.problem = problem
-    def run(self):
-        raise NotImplementedError
-    
-class Optimizer(Model[OptimizationProblem, T, TR,Opt]):
-    name = "Base Optimizer"
-    seed: int | str | float | None = None
-    def __init__(self,problem: OptimizationProblem, configuration: Opt, seed: int | str | float | None = None):
-        self.seed = seed
-        super().__init__(configuration, problem)
 
+    def run(self):
+        """
+        Execute the algorithm.
+
+        This method must be implemented by subclasses to define the specific
+        algorithm's execution logic.
+
+        Raises
+        -------
+        NotImplementedError: This method must be overridden by subclasses.
+        """
+        raise NotImplementedError
