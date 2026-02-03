@@ -20,9 +20,8 @@ class Problem(ABC):
         If False, the objective is to maximize it.
     """
     _name: str = "Base Problem"
-    _minimize: bool = True
 
-    def __init__(self, name: str, is_minimize_problem: bool):
+    def __init__(self, name: str):
         """
         Initialize the Problem instance.
 
@@ -30,12 +29,8 @@ class Problem(ABC):
         ----------
         name : str
             The name of the problem.
-        is_minimize_problem : bool
-            Flag indicating the optimization goal. True for minimization,
-            False for maximization.
         """
         self._name = name
-        self._minimize = is_minimize_problem
 
     @abstractmethod
     def sample(self, pop_size: int = 1) -> np.ndarray:

@@ -1,5 +1,6 @@
 """Abstract base class definitions for continuous optimization problems."""
 
+from typing import override
 import numpy as np
 from ..base_problem import Problem
 
@@ -25,7 +26,6 @@ class ContinuousProblem(Problem):
 
     def __init__(self,
                  name: str,
-                 is_minimize_problem: bool,
                  bounds: np.ndarray):
         """
         Initialize the ContinuousProblem.
@@ -34,9 +34,6 @@ class ContinuousProblem(Problem):
         ----------
         name : str
             The name of the problem.
-        is_minimize_problem : bool
-            Flag indicating if the problem is a minimization problem (True)
-            or maximization problem (False).
         bounds : np.ndarray
             The boundaries for the decision variables.
             Shape should be (n_dim, 2) where bounds[i, 0] is the lower bound
@@ -44,8 +41,9 @@ class ContinuousProblem(Problem):
         """
         self._bounds = bounds
         self._n_dim = bounds.shape[0]
-        super().__init__(name, is_minimize_problem)
+        super().__init__(name)
 
+    @override
     def is_valid(self, x: np.ndarray) -> bool:
         """
         Check if a solution satisfies the problem's boundary constraints.
@@ -67,6 +65,7 @@ class ContinuousProblem(Problem):
             np.all(x >= self._bounds[:, 0]) and np.all(x <= self._bounds[:, 1])
         )
 
+    @override
     def sample(self, pop_size: int = 1) -> np.ndarray:
         """
         Generate random valid solutions within the boundary constraints.
