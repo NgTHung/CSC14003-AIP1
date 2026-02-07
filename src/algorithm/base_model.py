@@ -4,7 +4,7 @@ Defines a generic `Model` interface that stores configuration, problem
 instances, and solution history for algorithm implementations.
 """
 
-from ..problems import Problem
+from problems import Problem
 
 
 class Model[Prob: Problem, T, Tr, Opt]:
