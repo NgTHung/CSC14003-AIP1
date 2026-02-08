@@ -95,3 +95,12 @@ class ContinuousProblem(Problem):
         samples = lower_bounds + random_samples * (upper_bounds - lower_bounds)
 
         return samples
+    @property
+    def bounds(self):
+        """np.ndarray : Search space boundaries, shape (n_dim, 2)."""
+        return self._bounds
+
+    @property
+    def n_dim(self):
+        """int : Number of decision variables."""
+        return self._n_dim
