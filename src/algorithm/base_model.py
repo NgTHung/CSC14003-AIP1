@@ -12,25 +12,25 @@ class Model[Prob: Problem, T, Tr, Opt]:
 
     Type parameters
     -------
-    Prob: A `Problem` subclass describing the optimization task.
-    T: The solution representation type.
-    TR: The fitness/score type returned by the problem.
+    Prob: A `Problem` subclass describing the optimization task.\\
+    T: The solution representation type.\\
+    TR: The fitness/score type returned by the problem.\\
     Opt: The configuration/options type for the algorithm.
 
     Attributes
     -------
-    history: Collected solutions or states during execution.
-    best_solution: The best solution found so far.
-    conf: Algorithm configuration/options.
-    bestFitness: Best fitness value observed.
-    problem: Problem instance to solve.
+    history: Collected solutions or states during execution.\\
+    best_solution: The best solution found so far.\\
+    conf: Algorithm configuration/options.\\
+    bestFitness: Best fitness value observed.\\
+    problem: Problem instance to solve.\\
     name: Human-readable name of the algorithm.
     """
 
     history: list[T]
     best_solution: T
     conf: Opt
-    bestFitness: Tr
+    best_fitness: Tr
     problem: Prob
     name: str = "Generic Model"
 
@@ -47,7 +47,7 @@ class Model[Prob: Problem, T, Tr, Opt]:
         self.conf = configuration
         self.problem = problem
 
-    def run(self):
+    def run(self) -> T:
         """
         Execute the algorithm.
 
@@ -59,3 +59,23 @@ class Model[Prob: Problem, T, Tr, Opt]:
         NotImplementedError: This method must be overridden by subclasses.
         """
         raise NotImplementedError
+
+    def set_problem(self, problem: Prob):
+        """Update the problem instance.
+
+        Parameters
+        ----------
+        problem : Prob
+            New problem instance to solve.
+        """
+        self.problem = problem
+
+    def set_config(self, config: Opt):
+        """Update the algorithm configuration.
+
+        Parameters
+        ----------
+        config : Opt
+            New configuration object with algorithm parameters.
+        """
+        self.conf = config
