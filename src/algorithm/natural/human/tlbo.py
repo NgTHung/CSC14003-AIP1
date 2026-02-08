@@ -96,7 +96,7 @@ class TLBO(Model[ContinuousProblem, np.ndarray, float, TLBOConfig]):
             # ==========================
             self._update_global_best()
             # Record the best fitness of the current iteration into history
-            self.history.append(self.bestFitness)
+            self.history.append(self.best_fitness)
             
         return self.best_solution
 
@@ -113,9 +113,9 @@ class TLBO(Model[ContinuousProblem, np.ndarray, float, TLBOConfig]):
         
         # If there is no best solution yet or a better one is found
         if not hasattr(self, 'bestFitness') or \
-           (self.conf.minimization and current_best_fit < self.bestFitness) or \
-           (not self.conf.minimization and current_best_fit > self.bestFitness):
-            self.bestFitness = current_best_fit
+           (self.conf.minimization and current_best_fit < self.best_fitness) or \
+           (not self.conf.minimization and current_best_fit > self.best_fitness):
+            self.best_fitness = current_best_fit
             self.best_solution = self.population[idx].copy()
 
     def _greedy_update(self, new_pop, new_fitness):
