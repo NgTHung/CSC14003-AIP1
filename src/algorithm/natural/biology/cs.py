@@ -71,9 +71,7 @@ class CuckooSearch(
         super().__init__(configuration, problem)
         self.n_dim = problem.n_dim
         self.nests = problem.sample(configuration.n_nests)
-        self.fitness = np.array(
-            [cast(float, problem.eval(nest)) for nest in self.nests]
-        )
+        self.fitness = cast(np.ndarray, problem.eval(self.nests))
 
         best_idx = int(np.argmin(self.fitness))
         self.best_solution = self.nests[best_idx].copy()
@@ -126,7 +124,7 @@ class CuckooSearch(
         upper = self.problem.bounds[:, 1]
         return np.clip(solution, lower, upper)
 
-    def get_cuckoo(self) -> np.ndarray:
+    def get_cuckoo(self, idx: int) -> np.ndarray:
         """Generate a new cuckoo egg via Lévy flight from a random nest.
 
         Returns
@@ -134,13 +132,12 @@ class CuckooSearch(
         np.ndarray
             New candidate solution of shape (n_dim,).
         """
-        i = np.random.randint(0, self.conf.n_nests)
         step = self._levy_flight(self.n_dim)
 
         # Scale step relative to difference from best solution
         assert self.best_solution is not None
-        new_nest = self.nests[i] + self.conf.alpha * step * (
-            self.nests[i] - self.best_solution
+        new_nest = self.nests[idx] + self.conf.alpha * step * (
+            self.nests[idx] - self.best_solution
         )
         return self._clamp(new_nest)
 
@@ -171,25 +168,28 @@ class CuckooSearch(
         existing nests, scaled by a random factor, applied only to nests
         selected for abandonment.
         """
-        for idx in range(self.conf.n_nests):
-            e = np.random.random()
-            if self.conf.pa < e:
-                continue
-            # Generate new nest via biased random walk
-            r1, r2 = np.random.choice(self.conf.n_nests, size=2, replace=False)
-            step_size = np.random.random()
-            new_nest = self.nests[idx] + step_size * (
-                self.nests[r1] - self.nests[r2]
-            )
-            new_nest = self._clamp(new_nest)
-            new_fitness = cast(float, self.problem.eval(new_nest))
+        k = np.random.rand(self.conf.n_nests, self.n_dim)
 
-            self.nests[idx] = new_nest
-            self.fitness[idx] = new_fitness
+        perm1 = np.random.permutation(self.conf.n_nests)
+        perm2 = np.random.permutation(self.conf.n_nests)
 
-            if new_fitness < self.best_fitness:
-                self.best_fitness = new_fitness
-                self.best_solution = new_nest.copy()
+        step_size = (
+            np.random.rand() * self.conf.alpha * (self.nests[perm1] - self.nests[perm2])
+        )
+        mask = k < self.conf.pa
+
+        new_nests = self.nests.copy()
+        new_nests[mask] += step_size[mask]
+
+        new_nests = self._clamp(new_nests)
+        new_fitness = np.apply_along_axis(self.problem.eval, 1, new_nests)
+        mask_better = new_fitness < self.fitness
+        self.nests[mask_better] = new_nests[mask_better]
+        self.fitness[mask_better] = new_fitness[mask_better]
+        curr_best_idx = np.argmin(self.fitness)
+        if self.fitness[curr_best_idx] < self.best_fitness:
+            self.best_fitness = self.fitness[curr_best_idx]
+            self.best_solution = self.nests[curr_best_idx]
 
     @override
     def run(self) -> np.ndarray:
@@ -202,9 +202,9 @@ class CuckooSearch(
         """
         for _ in range(self.conf.cycle):
             # Generate new cuckoo via Lévy flight and evaluate
-            cuckoo = self.get_cuckoo()
-            self.evaluate_cuckoo(cuckoo)
-
+            for i in range(self.conf.n_nests):
+                cuckoo = self.get_cuckoo(i)
+                self.evaluate_cuckoo(cuckoo)
             # Abandon worst nests
             self.abandon_worst_nests()
 
