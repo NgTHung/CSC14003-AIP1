@@ -164,7 +164,7 @@ class CMAES(
     def run(self) -> np.ndarray:
         n = self.n_dim
 
-        for _ in range(self.conf.cycle):
+        for gen in range(self.conf.cycle):
             sqrt_C = self._sqrt_C()
             inv_sqrt_C = self._inv_sqrt_C()
 
@@ -207,7 +207,7 @@ class CMAES(
             # 4c. h_σ flag (stall indicator)
             h_sigma = int(
                 np.linalg.norm(self.p_sigma)
-                / np.sqrt(1 - (1 - c_s) ** (2 * (_ + 1)))
+                / np.sqrt(1 - (1 - c_s) ** (2 * (gen + 1)))
                 < (1.4 + 2 / (n + 1)) * self._chi_n
             )
 
