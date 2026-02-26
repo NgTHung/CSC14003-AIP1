@@ -21,6 +21,7 @@ from problems.continuous import Rastrigin, Ackley, Sphere
 from problems.discrete.tsp import TSP
 from algorithm.natural.human.tlbo import TLBO, TLBOConfig
 from algorithm.natural.human.sfo import SFO, SFOConfig
+from algorithm.natural.human.ca import CA, CAConfig
 
 
 # ---------------------------------------------------------------------------
@@ -77,7 +78,7 @@ def main() -> None:
     # -----------------------------------------------------------------------
     # 2.  Algorithm configuration
     # -----------------------------------------------------------------------
-    config = TLBOConfig(pop_size=100, iterations=5000, minimization=True) # TLBO configuration example
+    # config = TLBOConfig(pop_size=100, iterations=5000, minimization=True) # TLBO configuration example
     # config = SFOConfig(
     #     pop_size   = 100,
     #     iterations = 300,
@@ -87,13 +88,23 @@ def main() -> None:
     #     c_attract  = 1.5,    # attraction towards global best
     #     c_social   = 1.5,    # attraction towards crowd mean
     # )
-    
+
+    # Cultural Algorithm configuration  ← active for this test run
+    config = CAConfig(
+        pop_size=100,
+        iterations=500,
+        minimization=True,
+        accepted_ratio=0.2,
+        exploit_ratio=0.8,
+        explore_sigma=0.1,
+    )
 
     # -----------------------------------------------------------------------
     # 3.  Instantiate and run the optimiser
     # -----------------------------------------------------------------------
-    optimizer = TLBO(configuration=config, problem=problem) # TLBO instance
+    # optimizer = TLBO(configuration=config, problem=problem) # TLBO instance
     # optimizer = SFO(configuration=config, problem=problem)
+    optimizer = CA(configuration=config, problem=problem)  # CA instance
     print(f"\nRunning {optimizer.name} ...")
     best_solution = optimizer.run()
 
