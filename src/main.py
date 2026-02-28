@@ -13,146 +13,265 @@ The script
 
 import random
 import argparse
-
-import matplotlib.pyplot as plt
 import numpy as np
 
-from problems.continuous import Rastrigin, Ackley, Sphere
-from problems.discrete.tsp import TSP
-from algorithm.natural.human.tlbo import TLBO, TLBOConfig
-from algorithm.natural.human.sfo import SFO, SFOConfig
-from algorithm.natural.human.ca import CA, CAConfig
+try:
+    import matplotlib.pyplot as plt
+    HAS_PLT = True
+except ImportError:
+    HAS_PLT = False
 
+from problems import Sphere, Rastrigin, Ackley, Cigar, Ridge
+from algorithm.natural.evolution.ga import (
+    GeneticAlgorithm,
+    GAParameter,
+    SelectionMethod,
+    CrossoverMethod,
+)
+from algorithm.natural.evolution.de import (
+    DifferentialEvolution,
+    DEParameter,
+    MutationStrategy,
+    DECrossoverType,
+)
+from algorithm.natural.evolution.es.es import EvolutionStrategy, ESVariant
+from algorithm.natural.evolution.es import (
+    OnePlusOneESParameter,
+    SelfAdaptiveESParameter,
+    CMAESParameter,
+    MuRhoPlusLambdaESParameter,
+)
 
 # ---------------------------------------------------------------------------
 # Utility helpers
 # ---------------------------------------------------------------------------
 
-def set_seed(seed: int | float | None) -> None:
-    """Fix the global random seed for reproducibility.
-
-    Parameters
-    ----------
-    seed : int or float or None
-        Seed value.  Pass ``None`` to leave the RNG in its default state.
-    """
+def set_seed(seed: int | float | None):
+    """Set random seed for reproducibility."""
     if seed is not None:
         np.random.seed(int(seed))
         random.seed(int(seed))
         print(f"Random seed set to: {seed}")
 
 
-# ---------------------------------------------------------------------------
-# Main driver
-# ---------------------------------------------------------------------------
+def run_ga(problem, n_dim: int, cycle: int):
+    """Configure and run the Genetic Algorithm."""
+    config = GAParameter(
+        pop_size=100,
+        n_bits=16,
+        pc=0.8,
+        pm=0.01,
+        cycle=cycle,
+        selection=SelectionMethod.STOCHASTIC_REMAINDER,
+        crossover=CrossoverMethod.TWO_SITE,
+    )
+    ga = GeneticAlgorithm(configuration=config, problem=problem)
 
-def main() -> None:
-    """Parse CLI arguments, run SFO on Rastrigin, and plot convergence."""
+    print(f"\nRunning {ga.name}...")
+    print(f"  pop_size={config.pop_size}, n_bits={config.n_bits}, "
+          f"pc={config.pc}, pm={config.pm}, "
+          f"selection={config.selection.value}, "
+          f"crossover={config.crossover.value}")
 
-    # --- Command-line argument parsing ---
+    best = ga.run()
+
+    print(f"  Best Fitness : {ga.best_fitness:.10f}")
+    print(f"  Best Solution: {best[:min(5, n_dim)]}{'...' if n_dim > 5 else ''}")
+
+    return ga
+
+
+def run_de(problem, n_dim: int, cycle: int):
+    """Configure and run Differential Evolution."""
+    config = DEParameter(
+        pop_size=50,
+        F=0.5,
+        Cr=0.9,
+        cycle=cycle,
+        strategy=MutationStrategy.RAND_1,
+        crossover_type=DECrossoverType.BIN,
+    )
+    de = DifferentialEvolution(configuration=config, problem=problem)
+
+    print(f"\nRunning {de.name} (DE/{config.strategy.value}/{config.crossover_type.value})...")
+    print(f"  pop_size={config.pop_size}, F={config.F}, Cr={config.Cr}")
+
+    best = de.run()
+
+    print(f"  Best Fitness : {de.best_fitness:.10f}")
+    print(f"  Best Solution: {best[:min(5, n_dim)]}{'...' if n_dim > 5 else ''}")
+
+    return de
+
+
+def run_es(problem, n_dim: int, cycle: int, variant: ESVariant) -> EvolutionStrategy:
+    """Configure and run an Evolution Strategy variant via the façade."""
+    match variant:
+        case ESVariant.ONE_PLUS_ONE:
+            config = OnePlusOneESParameter(
+                sigma=1.0,
+                cycle=cycle,
+                adaptation_interval=0,  # auto → 10 * n_dim
+                a=1.5,
+            )
+        case ESVariant.SELF_ADAPTIVE:
+            config = SelfAdaptiveESParameter(
+                mu=15,
+                lam=100,
+                rho=2,
+                sigma_init=1.0,
+                cycle=cycle,
+            )
+        case ESVariant.CMA_ES:
+            config = CMAESParameter(
+                sigma=1.0,
+                cycle=cycle,
+            )
+        case ESVariant.MU_RHO_PLUS_LAMBDA:
+            config = MuRhoPlusLambdaESParameter(
+                mu=15,
+                rho=5,
+                lam=100,
+                sigma_init=1.0,
+                cycle=cycle,
+            )
+
+    es = EvolutionStrategy(variant=variant, configuration=config, problem=problem)
+
+    print(f"\nRunning {es.name}...")
+    print(f"  config: {config}")
+
+    best = es.run()
+
+    print(f"  Best Fitness : {es.best_fitness:.10f}")
+    print(f"  Best Solution: {best[:min(5, n_dim)]}{'...' if n_dim > 5 else ''}")
+
+    return es
+
+
+def main():
     parser = argparse.ArgumentParser(
-        description="Run optimization algorithms on benchmark problems"
+        description="Test GA, DE, and ES on benchmark problems"
     )
     parser.add_argument(
-        "--seed",
-        type=int,
-        default=42,
+        "--seed", type=int, default=42,
         help="Random seed for reproducibility (default: 42)",
+    )
+    parser.add_argument(
+        "--dim", type=int, default=10,
+        help="Problem dimensionality (default: 10)",
+    )
+    parser.add_argument(
+        "--cycle", type=int, default=500,
+        help="Number of generations (default: 500)",
+    )
+    parser.add_argument(
+        "--problem", type=str, default="ackley",
+        choices=["sphere", "rastrigin", "ackley", "cigar", "ridge"],
+        help="Benchmark problem (default: ackley)",
     )
     args = parser.parse_args()
 
-    # Set random seed
     set_seed(args.seed)
 
-    # -----------------------------------------------------------------------
-    # 1.  Problem setup – Problem in 10 dimensions
-    # -----------------------------------------------------------------------
-    # problem = Rastrigin(n_dim=10) # Change problem name and dimensions here
-    problem = Ackley(n_dim=10)
-    # problem = Sphere(n_dim=10)
+    # Select problem
+    problems = {
+        "sphere": Sphere,
+        "rastrigin": Rastrigin,
+        "ackley": Ackley,
+        "cigar": Cigar,
+        "ridge": Ridge,
+    }
+    problem = problems[args.problem](n_dim=args.dim)
+    print(f"Problem: {problem._name}, Dimensions: {problem._n_dim}")
+    print(f"Bounds : {problem._bounds[0]}")
 
-    print(f"Problem    : {problem._name}")
-    print(f"Dimensions : {problem._n_dim}")
-    print(f"Bounds     : {problem._bounds[0]}  (same for all dims)")
+    # ── Run all algorithms ───────────────────────────────────────────
+    ga = run_ga(problem, args.dim, args.cycle)
+    de = run_de(problem, args.dim, args.cycle)
 
-    # -----------------------------------------------------------------------
-    # 2.  Algorithm configuration
-    # -----------------------------------------------------------------------
-    # config = TLBOConfig(pop_size=100, iterations=5000, minimization=True) # TLBO configuration example
-    # config = SFOConfig(
-    #     pop_size   = 100,
-    #     iterations = 300,
-    #     minimization = True,
-    #     w          = 0.9,    # initial inertia weight
-    #     w_decay    = 0.99,   # multiplicative decay per iteration
-    #     c_attract  = 1.5,    # attraction towards global best
-    #     c_social   = 1.5,    # attraction towards crowd mean
-    # )
+    es_variants = [
+        ESVariant.ONE_PLUS_ONE,
+        ESVariant.SELF_ADAPTIVE,
+        ESVariant.CMA_ES,
+        ESVariant.MU_RHO_PLUS_LAMBDA,
+    ]
+    es_results: list[EvolutionStrategy] = []
+    for variant in es_variants:
+        es_results.append(run_es(problem, args.dim, args.cycle, variant))
 
-    # Cultural Algorithm configuration  ← active for this test run
-    config = CAConfig(
-        pop_size=100,
-        iterations=500,
-        minimization=True,
-        accepted_ratio=0.2,
-        exploit_ratio=0.8,
-        explore_sigma=0.1,
-    )
+    # ── Summary table ────────────────────────────────────────────────
+    print("\n" + "=" * 55)
+    print(f"{'Algorithm':<30} {'Best Fitness':>20}")
+    print("-" * 55)
+    print(f"{'Genetic Algorithm':<30} {ga.best_fitness:>20.10f}")
+    print(f"{'Differential Evolution':<30} {de.best_fitness:>20.10f}")
+    for es in es_results:
+        print(f"{es.name:<30} {es.best_fitness:>20.10f}")
+    print("=" * 55)
 
-    # -----------------------------------------------------------------------
-    # 3.  Instantiate and run the optimiser
-    # -----------------------------------------------------------------------
-    # optimizer = TLBO(configuration=config, problem=problem) # TLBO instance
-    # optimizer = SFO(configuration=config, problem=problem)
-    optimizer = CA(configuration=config, problem=problem)  # CA instance
-    print(f"\nRunning {optimizer.name} ...")
-    best_solution = optimizer.run()
+    # ── Convergence history ──────────────────────────────────────────
+    # GA / DE history stores best-solution vectors; extract fitness
+    ga_fitness_history = [
+        float(problem.eval(sol)) for sol in ga.history
+    ]
+    de_fitness_history = [
+        float(problem.eval(sol)) for sol in de.history
+    ]
+    # ES history already stores scalar best-fitness per generation
+    es_fitness_histories = [es.history for es in es_results]
 
-    # -----------------------------------------------------------------------
-    # 4.  Report results
-    # -----------------------------------------------------------------------
-    print("\n=== RESULTS ===")
-    print(f"Best Fitness           : {optimizer.best_fitness}")
-    print(f"Best Solution (first 5): {best_solution[:5]}")
-    print(f"Best Solution (full)   : {best_solution}")
+    if not HAS_PLT:
+        print("\nmatplotlib not installed — skipping plots.")
+        return
 
-    # -----------------------------------------------------------------------
-    # 5.  Convergence plot
-    # -----------------------------------------------------------------------
-    iterations = list(range(1, len(optimizer.history) + 1))
+    fig, axes = plt.subplots(1, 2, figsize=(16, 6))
 
-    fig, ax = plt.subplots(figsize=(10, 6))
+    # Subplot 1: convergence curves
+    axes[0].plot(ga_fitness_history, label="GA", linewidth=1.5)
+    axes[0].plot(de_fitness_history, label="DE", linewidth=1.5)
+    for es, hist in zip(es_results, es_fitness_histories):
+        axes[0].plot(hist, label=es.name, linewidth=1.5)
+    axes[0].set_title(f"Convergence on {problem._name} (dim={args.dim})")
+    axes[0].set_xlabel("Generation")
+    axes[0].set_ylabel("Best Fitness")
+    axes[0].set_yscale("log")
+    axes[0].grid(True, alpha=0.3, which="both", linestyle="--")
+    axes[0].legend(fontsize=8)
 
-    ax.plot(
-        iterations,
-        optimizer.history,
-        color="royalblue",
-        linewidth=2,
-        label=f"{optimizer.name}  (pop={config.pop_size}, iter={config.iterations})",
-    )
+    # Subplot 2: final best solutions (first 2 dims if available)
+    if args.dim >= 2:
+        ax2 = axes[1]
+        markers = ["^", "s", "o", "D", "P", "X"]
+        colors = [
+            "tab:blue", "tab:orange", "tab:green",
+            "tab:red", "tab:purple", "tab:brown",
+        ]
+        all_algorithms = [
+            ("GA", ga),
+            ("DE", de),
+            *[(es.name, es) for es in es_results],
+        ]
+        for i, (label, algo) in enumerate(all_algorithms):
+            sol = algo.best_solution
+            ax2.scatter(
+                sol[0], sol[1], s=120,
+                marker=markers[i % len(markers)],
+                color=colors[i % len(colors)],
+                label=f"{label} ({algo.best_fitness:.4f})",
+                zorder=5,
+            )
+        ax2.scatter(0, 0, s=80, marker="*", color="black",
+                    label="Global Optimum", zorder=6)
+        ax2.set_title("Best Solutions (first 2 dims)")
+        ax2.set_xlabel("x₁")
+        ax2.set_ylabel("x₂")
+        ax2.legend(fontsize=7)
+        ax2.grid(True, alpha=0.3)
+    else:
+        axes[1].axis("off")
 
-    # Mark the final best value with a star marker
-    ax.scatter(
-        iterations[-1],
-        optimizer.history[-1],
-        color="crimson",
-        zorder=5,
-        s=80,
-        label=f"Final best ≈ {optimizer.best_fitness:.4e}",
-    )
-
-    ax.set_yscale("log")                          # log scale highlights early gains
-    ax.set_title(
-        f"{optimizer.name} Convergence on {problem._name} Function  (n_dim={problem._n_dim})",
-        fontsize=14,
-        fontweight="bold",
-        pad=14,
-    )
-    ax.set_xlabel("Iteration", fontsize=12)
-    ax.set_ylabel("Best Fitness (log scale)", fontsize=12)
-    ax.grid(True, which="both", linestyle="--", alpha=0.4)
-    ax.legend(fontsize=11)
-    fig.tight_layout()
+    plt.tight_layout()
     plt.show()
 
 
