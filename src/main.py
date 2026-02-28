@@ -1,3 +1,16 @@
+"""Entry-point script: run Social Force Optimization on the Rastrigin function.
+
+Usage
+-----
+    python main.py [--seed SEED] (seed is optional, default: 42)
+
+The script
+  1. Instantiates the n-dimensional benchmark problem.
+  2. Configures and runs the algorithm.
+  3. Prints the best fitness and solution found.
+  4. Displays a professional convergence plot on a log-scaled y-axis.
+"""
+
 import random
 import argparse
 import numpy as np
@@ -29,12 +42,15 @@ from algorithm.natural.evolution.es import (
     MuRhoPlusLambdaESParameter,
 )
 
+# ---------------------------------------------------------------------------
+# Utility helpers
+# ---------------------------------------------------------------------------
 
 def set_seed(seed: int | float | None):
     """Set random seed for reproducibility."""
     if seed is not None:
-        np.random.seed(seed)
-        random.seed(seed)
+        np.random.seed(int(seed))
+        random.seed(int(seed))
         print(f"Random seed set to: {seed}")
 
 
