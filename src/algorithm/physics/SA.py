@@ -7,7 +7,7 @@ from problems.base_problem import Problem
 from algorithm.base_model import Model
 
 
-class SimulatedAnnealing(Model[Problem, np.ndarray, np.ndarray, dict]):
+class SimulatedAnnealing(Model[Problem, np.ndarray, float | None, dict]):
     """
     Simulated Annealing algorithm.
 
@@ -75,6 +75,11 @@ class SimulatedAnnealing(Model[Problem, np.ndarray, np.ndarray, dict]):
         """
         Execute Simulated Annealing algorithm.
 
+        Saves structured history for plotting:
+        - history: list of dicts with 'iteration', 'state', 'energy',
+          'best_energy', 'temperature', 'accepted'
+        - best_fitness: best energy value found
+
         Returns
         -------
         np.ndarray
@@ -87,8 +92,14 @@ class SimulatedAnnealing(Model[Problem, np.ndarray, np.ndarray, dict]):
         best_state = current_state.copy()
         best_energy = current_energy
 
-        self.history = [current_state.copy()]
-        self.best_fitness = [best_energy]
+        self.history = [{
+            'iteration': 0,
+            'state': current_state.copy(),
+            'fitness': float(current_energy),
+            'best_fitness': float(best_energy),
+            'temperature': self.initial_temperature,
+            'accepted': True,
+        }]
 
         temperature = self.initial_temperature
         iteration = 0
@@ -103,16 +114,19 @@ class SimulatedAnnealing(Model[Problem, np.ndarray, np.ndarray, dict]):
             delta_energy = new_energy - current_energy
 
             # Accept or reject
+            accepted = False
             if delta_energy < 0:
                 # Better solution - always accept
                 current_state = new_state
                 current_energy = new_energy
+                accepted = True
             else:
                 # Worse solution - accept with probability
                 acceptance_probability = math.exp(-delta_energy / temperature)
                 if random.random() < acceptance_probability:
                     current_state = new_state
                     current_energy = new_energy
+                    accepted = True
 
             # Update best
             if current_energy < best_energy:
@@ -124,8 +138,15 @@ class SimulatedAnnealing(Model[Problem, np.ndarray, np.ndarray, dict]):
             iteration += 1
 
             # Track history
-            self.history.append(current_state.copy())
-            self.best_fitness.append(best_energy)
+            self.history.append({
+                'iteration': iteration,
+                'state': current_state.copy(),
+                'fitness': float(current_energy),
+                'best_fitness': float(best_energy),
+                'temperature': temperature,
+                'accepted': accepted,
+            })
 
         self.best_solution = best_state
+        self.best_fitness = float(best_energy)
         return best_state

@@ -2,10 +2,10 @@
 
 import heapq
 from problems.base_problem import GraphSearchProblem
-from algorithm.base_model import SearchGraphAlgorithm
+from algorithm.base_model import Model
 
 
-class AStarSearch(SearchGraphAlgorithm[list, None, dict]):
+class AStarSearch(Model[GraphSearchProblem, list, float | None, dict]):
     """
     A* (A-star) Search algorithm.
 
@@ -66,6 +66,10 @@ class AStarSearch(SearchGraphAlgorithm[list, None, dict]):
         """
         Execute A* Search algorithm.
 
+        Saves structured history for plotting:
+        - history: list of dicts with 'state', 'g', 'h', 'f', 'frontier_size', 'explored_count'
+        - best_fitness: total path cost (g-score) if path found
+
         Returns
         -------
         list or None
@@ -90,18 +94,26 @@ class AStarSearch(SearchGraphAlgorithm[list, None, dict]):
 
         while frontier:
             current_f, current_state = heapq.heappop(frontier)
-            self.history.append(current_state)
 
             if current_state in explored:
                 continue
 
             explored.add(current_state)
+            current_g = g_score[current_state]
+            current_h = problem.heuristic(current_state)
+            self.history.append({
+                'state': current_state,
+                'g': current_g,
+                'h': current_h,
+                'f': current_g + current_h,
+                'frontier_size': len(frontier),
+                'explored_count': len(explored),
+            })
 
             if problem.is_goal(current_state):
                 self.best_solution = self._get_path(parent, current_state)
+                self.best_fitness = current_g
                 return self.best_solution
-
-            current_g = g_score[current_state]
 
             for action in problem.actions(current_state):
                 next_state = problem.result(current_state, action)

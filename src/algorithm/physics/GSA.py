@@ -5,7 +5,7 @@ from problems.base_problem import Problem
 from algorithm.base_model import Model
 
 
-class GravitationalSearchAlgorithm(Model[Problem, np.ndarray, np.ndarray, dict]):
+class GravitationalSearchAlgorithm(Model[Problem, np.ndarray, float | None, dict]):
     """
     Gravitational Search Algorithm (GSA).
 
@@ -80,6 +80,11 @@ class GravitationalSearchAlgorithm(Model[Problem, np.ndarray, np.ndarray, dict])
         """
         Execute GSA algorithm.
 
+        Saves structured history for plotting:
+        - history: list of dicts with 'iteration', 'positions', 'fitness',
+          'best_fitness', 'G', 'best_position'
+        - best_fitness: best fitness value found
+
         Returns
         -------
         np.ndarray
@@ -97,8 +102,14 @@ class GravitationalSearchAlgorithm(Model[Problem, np.ndarray, np.ndarray, dict])
         best_solution = positions[best_idx].copy()
         best_fitness = fitness[best_idx]
 
-        self.history = [positions.copy()]
-        self.best_fitness = [best_fitness]
+        self.history = [{
+            'iteration': 0,
+            'positions': positions.copy(),
+            'fitness': fitness.copy(),
+            'best_fitness': float(best_fitness),
+            'G': self.G0,
+            'best_position': best_solution.copy(),
+        }]
 
         # Main loop
         for iteration in range(self.max_iterations):
@@ -141,8 +152,15 @@ class GravitationalSearchAlgorithm(Model[Problem, np.ndarray, np.ndarray, dict])
                 best_fitness = fitness[current_best_idx]
 
             # Track history
-            self.history.append(positions.copy())
-            self.best_fitness.append(best_fitness)
+            self.history.append({
+                'iteration': iteration + 1,
+                'positions': positions.copy(),
+                'fitness': fitness.copy(),
+                'best_fitness': float(best_fitness),
+                'G': G,
+                'best_position': best_solution.copy(),
+            })
 
         self.best_solution = best_solution
+        self.best_fitness = float(best_fitness)
         return best_solution
