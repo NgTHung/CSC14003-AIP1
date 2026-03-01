@@ -2,10 +2,10 @@
 
 import heapq
 from problems.base_problem import GraphSearchProblem
-from algorithm.base_model import SearchGraphAlgorithm
+from algorithm.base_model import Model
 
 
-class GreedyBestFirstSearch(SearchGraphAlgorithm[list, None, dict]):
+class GreedyBestFirstSearch(Model[GraphSearchProblem, list, float | None, dict]):
     """
     Greedy Best-First Search algorithm.
 
@@ -64,6 +64,10 @@ class GreedyBestFirstSearch(SearchGraphAlgorithm[list, None, dict]):
         """
         Execute Greedy Best-First Search algorithm.
 
+        Saves structured history for plotting:
+        - history: list of dicts with 'state', 'h', 'frontier_size', 'explored_count'
+        - best_fitness: total path cost (sum of edge costs) if path found
+
         Returns
         -------
         list or None
@@ -83,16 +87,28 @@ class GreedyBestFirstSearch(SearchGraphAlgorithm[list, None, dict]):
         parent = {}
 
         while frontier:
-            _, current_state = heapq.heappop(frontier)
-            self.history.append(current_state)
+            current_h, current_state = heapq.heappop(frontier)
 
             if current_state in explored:
                 continue
 
             explored.add(current_state)
+            self.history.append({
+                'state': current_state,
+                'h': current_h,
+                'frontier_size': len(frontier),
+                'explored_count': len(explored),
+            })
 
             if problem.is_goal(current_state):
                 self.best_solution = self._get_path(parent, current_state)
+                # Calculate total path cost
+                path = self.best_solution
+                total_cost = sum(
+                    problem.cost(path[i], path[i + 1], path[i + 1])
+                    for i in range(len(path) - 1)
+                )
+                self.best_fitness = total_cost
                 return self.best_solution
 
             for action in problem.actions(current_state):

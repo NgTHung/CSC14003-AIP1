@@ -1,9 +1,12 @@
 """Hill Climbing algorithm for local search problems."""
 
+from typing import Any
+
 from problems.base_problem import LocalSearchProblem
+from algorithm.base_model import Model
 
 
-class HillClimbing:
+class HillClimbing(Model[LocalSearchProblem, Any, float, dict]):
     """
     Simple Hill Climbing algorithm (first-choice variant).
 
@@ -17,8 +20,6 @@ class HillClimbing:
         Algorithm name.
     problem : LocalSearchProblem
         The problem instance to solve.
-    max_iterations : int
-        Maximum number of iterations to prevent infinite loops.
     current_state : Any
         Current state during search.
     current_value : float
@@ -31,19 +32,24 @@ class HillClimbing:
 
     name = "Hill Climbing (First-Choice)"
 
-    def __init__(self, problem: LocalSearchProblem, max_iterations: int = 1000):
+    def __init__(
+        self,
+        configuration: dict,
+        problem: LocalSearchProblem,
+    ):
         """
         Initialize Hill Climbing algorithm.
 
         Parameters
         ----------
+        configuration : dict
+            Configuration with keys:
+            - 'max_iterations': Maximum iterations (default: 1000).
         problem : LocalSearchProblem
             The local search problem to solve.
-        max_iterations : int, optional
-            Maximum iterations to prevent infinite loops (default: 1000).
         """
-        self.problem = problem
-        self.max_iterations = max_iterations
+        super().__init__(configuration, problem)
+        self.max_iterations = configuration.get('max_iterations', 1000)
         self.current_state = None
         self.current_value = None
         self.history = []
@@ -52,6 +58,10 @@ class HillClimbing:
     def run(self, initial_state=None):
         """
         Execute Hill Climbing algorithm.
+
+        Saves structured history for plotting:
+        - history: list of dicts with 'iteration', 'state', 'value', 'improved'
+        - best_fitness: best value found
 
         Parameters
         ----------
@@ -70,8 +80,12 @@ class HillClimbing:
             self.current_state = initial_state
 
         self.current_value = self.problem.value(self.current_state)
-        self.history = [self.current_state]
-        self.value_history = [self.current_value]
+        self.history = [{
+            'iteration': 0,
+            'state': self.current_state,
+            'value': self.current_value,
+            'improved': True,
+        }]
 
         # Main loop
         for iteration in range(self.max_iterations):
@@ -90,8 +104,12 @@ class HillClimbing:
                 if self.problem.is_better(neighbor_value, self.current_value):
                     self.current_state = neighbor
                     self.current_value = neighbor_value
-                    self.history.append(self.current_state)
-                    self.value_history.append(self.current_value)
+                    self.history.append({
+                        'iteration': iteration + 1,
+                        'state': self.current_state,
+                        'value': self.current_value,
+                        'improved': True,
+                    })
                     found_better = True
                     break
 
@@ -99,6 +117,8 @@ class HillClimbing:
             if not found_better:
                 break
 
+        self.best_solution = self.current_state
+        self.best_fitness = self.current_value
         return self.current_state, self.current_value
 
     def get_statistics(self) -> dict:
@@ -110,9 +130,10 @@ class HillClimbing:
         dict
             Dictionary with search statistics.
         """
+        initial_value = self.history[0]['value'] if self.history else None
         return {
             'iterations': len(self.history),
             'final_value': self.current_value,
-            'initial_value': self.value_history[0] if self.value_history else None,
-            'improvement': abs(self.value_history[0] - self.current_value) if len(self.value_history) > 0 else 0
+            'initial_value': initial_value,
+            'improvement': abs(initial_value - self.current_value) if initial_value is not None else 0
         }

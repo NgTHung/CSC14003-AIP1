@@ -5,7 +5,7 @@ from problems.base_problem import Problem
 from algorithm.base_model import Model
 
 
-class HarmonySearch(Model[Problem, np.ndarray, np.ndarray, dict]):
+class HarmonySearch(Model[Problem, np.ndarray, float | None, dict]):
     """
     Harmony Search algorithm.
 
@@ -93,6 +93,11 @@ class HarmonySearch(Model[Problem, np.ndarray, np.ndarray, dict]):
         """
         Execute Harmony Search algorithm.
 
+        Saves structured history for plotting:
+        - history: list of dicts with 'iteration', 'harmony_memory', 'fitness',
+          'best_fitness', 'best_harmony'
+        - best_fitness: best fitness value found
+
         Returns
         -------
         np.ndarray
@@ -109,8 +114,13 @@ class HarmonySearch(Model[Problem, np.ndarray, np.ndarray, dict]):
         best_solution = harmony_memory[best_idx].copy()
         best_fitness = fitness[best_idx]
 
-        self.history = [harmony_memory.copy()]
-        self.best_fitness = [best_fitness]
+        self.history = [{
+            'iteration': 0,
+            'harmony_memory': harmony_memory.copy(),
+            'fitness': fitness.copy(),
+            'best_fitness': float(best_fitness),
+            'best_harmony': best_solution.copy(),
+        }]
 
         # Main loop
         for iteration in range(self.max_iterations):
@@ -130,8 +140,14 @@ class HarmonySearch(Model[Problem, np.ndarray, np.ndarray, dict]):
                     best_fitness = new_fitness
 
             # Track history
-            self.history.append(harmony_memory.copy())
-            self.best_fitness.append(best_fitness)
+            self.history.append({
+                'iteration': iteration + 1,
+                'harmony_memory': harmony_memory.copy(),
+                'fitness': fitness.copy(),
+                'best_fitness': float(best_fitness),
+                'best_harmony': best_solution.copy(),
+            })
 
         self.best_solution = best_solution
+        self.best_fitness = float(best_fitness)
         return best_solution

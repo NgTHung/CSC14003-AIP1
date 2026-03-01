@@ -2,10 +2,10 @@
 
 from collections import deque
 from problems.base_problem import GraphSearchProblem
-from algorithm.base_model import SearchGraphAlgorithm
+from algorithm.base_model import Model
 
 
-class BreadthFirstSearch(SearchGraphAlgorithm[list, None, dict]):
+class BreadthFirstSearch(Model[GraphSearchProblem, list, float | None, dict]):
     """
     Breadth-First Search algorithm.
 
@@ -61,6 +61,10 @@ class BreadthFirstSearch(SearchGraphAlgorithm[list, None, dict]):
         """
         Execute BFS algorithm.
 
+        Saves structured history for plotting:
+        - history: list of dicts with 'state', 'frontier_size', 'explored_count'
+        - best_fitness: total path cost (sum of edge costs) if path found
+
         Returns
         -------
         list or None
@@ -77,15 +81,26 @@ class BreadthFirstSearch(SearchGraphAlgorithm[list, None, dict]):
 
         while frontier:
             current_state = frontier.popleft()
-            self.history.append(current_state)
 
             if current_state in explored:
                 continue
 
             explored.add(current_state)
+            self.history.append({
+                'state': current_state,
+                'frontier_size': len(frontier),
+                'explored_count': len(explored),
+            })
 
             if problem.is_goal(current_state):
                 self.best_solution = self._get_path(parent, current_state)
+                # Calculate total path cost
+                path = self.best_solution
+                total_cost = sum(
+                    problem.cost(path[i], path[i + 1], path[i + 1])
+                    for i in range(len(path) - 1)
+                )
+                self.best_fitness = total_cost
                 return self.best_solution
 
             for action in problem.actions(current_state):

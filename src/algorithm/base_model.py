@@ -4,6 +4,8 @@ Defines a generic `Model` interface that stores configuration, problem
 instances, and solution history for algorithm implementations.
 """
 
+from typing import Any
+
 from problems import Problem
 from problems.base_problem import GraphSearchProblem
 
@@ -15,21 +17,21 @@ class Model[Prob: Problem, T, Tr, Opt]:
     -------
     Prob: A `Problem` subclass describing the optimization task.\\
     T: The solution representation type.\\
-    TR: The fitness/score type returned by the problem.\\
+    Tr: The fitness/score type returned by the problem.\\
     Opt: The configuration/options type for the algorithm.
 
     Attributes
     -------
-    history: Collected solutions or states during execution.\\
+    history: Collected step records during execution (list of dicts).\\
     best_solution: The best solution found so far.\\
     conf: Algorithm configuration/options.\\
-    bestFitness: Best fitness value observed.\\
+    best_fitness: Best fitness value observed.\\
     problem: Problem instance to solve.\\
     name: Human-readable name of the algorithm.
     """
 
-    history: list[T]
-    best_solution: T
+    history: list[dict[str, Any]]
+    best_solution: T | None
     conf: Opt
     best_fitness: Tr
     problem: Prob
@@ -48,12 +50,17 @@ class Model[Prob: Problem, T, Tr, Opt]:
         self.conf = configuration
         self.problem = problem
 
-    def run(self) -> T:
+    def run(self) -> T | None:
         """
         Execute the algorithm.
 
         This method must be implemented by subclasses to define the specific
         algorithm's execution logic.
+
+        Returns
+        -------
+        T or None
+            The solution found, or None if no solution was found.
 
         Raises
         -------
