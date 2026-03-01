@@ -2,10 +2,10 @@
 
 import heapq
 from problems.base_problem import GraphSearchProblem
-from algorithm.base_model import SearchGraphAlgorithm
+from algorithm.base_model import Model
 
 
-class UniformCostSearch(SearchGraphAlgorithm[list, None, dict]):
+class UniformCostSearch(Model[GraphSearchProblem, list, float | None, dict]):
     """
     Uniform Cost Search algorithm.
 
@@ -61,6 +61,10 @@ class UniformCostSearch(SearchGraphAlgorithm[list, None, dict]):
         """
         Execute UCS algorithm.
 
+        Saves structured history for plotting:
+        - history: list of dicts with 'state', 'cost', 'frontier_size', 'explored_count'
+        - best_fitness: total path cost if path found
+
         Returns
         -------
         list or None
@@ -80,15 +84,21 @@ class UniformCostSearch(SearchGraphAlgorithm[list, None, dict]):
 
         while frontier:
             current_cost, current_state = heapq.heappop(frontier)
-            self.history.append(current_state)
 
             if current_state in explored:
                 continue
 
             explored.add(current_state)
+            self.history.append({
+                'state': current_state,
+                'cost': current_cost,
+                'frontier_size': len(frontier),
+                'explored_count': len(explored),
+            })
 
             if problem.is_goal(current_state):
                 self.best_solution = self._get_path(parent, current_state)
+                self.best_fitness = current_cost
                 return self.best_solution
 
             for action in problem.actions(current_state):

@@ -92,12 +92,14 @@ class Problem(ABC):
         raise NotImplementedError
 
 
-class GraphSearchProblem(ABC):
+class GraphSearchProblem(Problem):
     """
     Abstract base class for graph search problems.
 
     This class defines the interface for graph-based search problems
     where we need to find a path from an initial state to a goal state.
+
+    Inherits from Problem to share a common interface across all problem types.
 
     Attributes
     ----------
@@ -107,7 +109,7 @@ class GraphSearchProblem(ABC):
         The target state to reach.
     """
 
-    def __init__(self, initial_state, goal_state):
+    def __init__(self, initial_state, goal_state, name: str = "Graph Search Problem"):
         """
         Initialize the GraphSearchProblem instance.
 
@@ -117,9 +119,24 @@ class GraphSearchProblem(ABC):
             The starting state of the search.
         goal_state : Any
             The target state to reach.
+        name : str, optional
+            The name of the problem (default: 'Graph Search Problem').
         """
+        super().__init__(name)
         self.initial_state = initial_state
         self.goal_state = goal_state
+
+    def sample(self, pop_size: int = 1) -> np.ndarray:
+        """Not applicable for graph search problems."""
+        raise NotImplementedError("sample() is not applicable for graph search problems.")
+
+    def eval(self, values: np.ndarray) -> float | np.ndarray:
+        """Not applicable for graph search problems."""
+        raise NotImplementedError("eval() is not applicable for graph search problems.")
+
+    def is_valid(self, x: np.ndarray) -> bool:
+        """Not applicable for graph search problems."""
+        raise NotImplementedError("is_valid() is not applicable for graph search problems.")
 
     @abstractmethod
     def actions(self, state) -> list:
@@ -214,12 +231,14 @@ class GraphSearchProblem(ABC):
         return 0.0
 
 
-class LocalSearchProblem(ABC):
+class LocalSearchProblem(Problem):
     """
     Abstract base class for local search problems.
 
     This class defines the interface for optimization problems that can be
     solved using local search algorithms like Hill Climbing, Simulated Annealing, etc.
+
+    Inherits from Problem to share a common interface across all problem types.
 
     Attributes
     ----------
@@ -227,7 +246,7 @@ class LocalSearchProblem(ABC):
         If True, we're minimizing the objective function; if False, maximizing.
     """
 
-    def __init__(self, minimize: bool = True):
+    def __init__(self, minimize: bool = True, name: str = "Local Search Problem"):
         """
         Initialize the LocalSearchProblem instance.
 
@@ -235,8 +254,23 @@ class LocalSearchProblem(ABC):
         ----------
         minimize : bool, optional
             If True, minimize the objective function; if False, maximize (default: True).
+        name : str, optional
+            The name of the problem (default: 'Local Search Problem').
         """
+        super().__init__(name)
         self.minimize = minimize
+
+    def sample(self, pop_size: int = 1) -> np.ndarray:
+        """Not applicable for local search problems."""
+        raise NotImplementedError("sample() is not applicable for local search problems.")
+
+    def eval(self, values: np.ndarray) -> float | np.ndarray:
+        """Not applicable for local search problems."""
+        raise NotImplementedError("eval() is not applicable for local search problems.")
+
+    def is_valid(self, x: np.ndarray) -> bool:
+        """Not applicable for local search problems."""
+        raise NotImplementedError("is_valid() is not applicable for local search problems.")
 
     @abstractmethod
     def random_state(self):
