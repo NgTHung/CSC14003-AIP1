@@ -4,8 +4,6 @@ Defines a generic `Model` interface that stores configuration, problem
 instances, and solution history for algorithm implementations.
 """
 
-from typing import Any
-
 from problems import Problem
 from problems.base_problem import GraphSearchProblem
 
@@ -30,8 +28,8 @@ class Model[Prob: Problem, T, Tr, Opt]:
     name: Human-readable name of the algorithm.
     """
 
-    history: list[dict[str, Any]]
-    best_solution: T | None
+    history: list[T] = []
+    best_solution: T
     conf: Opt
     best_fitness: Tr
     problem: Prob
@@ -89,7 +87,7 @@ class Model[Prob: Problem, T, Tr, Opt]:
         self.conf = config
 
 
-class SearchGraphAlgorithm[T, Tr, Opt]:
+class SearchGraphAlgorithm[T, Tr, Opt](Model[GraphSearchProblem, T, Tr, Opt]):
     """Generic graph search algorithm interface.
 
     Type parameters
@@ -108,52 +106,4 @@ class SearchGraphAlgorithm[T, Tr, Opt]:
     name: Human-readable name of the algorithm.
     """
 
-    history: list[T]
-    best_solution: T | None
-    conf: Opt
-    best_fitness: Tr
-    problem: GraphSearchProblem
     name: str = "Generic Search Algorithm"
-
-    def __init__(self, configuration: Opt, problem: GraphSearchProblem):
-        """
-        Initialize the search algorithm with configuration and problem.
-
-        Parameters
-        -------
-        configuration (Opt): The algorithm configuration object.
-        problem (GraphSearchProblem): The graph search problem instance.
-        """
-        self.conf = configuration
-        self.problem = problem
-
-    def run(self) -> T | None:
-        """
-        Execute the search algorithm.
-
-        Returns
-        -------
-        T | None
-            The path from initial state to goal state, or None if no path found.
-        """
-        raise NotImplementedError
-
-    def set_problem(self, problem: GraphSearchProblem):
-        """Update the problem instance.
-
-        Parameters
-        ----------
-        problem : GraphSearchProblem
-            New problem instance to solve.
-        """
-        self.problem = problem
-
-    def set_config(self, config: Opt):
-        """Update the algorithm configuration.
-
-        Parameters
-        ----------
-        config : Opt
-            New configuration object with algorithm parameters.
-        """
-        self.conf = config

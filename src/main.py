@@ -18,32 +18,35 @@ import numpy as np
 
 try:
     import matplotlib.pyplot as plt
+
     HAS_PLT = True
 except ImportError:
     HAS_PLT = False
 
 from problems import Sphere, Rastrigin, Ackley, Cigar, Ridge
-from algorithm.natural.human.ca import CA, CAConfig
-from algorithm.natural.human.sfo import SFO, SFOConfig
-from algorithm.natural.human.tlbo import TLBO, TLBOConfig
-from algorithm.natural.evolution.ga import (
+from algorithm import (
     GeneticAlgorithm,
     GAParameter,
     SelectionMethod,
     CrossoverMethod,
-)
-from algorithm.natural.evolution.de import (
     DifferentialEvolution,
     DEParameter,
     MutationStrategy,
     DECrossoverType,
-)
-from algorithm.natural.evolution.es.es import EvolutionStrategy, ESVariant
-from algorithm.natural.evolution.es import (
+    EvolutionStrategy,
+    ESVariant,
     OnePlusOneESParameter,
     SelfAdaptiveESParameter,
     CMAESParameter,
     MuRhoPlusLambdaESParameter,
+    ParticleSwarmOptimization,
+    PSOParameter,
+    ABCParameter,
+    ArtificialBeeColony,
+    CuckooSearch,
+    CuckooSearchParameter,
+    FireflyAlgorithm,
+    FireflyParameter
 )
 
 # ---------------------------------------------------------------------------
@@ -189,10 +192,12 @@ def run_ga(problem, n_dim: int, cycle: int):
     ga = GeneticAlgorithm(configuration=config, problem=problem)
 
     print(f"\nRunning {ga.name}...")
-    print(f"  pop_size={config.pop_size}, n_bits={config.n_bits}, "
-          f"pc={config.pc}, pm={config.pm}, "
-          f"selection={config.selection.value}, "
-          f"crossover={config.crossover.value}")
+    print(
+        f"  pop_size={config.pop_size}, n_bits={config.n_bits}, "
+        f"pc={config.pc}, pm={config.pm}, "
+        f"selection={config.selection.value}, "
+        f"crossover={config.crossover.value}"
+    )
 
     best = ga.run()
 
@@ -214,7 +219,9 @@ def run_de(problem, n_dim: int, cycle: int):
     )
     de = DifferentialEvolution(configuration=config, problem=problem)
 
-    print(f"\nRunning {de.name} (DE/{config.strategy.value}/{config.crossover_type.value})...")
+    print(
+        f"\nRunning {de.name} (DE/{config.strategy.value}/{config.crossover_type.value})..."
+    )
     print(f"  pop_size={config.pop_size}, F={config.F}, Cr={config.Cr}")
 
     best = de.run()
@@ -275,19 +282,27 @@ def main():
         description="Test GA, DE, and ES on benchmark problems"
     )
     parser.add_argument(
-        "--seed", type=int, default=42,
+        "--seed",
+        type=int,
+        default=42,
         help="Random seed for reproducibility (default: 42)",
     )
     parser.add_argument(
-        "--dim", type=int, default=10,
+        "--dim",
+        type=int,
+        default=10,
         help="Problem dimensionality (default: 10)",
     )
     parser.add_argument(
-        "--cycle", type=int, default=500,
+        "--cycle",
+        type=int,
+        default=500,
         help="Number of generations (default: 500)",
     )
     parser.add_argument(
-        "--problem", type=str, default="ackley",
+        "--problem",
+        type=str,
+        default="sphere",
         choices=["sphere", "rastrigin", "ackley", "cigar", "ridge"],
         help="Benchmark problem (default: ackley)",
     )
@@ -342,6 +357,15 @@ def main():
     for variant in es_variants:
         es_results.append(run_es(problem, args.dim, args.cycle, variant))
 
+    abc_config = ABCParameter(n_bees=50,limit=50 * args.dim/2,cycle=args.cycle)
+    abc = ArtificialBeeColony(abc_config,problem)
+    abc.run()
+
+    # cs_config = CuckooSearchParameter(n_nests=50, pa=0.25, alpha=1,beta=1.5,cycle=args.cycle)
+    # cs = CuckooSearch(cs_config, problem)
+    fa_config = FireflyParameter(n_fireflies=25,alpha=0.25,beta0=0.001,gamma=1,alpha_decay=0.98,cycle=args.cycle)
+    cs = FireflyAlgorithm(fa_config,problem)
+    print(cs.run())
     # ── Summary table ────────────────────────────────────────────────
     print("\n" + "=" * 55)
     print(f"{'Algorithm':<30} {'Best Fitness':>20}")
@@ -350,18 +374,18 @@ def main():
     print(f"{'Differential Evolution':<30} {de.best_fitness:>20.10f}")
     for es in es_results:
         print(f"{es.name:<30} {es.best_fitness:>20.10f}")
+    print(f"{'Artificial Bee Colony':<30} {abc.best_fitness:>20.10f}")
+    print(f"{'Cuckoo Search':<30} {cs.best_fitness:>20.10f}")
     print("=" * 55)
 
     # ── Convergence history ──────────────────────────────────────────
     # GA / DE history stores best-solution vectors; extract fitness
-    ga_fitness_history = [
-        float(problem.eval(sol)) for sol in ga.history
-    ]
-    de_fitness_history = [
-        float(problem.eval(sol)) for sol in de.history
-    ]
+    ga_fitness_history = [float(problem.eval(sol)) for sol in ga.history]
+    de_fitness_history = [float(problem.eval(sol)) for sol in de.history]
     # ES history already stores scalar best-fitness per generation
     es_fitness_histories = [es.history for es in es_results]
+    abc_fitness_history = [float(problem.eval(sol)) for sol in abc.history]
+    cs_fitness_history = [float(problem.eval(sol)) for sol in cs.history]
 
     if not HAS_PLT:
         print("\nmatplotlib not installed — skipping plots.")
@@ -372,6 +396,8 @@ def main():
     # Subplot 1: convergence curves
     axes[0].plot(ga_fitness_history, label="GA", linewidth=1.5)
     axes[0].plot(de_fitness_history, label="DE", linewidth=1.5)
+    axes[0].plot(abc_fitness_history, label="ABC", linewidth=1.5)
+    axes[0].plot(cs_fitness_history, label="CS", linewidth=1.5)
     for es, hist in zip(es_results, es_fitness_histories):
         axes[0].plot(hist, label=es.name, linewidth=1.5)
     axes[0].set_title(f"Convergence on {problem._name} (dim={args.dim})")
@@ -384,27 +410,38 @@ def main():
     # Subplot 2: final best solutions (first 2 dims if available)
     if args.dim >= 2:
         ax2 = axes[1]
-        markers = ["^", "s", "o", "D", "P", "X"]
+        markers = ["^", "s", "o", "D", "P", "X", "*", "8"]
         colors = [
-            "tab:blue", "tab:orange", "tab:green",
-            "tab:red", "tab:purple", "tab:brown",
+            "tab:blue",
+            "tab:orange",
+            "tab:green",
+            "tab:red",
+            "tab:purple",
+            "tab:brown",
+            "tab:cyan",
+            "tab:pink",
         ]
         all_algorithms = [
             ("GA", ga),
             ("DE", de),
             *[(es.name, es) for es in es_results],
+            ("ABC", abc),
+            ("CS", cs)
         ]
         for i, (label, algo) in enumerate(all_algorithms):
             sol = algo.best_solution
             ax2.scatter(
-                sol[0], sol[1], s=120,
+                sol[0],
+                sol[1],
+                s=120,
                 marker=markers[i % len(markers)],
                 color=colors[i % len(colors)],
                 label=f"{label} ({algo.best_fitness:.4f})",
                 zorder=5,
             )
-        ax2.scatter(0, 0, s=80, marker="*", color="black",
-                    label="Global Optimum", zorder=6)
+        ax2.scatter(
+            0, 0, s=80, marker="*", color="black", label="Global Optimum", zorder=6
+        )
         ax2.set_title("Best Solutions (first 2 dims)")
         ax2.set_xlabel("x₁")
         ax2.set_ylabel("x₂")

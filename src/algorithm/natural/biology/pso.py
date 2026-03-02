@@ -72,6 +72,7 @@ class ParticleSwarmOptimization(
     p_best: np.ndarray       # personal best positions
     p_best_fitness: np.ndarray  # personal best fitness values
     n_dim: int
+    particle_position_history: list[np.ndarray] = []
 
     def __init__(
         self, configuration: PSOParameter, problem: ContinuousProblem
@@ -220,5 +221,6 @@ class ParticleSwarmOptimization(
 
             if self.best_solution is not None:
                 self.history.append(self.best_solution.copy())
+            self.particle_position_history.append(self.positions.copy())
 
         return cast(np.ndarray, self.best_solution)

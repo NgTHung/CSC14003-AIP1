@@ -60,6 +60,7 @@ class ArtificialBeeColony(
     fit_values: np.ndarray     # transformed fitness for probability calc
     trials: np.ndarray         # stagnation counters per source
     n_dim: int
+    food_sources_history: list[np.ndarray] = []
 
     def __init__(
         self, configuration: ABCParameter, problem: ContinuousProblem
@@ -270,5 +271,6 @@ class ArtificialBeeColony(
 
             if self.best_solution is not None:
                 self.history.append(self.best_solution.copy())
+            self.food_sources_history.append(self.food_sources.copy())
 
         return cast(np.ndarray, self.best_solution)
