@@ -46,7 +46,13 @@ from algorithm import (
     CuckooSearch,
     CuckooSearchParameter,
     FireflyAlgorithm,
-    FireflyParameter
+    FireflyParameter,
+    CA,
+    CAConfig,
+    SFO,
+    SFOConfig,
+    TLBO,
+    TLBOConfig,
 )
 
 # ---------------------------------------------------------------------------
