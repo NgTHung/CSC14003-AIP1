@@ -71,6 +71,7 @@ class FireflyAlgorithm(
     fitness: np.ndarray  # shape (n_fireflies,)
     light_intensity: np.ndarray  # shape (n_fireflies,) — intrinsic brightness
     n_dim: int
+    firefly_pos_history: list[np.ndarray] = []
 
     def __init__(self, configuration: FireflyParameter, problem: ContinuousProblem):
         """Initialize the Firefly Algorithm.
@@ -258,5 +259,8 @@ class FireflyAlgorithm(
 
             if self.best_solution is not None:
                 self.history.append(self.best_solution.copy())
+
+            # For visualization
+            self.firefly_pos_history.append(self.positions.copy())
 
         return cast(np.ndarray, self.best_solution)

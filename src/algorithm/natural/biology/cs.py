@@ -59,6 +59,7 @@ class CuckooSearch(
     fitness: np.ndarray
     n_dim: int
     sigma_u: float
+    nests_history: list[np.ndarray] = []
 
     def __init__(
         self, configuration: CuckooSearchParameter, problem: ContinuousProblem
@@ -234,5 +235,6 @@ class CuckooSearch(
 
             if self.best_solution is not None:
                 self.history.append(self.best_solution.copy())
+            self.nests_history.append(self.nests.copy())
 
         return cast(np.ndarray, self.best_solution)
