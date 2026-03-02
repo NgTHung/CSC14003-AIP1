@@ -30,13 +30,13 @@ class ABCParameter:
         Abandonment limit. A food source that has not been improved for
         *limit* consecutive trials is replaced by a scout bee.
         Common default: ``n_bees * n_dim / 2``.
-    cycle : int
+    iteration : int
         Number of iterations (foraging cycles).
     """
 
     n_bees: int
     limit: int
-    cycle: int
+    iteration: int
 
 
 class ArtificialBeeColony(
@@ -44,7 +44,7 @@ class ArtificialBeeColony(
 ):
     """Artificial Bee Colony for continuous optimization.
 
-    Algorithm outline per cycle:
+    Algorithm outline per iteration:
     1. **Employed bee phase** - Each employed bee generates a new candidate
        near its current food source and keeps it if it is better (greedy).
     2. **Onlooker bee phase** - Onlooker bees select food sources with
@@ -60,10 +60,11 @@ class ArtificialBeeColony(
     fit_values: np.ndarray     # transformed fitness for probability calc
     trials: np.ndarray         # stagnation counters per source
     n_dim: int
-    food_sources_history: list[np.ndarray] = []
+    food_sources_history: list[np.ndarray] 
+    stat: bool
 
     def __init__(
-        self, configuration: ABCParameter, problem: ContinuousProblem
+        self, configuration: ABCParameter, problem: ContinuousProblem, stat: bool = False
     ):
         """Initialize the Artificial Bee Colony.
 
@@ -73,6 +74,10 @@ class ArtificialBeeColony(
             Algorithm hyperparameters.
         problem : ContinuousProblem
             Continuous optimization problem to solve.
+        stat : bool, optional
+            If True, record full population snapshots each iteration
+            into ``food_sources_history`` for later analysis or
+            visualisation. Defaults to False to save memory.
         """
         super().__init__(configuration, problem)
         self.n_dim = problem.n_dim
@@ -85,6 +90,9 @@ class ArtificialBeeColony(
         self.best_solution = self.food_sources[best_idx].copy()
         self.best_fitness = float(self.fitness[best_idx])
         self.history = []
+        self.stat = stat
+        if stat:
+            self.food_sources_history = []
 
     # ------------------------------------------------------------------
     # Helpers
@@ -137,10 +145,9 @@ class ArtificialBeeColony(
         A random dimension *j* is selected and perturbed using a randomly
         chosen partner source *k* (k ≠ idx):
 
-        .. math::
-            v_{ij} = x_{ij} + \\phi_{ij} (x_{ij} - x_{kj})
+            v[i,j] = x[i,j] + phi * (x[i,j] - x[k,j])
 
-        where :math:`\\phi_{ij} \\in [-1, 1]`.
+        where phi is drawn uniformly from [-1, 1].
 
         Parameters
         ----------
@@ -263,7 +270,7 @@ class ArtificialBeeColony(
         np.ndarray
             Best solution found after all cycles.
         """
-        for _ in range(self.conf.cycle):
+        for _ in range(self.conf.iteration):
             self.employed_bee_phase()
             self.onlooker_bee_phase()
             self.scout_bee_phase()
@@ -271,6 +278,7 @@ class ArtificialBeeColony(
 
             if self.best_solution is not None:
                 self.history.append(self.best_solution.copy())
-            self.food_sources_history.append(self.food_sources.copy())
+            if self.stat:
+                self.food_sources_history.append(self.food_sources.copy())
 
         return cast(np.ndarray, self.best_solution)

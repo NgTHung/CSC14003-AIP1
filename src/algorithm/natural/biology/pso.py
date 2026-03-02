@@ -72,10 +72,11 @@ class ParticleSwarmOptimization(
     p_best: np.ndarray       # personal best positions
     p_best_fitness: np.ndarray  # personal best fitness values
     n_dim: int
-    particle_position_history: list[np.ndarray] = []
+    particle_position_history: list[np.ndarray]
+    stat: bool
 
     def __init__(
-        self, configuration: PSOParameter, problem: ContinuousProblem
+        self, configuration: PSOParameter, problem: ContinuousProblem, stat: bool = False
     ):
         """Initialize Particle Swarm Optimization.
 
@@ -85,6 +86,10 @@ class ParticleSwarmOptimization(
             Algorithm hyperparameters.
         problem : ContinuousProblem
             Continuous optimization problem to solve.
+        stat : bool, optional
+            If True, record full swarm position snapshots each iteration
+            into ``particle_position_history`` for later analysis or
+            visualisation. Defaults to False to save memory.
         """
         super().__init__(configuration, problem)
         self.name = "Particle Swarm Optimization"
@@ -111,6 +116,10 @@ class ParticleSwarmOptimization(
         self.best_solution = self.positions[best_idx].copy()
         self.best_fitness = float(self.fitness[best_idx])
         self.history = []
+        
+        self.stat = stat
+        if stat:
+            self.particle_position_history = []
 
     # ------------------------------------------------------------------
     # Helpers
@@ -170,17 +179,13 @@ class ParticleSwarmOptimization(
 
         For each particle *i* the velocity is updated as:
 
-        .. math::
-            v_i \\leftarrow w \\, v_i
-                + c_1 \\, r_1 \\, (p_{\\text{best},i} - x_i)
-                + c_2 \\, r_2 \\, (g_{\\text{best}} - x_i)
+            v[i] = w * v[i] + c1 * r1 * (p_best[i] - x[i]) + c2 * r2 * (g_best - x[i])
 
-        where :math:`r_1, r_2 \\sim U(0,1)` are independent random matrices.
+        where r1, r2 are independent uniform random matrices in [0, 1].
 
         The position is then updated as:
 
-        .. math::
-            x_i \\leftarrow x_i + v_i
+            x[i] = x[i] + v[i]
         """
         n = self.conf.n_particles
 
@@ -221,6 +226,7 @@ class ParticleSwarmOptimization(
 
             if self.best_solution is not None:
                 self.history.append(self.best_solution.copy())
-            self.particle_position_history.append(self.positions.copy())
+            if self.stat:
+                self.particle_position_history.append(self.positions.copy())
 
         return cast(np.ndarray, self.best_solution)
