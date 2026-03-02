@@ -13,6 +13,7 @@ The script
 
 import random
 import argparse
+import itertools
 import numpy as np
 
 try:
@@ -51,6 +52,123 @@ from algorithm import (
 # ---------------------------------------------------------------------------
 # Utility helpers
 # ---------------------------------------------------------------------------
+
+
+def run_grid_search(
+    target_algo: str,
+    problem,
+    n_dim: int,
+    cycle: int,
+    n_runs: int,
+) -> None:
+    """Execute a grid search over hyperparameters for a given algorithm.
+
+    For each combination in the parameter grid the algorithm is executed
+    ``n_runs`` times independently.  The combination that yields the
+    lowest *mean best fitness* (minimization) is reported.
+
+    Parameters
+    ----------
+    target_algo : str
+        One of ``'CA'``, ``'SFO'``, ``'TLBO'``.
+    problem : ContinuousProblem
+        The benchmark problem instance to optimise.
+    n_dim : int
+        Dimensionality of the search space.
+    cycle : int
+        Number of iterations / generations per run.
+    n_runs : int
+        Independent repetitions for each parameter combination to
+        ensure statistical robustness.
+    """
+
+    # ------------------------------------------------------------------
+    # 1. Define the parameter grids per algorithm
+    # ------------------------------------------------------------------
+    grids: dict[str, dict[str, list]] = {
+        "CA": {
+            "pop_size":      [50, 100],
+            "accepted_ratio": [0.1, 0.2, 0.3],
+            "exploit_ratio":  [0.7, 0.8, 0.9],
+            "explore_sigma":  [0.05, 0.1, 0.2],
+        },
+        "SFO": {
+            "pop_size":  [50, 100],
+            "w":         [0.7, 0.9],
+            "c_attract": [1.0, 1.5, 2.0],
+            "c_social":  [1.0, 1.5, 2.0],
+        },
+        "TLBO": {
+            "pop_size": [50, 100, 150],
+        },
+    }
+
+    # Mapping from algorithm name to (ConfigClass, AlgorithmClass)
+    algo_map: dict[str, tuple[type, type]] = {
+        "CA":   (CAConfig, CA),
+        "SFO":  (SFOConfig, SFO),
+        "TLBO": (TLBOConfig, TLBO),
+    }
+
+    grid = grids[target_algo]
+    ConfigCls, AlgoCls = algo_map[target_algo]
+
+    # Build all parameter combinations using itertools.product
+    param_names = list(grid.keys())
+    param_values = list(grid.values())
+    combinations = list(itertools.product(*param_values))
+    total = len(combinations)
+
+    print(f"\n{'=' * 65}")
+    print(f"  Grid Search for {target_algo}  |  {total} configs × {n_runs} runs")
+    print(f"  Problem: {problem._name}  |  Dimensions: {n_dim}  |  Iterations: {cycle}")
+    print(f"{'=' * 65}\n")
+
+    best_mean_fitness = float("inf")
+    best_config_dict: dict = {}
+
+    # ------------------------------------------------------------------
+    # 2. Iterate over every combination
+    # ------------------------------------------------------------------
+    for idx, combo in enumerate(combinations, start=1):
+        config_dict = dict(zip(param_names, combo))
+
+        # Build the config object with the current grid values + fixed params
+        cfg = ConfigCls(
+            iterations=cycle,
+            minimization=True,
+            **config_dict,
+        )
+
+        run_fitnesses: list[float] = []
+
+        for run_id in range(n_runs):
+            model = AlgoCls(configuration=cfg, problem=problem)
+            model.run()
+            run_fitnesses.append(float(model.best_fitness))
+
+        mean_fitness = float(np.mean(run_fitnesses))
+
+        print(
+            f"  [{idx:>{len(str(total))}}/{total}] "
+            f"{config_dict}  ->  Mean Fitness: {mean_fitness:.10f}"
+        )
+
+        if mean_fitness < best_mean_fitness:
+            best_mean_fitness = mean_fitness
+            best_config_dict = config_dict.copy()
+
+    # ------------------------------------------------------------------
+    # 3. Print summary
+    # ------------------------------------------------------------------
+    print(f"\n{'=' * 65}")
+    print(f"  GRID SEARCH RESULTS  –  {target_algo}")
+    print(f"{'-' * 65}")
+    print(f"  Best Mean Fitness : {best_mean_fitness:.10f}")
+    print(f"  Best Configuration:")
+    for k, v in best_config_dict.items():
+        print(f"    {k:<18s} = {v}")
+    print(f"{'=' * 65}\n")
 
 def set_seed(seed: int | float | None):
     """Set random seed for reproducibility."""
@@ -188,6 +306,16 @@ def main():
         choices=["sphere", "rastrigin", "ackley", "cigar", "ridge"],
         help="Benchmark problem (default: ackley)",
     )
+    parser.add_argument(
+        "--tune", type=str, default="NONE",
+        choices=["CA", "SFO", "TLBO", "NONE"],
+        help="Run grid-search parameter tuning for the specified algorithm "
+             "instead of the normal comparison (default: NONE)",
+    )
+    parser.add_argument(
+        "--runs", type=int, default=5,
+        help="Number of independent runs per grid-search config (default: 5)",
+    )
     args = parser.parse_args()
 
     set_seed(args.seed)
@@ -203,6 +331,17 @@ def main():
     problem = problems[args.problem](n_dim=args.dim)
     print(f"Problem: {problem._name}, Dimensions: {problem._n_dim}")
     print(f"Bounds : {problem._bounds[0]}")
+
+    # ── Grid Search mode ─────────────────────────────────────────────
+    if args.tune != "NONE":
+        run_grid_search(
+            target_algo=args.tune,
+            problem=problem,
+            n_dim=args.dim,
+            cycle=args.cycle,
+            n_runs=args.runs,
+        )
+        return
 
     # ── Run all algorithms ───────────────────────────────────────────
     ga = run_ga(problem, args.dim, args.cycle)
