@@ -31,6 +31,8 @@ class CuckooSearchParameter:
         abandoned per generation. Typical: 0.25.
     alpha : float
         Step size scaling factor for Lévy flights. Typical: 0.01.
+    beta : float
+        Lévy flight exponent controlling tail heaviness. Typical: 1.5.
     cycle : int
         Number of iterations.
     """
@@ -38,6 +40,7 @@ class CuckooSearchParameter:
     n_nests: int
     pa: float
     alpha: float
+    beta: float
     cycle: int
 
 
@@ -55,6 +58,8 @@ class CuckooSearch(
     nests: np.ndarray
     fitness: np.ndarray
     n_dim: int
+    sigma_u: float
+    nests_history: list[np.ndarray] = []
 
     def __init__(
         self, configuration: CuckooSearchParameter, problem: ContinuousProblem
@@ -73,123 +78,143 @@ class CuckooSearch(
         self.nests = problem.sample(configuration.n_nests)
         self.fitness = cast(np.ndarray, problem.eval(self.nests))
 
+        # Precompute Mantegna's sigma_u (depends only on beta)
+        beta = configuration.beta
+        num = gamma(1 + beta) * sin(pi * beta / 2)
+        den = gamma((1 + beta) / 2) * beta * 2 ** ((beta - 1) / 2)
+        self.sigma_u = (num / den) ** (1 / beta)
+
         best_idx = int(np.argmin(self.fitness))
         self.best_solution = self.nests[best_idx].copy()
-        self.best_fitness = self.fitness[best_idx]
-        self.history = []
+        self.best_fitness = float(self.fitness[best_idx])
 
-    def _levy_flight(self, size: int) -> np.ndarray:
-        """Generate a Lévy flight step using Mantegna's algorithm.
+    def _levy_flight(self, shape: tuple[int, ...] | int) -> np.ndarray:
+        """Generate Lévy flight steps using Mantegna's algorithm.
 
-        Draws step lengths from a Lévy-stable distribution with index β = 1.5
-        using the ratio of two normal distributions.
+        Draws step lengths from a Lévy-stable distribution with the
+        configured β exponent, using precomputed sigma_u.
 
         Parameters
         ----------
-        size : int
-            Dimensionality of the step vector.
+        shape : tuple[int, ...] | int
+            Shape of the output array — e.g. (n_nests, n_dim) for a
+            batch or (n_dim,) for a single step.
 
         Returns
         -------
         np.ndarray
-            Lévy flight step vector of shape (size,).
+            Lévy flight step array of the requested shape.
         """
-        beta = 1.5
+        beta = self.conf.beta
 
-        # Mantegna's algorithm: sigma for numerator
-        num = gamma(1 + beta) * sin(pi * beta / 2)
-        den = gamma((1 + beta) / 2) * beta * 2 ** ((beta - 1) / 2)
-        sigma_u = (num / den) ** (1 / beta)
-
-        u = np.random.normal(0, sigma_u, size=size)
-        v = np.random.normal(0, 1, size=size)
+        u = np.random.normal(0, self.sigma_u, size=shape)
+        v = np.random.normal(0, 1, size=shape)
 
         step = u / (np.abs(v) ** (1 / beta))
         return step
 
     def _clamp(self, solution: np.ndarray) -> np.ndarray:
-        """Clamp solution to problem bounds.
+        """Clamp solution(s) to problem bounds.
+
+        Supports both a single solution of shape (n_dim,) and a batch
+        of solutions of shape (n, n_dim).  Bounds are broadcast
+        automatically via NumPy.
 
         Parameters
         ----------
         solution : np.ndarray
-            Solution vector of shape (n_dim,).
+            Solution array of shape (n_dim,) or (n, n_dim).
 
         Returns
         -------
         np.ndarray
-            Clamped solution.
+            Clamped solution(s) with same shape as input.
         """
-        lower = self.problem.bounds[:, 0]
-        upper = self.problem.bounds[:, 1]
+        lower = self.problem.bounds[:, 0]  # (n_dim,)
+        upper = self.problem.bounds[:, 1]  # (n_dim,)
         return np.clip(solution, lower, upper)
 
-    def get_cuckoo(self, idx: int) -> np.ndarray:
-        """Generate a new cuckoo egg via Lévy flight from a random nest.
+    def generate_cuckoos(self) -> np.ndarray:
+        """Generate new cuckoo eggs for every nest via batch Lévy flights.
+
+        Each nest produces one candidate by adding a Lévy-flight step
+        scaled by the search-space range per dimension.
 
         Returns
         -------
         np.ndarray
-            New candidate solution of shape (n_dim,).
+            New candidate solutions of shape (n_nests, n_dim).
         """
-        step = self._levy_flight(self.n_dim)
+        n = self.conf.n_nests
+        steps = self._levy_flight((n, self.n_dim))  # (n_nests, n_dim)
 
-        # Scale step relative to difference from best solution
-        assert self.best_solution is not None
-        new_nest = self.nests[idx] + self.conf.alpha * step * (
-            self.nests[idx] - self.best_solution
+        # Scale step by problem range so displacement is problem-relative
+
+        new_nests = self.nests + self.conf.alpha * steps * (
+            self.best_solution - self.nests
         )
-        return self._clamp(new_nest)
+        return self._clamp(new_nests)
 
-    def evaluate_cuckoo(self, cuckoo: np.ndarray):
-        """Evaluate a new cuckoo and replace a random nest if better.
+    def evaluate_cuckoos(self, cuckoos: np.ndarray):
+        """Batch-evaluate cuckoos and replace nests where fitness improves.
 
         Parameters
         ----------
-        cuckoo : np.ndarray
-            Candidate solution of shape (n_dim,).
+        cuckoos : np.ndarray
+            Candidate solutions of shape (n_nests, n_dim).
         """
-        cuckoo_fitness = cast(float, self.problem.eval(cuckoo))
+        cuckoo_fitness = cast(np.ndarray, self.problem.eval(cuckoos))  # (n_nests,)
 
-        # Compare against a random nest
-        j = np.random.randint(0, self.conf.n_nests)
-        if cuckoo_fitness < self.fitness[j]:
-            self.nests[j] = cuckoo
-            self.fitness[j] = cuckoo_fitness
+        # Boolean mask: where the new cuckoo beats the current nest
+        improved = cuckoo_fitness < self.fitness
+        self.nests[improved] = cuckoos[improved]
+        self.fitness[improved] = cuckoo_fitness[improved]
 
-            if cuckoo_fitness < self.best_fitness:
-                self.best_fitness = cuckoo_fitness
-                self.best_solution = cuckoo.copy()
+        # Update global best
+        best_new_idx = int(np.argmin(cuckoo_fitness))
+        if cuckoo_fitness[best_new_idx] < self.best_fitness:
+            self.best_fitness = float(cuckoo_fitness[best_new_idx])
+            self.best_solution = cuckoos[best_new_idx].copy()
 
     def abandon_worst_nests(self):
-        """Abandon fraction pa of worst nests and replace with new random ones.
+        """Abandon the worst pa fraction of nests (rank-based elitism).
 
-        Biased random walks: new nests are generated by mixing two random
-        existing nests, scaled by a random factor, applied only to nests
-        selected for abandonment.
+        The top (1 - pa) nests by fitness are kept. The remaining worst
+        nests are replaced via biased random walks mixing two random
+        existing nests, scaled by a random factor.  All operations are
+        fully vectorized.
         """
-        k = np.random.rand(self.conf.n_nests, self.n_dim)
+        n = self.conf.n_nests
+        n_abandon = int(n * self.conf.pa)
 
-        perm1 = np.random.permutation(self.conf.n_nests)
-        perm2 = np.random.permutation(self.conf.n_nests)
+        if n_abandon == 0:
+            return
 
-        step_size = (
-            np.random.rand() * self.conf.alpha * (self.nests[perm1] - self.nests[perm2])
+        # Rank-based selection: abandon the worst nests
+        ranked = np.argsort(self.fitness)
+        abandon_idx = ranked[-n_abandon:]
+
+        # Biased random walk using two random permutations
+        perm1 = np.random.randint(0, n, size=n_abandon)
+        perm2 = np.random.randint(0, n, size=n_abandon)
+        step_size = np.random.rand(n_abandon, 1)
+
+        new_nests = self.nests[abandon_idx] + step_size * (
+            self.nests[perm1] - self.nests[perm2]
         )
-        mask = k < self.conf.pa
-
-        new_nests = self.nests.copy()
-        new_nests[mask] += step_size[mask]
-
         new_nests = self._clamp(new_nests)
-        new_fitness = np.apply_along_axis(self.problem.eval, 1, new_nests)
-        mask_better = new_fitness < self.fitness
-        self.nests[mask_better] = new_nests[mask_better]
-        self.fitness[mask_better] = new_fitness[mask_better]
-        curr_best_idx = np.argmin(self.fitness)
-        if self.fitness[curr_best_idx] < self.best_fitness:
-            self.best_fitness = self.fitness[curr_best_idx]
-            self.best_solution = self.nests[curr_best_idx]
+
+        self.nests[abandon_idx] = new_nests
+
+        # Batch evaluate all replaced nests at once
+        new_fitness = cast(np.ndarray, self.problem.eval(new_nests))
+        self.fitness[abandon_idx] = new_fitness
+
+        # Update global best
+        best_new_idx = int(np.argmin(new_fitness))
+        if new_fitness[best_new_idx] < self.best_fitness:
+            self.best_fitness = float(new_fitness[best_new_idx])
+            self.best_solution = new_nests[best_new_idx].copy()
 
     @override
     def run(self) -> np.ndarray:
@@ -201,14 +226,15 @@ class CuckooSearch(
             Best solution found.
         """
         for _ in range(self.conf.cycle):
-            # Generate new cuckoo via Lévy flight and evaluate
-            for i in range(self.conf.n_nests):
-                cuckoo = self.get_cuckoo(i)
-                self.evaluate_cuckoo(cuckoo)
+            # Batch generate and evaluate cuckoos via Lévy flights
+            cuckoos = self.generate_cuckoos()
+            self.evaluate_cuckoos(cuckoos)
+
             # Abandon worst nests
             self.abandon_worst_nests()
 
             if self.best_solution is not None:
                 self.history.append(self.best_solution.copy())
+            self.nests_history.append(self.nests.copy())
 
         return cast(np.ndarray, self.best_solution)

@@ -67,14 +67,13 @@ class FireflyAlgorithm(
        over time.
     """
 
-    positions: np.ndarray       # shape (n_fireflies, n_dim)
-    fitness: np.ndarray         # shape (n_fireflies,)
+    positions: np.ndarray  # shape (n_fireflies, n_dim)
+    fitness: np.ndarray  # shape (n_fireflies,)
     light_intensity: np.ndarray  # shape (n_fireflies,) — intrinsic brightness
     n_dim: int
+    firefly_pos_history: list[np.ndarray] = []
 
-    def __init__(
-        self, configuration: FireflyParameter, problem: ContinuousProblem
-    ):
+    def __init__(self, configuration: FireflyParameter, problem: ContinuousProblem):
         """Initialize the Firefly Algorithm.
 
         Parameters
@@ -205,12 +204,6 @@ class FireflyAlgorithm(
         n = self.conf.n_fireflies
         span = self.problem.bounds[:, 1] - self.problem.bounds[:, 0]
 
-        # Sort fireflies by light intensity (descending — brightest first)
-        order = np.argsort(-self.light_intensity)
-        self.positions = self.positions[order]
-        self.fitness = self.fitness[order]
-        self.light_intensity = self.light_intensity[order]
-
         for i in range(n):
             for j in range(n):
                 # Perceived intensity of j at the position of i
@@ -266,5 +259,8 @@ class FireflyAlgorithm(
 
             if self.best_solution is not None:
                 self.history.append(self.best_solution.copy())
+
+            # For visualization
+            self.firefly_pos_history.append(self.positions.copy())
 
         return cast(np.ndarray, self.best_solution)
