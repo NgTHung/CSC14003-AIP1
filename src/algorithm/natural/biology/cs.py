@@ -33,7 +33,7 @@ class CuckooSearchParameter:
         Step size scaling factor for Lévy flights. Typical: 0.01.
     beta : float
         Lévy flight exponent controlling tail heaviness. Typical: 1.5.
-    cycle : int
+    iteration : int
         Number of iterations.
     """
 
@@ -41,7 +41,7 @@ class CuckooSearchParameter:
     pa: float
     alpha: float
     beta: float
-    cycle: int
+    iteration: int
 
 
 class CuckooSearch(
@@ -59,10 +59,11 @@ class CuckooSearch(
     fitness: np.ndarray
     n_dim: int
     sigma_u: float
-    nests_history: list[np.ndarray] = []
+    nests_history: list[np.ndarray] 
+    stat: bool
 
     def __init__(
-        self, configuration: CuckooSearchParameter, problem: ContinuousProblem
+        self, configuration: CuckooSearchParameter, problem: ContinuousProblem, stat: bool = False
     ):
         """Initialize Cuckoo Search.
 
@@ -72,6 +73,10 @@ class CuckooSearch(
             Algorithm hyperparameters.
         problem : ContinuousProblem
             Continuous optimization problem to solve.
+        stat : bool, optional
+            If True, record full nest snapshots each iteration into
+            ``nests_history`` for later analysis or visualisation.
+            Defaults to False to save memory.
         """
         super().__init__(configuration, problem)
         self.n_dim = problem.n_dim
@@ -87,6 +92,10 @@ class CuckooSearch(
         best_idx = int(np.argmin(self.fitness))
         self.best_solution = self.nests[best_idx].copy()
         self.best_fitness = float(self.fitness[best_idx])
+        
+        self.stat = stat
+        if stat:
+            self.nests_history = []
 
     def _levy_flight(self, shape: tuple[int, ...] | int) -> np.ndarray:
         """Generate Lévy flight steps using Mantegna's algorithm.
@@ -225,7 +234,7 @@ class CuckooSearch(
         np.ndarray
             Best solution found.
         """
-        for _ in range(self.conf.cycle):
+        for _ in range(self.conf.iteration):
             # Batch generate and evaluate cuckoos via Lévy flights
             cuckoos = self.generate_cuckoos()
             self.evaluate_cuckoos(cuckoos)
@@ -235,6 +244,7 @@ class CuckooSearch(
 
             if self.best_solution is not None:
                 self.history.append(self.best_solution.copy())
-            self.nests_history.append(self.nests.copy())
+            if self.stat:
+                self.nests_history.append(self.nests.copy())
 
         return cast(np.ndarray, self.best_solution)

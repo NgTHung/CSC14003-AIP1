@@ -71,9 +71,10 @@ class FireflyAlgorithm(
     fitness: np.ndarray  # shape (n_fireflies,)
     light_intensity: np.ndarray  # shape (n_fireflies,) — intrinsic brightness
     n_dim: int
-    firefly_pos_history: list[np.ndarray] = []
+    firefly_pos_history: list[np.ndarray]
+    stat: bool
 
-    def __init__(self, configuration: FireflyParameter, problem: ContinuousProblem):
+    def __init__(self, configuration: FireflyParameter, problem: ContinuousProblem, stat: bool = False):
         """Initialize the Firefly Algorithm.
 
         Parameters
@@ -82,6 +83,10 @@ class FireflyAlgorithm(
             Algorithm hyperparameters.
         problem : ContinuousProblem
             Continuous optimization problem to solve.
+        stat : bool, optional
+            If True, record full firefly position snapshots each
+            iteration into ``firefly_pos_history`` for later analysis
+            or visualisation. Defaults to False to save memory.
         """
         super().__init__(configuration, problem)
         self.name = "Firefly Algorithm"
@@ -97,6 +102,10 @@ class FireflyAlgorithm(
         self.best_solution = self.positions[best_idx].copy()
         self.best_fitness = float(self.fitness[best_idx])
         self.history = []
+
+        self.stat = stat
+        if stat:
+            self.firefly_pos_history = []
 
     # ------------------------------------------------------------------
     # Helpers
@@ -126,9 +135,8 @@ class FireflyAlgorithm(
         Lower objective values yield higher brightness so that better
         solutions emit more light.  Uses the transformation:
 
-        .. math::
-            I_0 = \\frac{1}{1 + f} \\quad (f \\ge 0), \\qquad
-            I_0 = 1 + |f| \\quad (f < 0)
+            I0 = 1 / (1 + f)    when f >= 0
+            I0 = 1 + |f|        when f <  0
 
         Parameters
         ----------
@@ -149,8 +157,7 @@ class FireflyAlgorithm(
     def _attractiveness(self, distance_sq: float) -> float:
         """Compute attractiveness given the squared Euclidean distance.
 
-        .. math::
-            \\beta(r) = \\beta_0 \\, e^{-\\gamma \\, r^2}
+            beta(r) = beta0 * exp(-gamma * r^2)
 
         Parameters
         ----------
@@ -181,17 +188,12 @@ class FireflyAlgorithm(
         For each pair of fireflies *(i, j)*, the perceived light intensity
         of *j* at firefly *i* is computed as:
 
-        .. math::
-            I_j(r_{ij}) = I_{0,j} \\, e^{-\\gamma \\, r_{ij}^2}
+            I_j(r_ij) = I0_j * exp(-gamma * r_ij^2)
 
-        If :math:`I_j(r_{ij}) > I_{0,i}` (firefly *j* appears brighter
-        than *i*'s own intrinsic brightness), firefly *i* moves toward *j*:
+        If firefly *j* appears brighter than *i*'s own intrinsic brightness,
+        firefly *i* moves toward *j*:
 
-        .. math::
-            x_i \\leftarrow x_i
-                + \\beta(r_{ij}) \\, (x_j - x_i)
-                + \\alpha \\, (\\text{rand} - 0.5)
-                \\, (\\text{upper} - \\text{lower})
+            x[i] += beta(r_ij) * (x[j] - x[i]) + alpha * (rand - 0.5) * span
 
         This distance-dependent comparison allows nearby dim fireflies to
         still attract each other, promoting niching and multi-modal search.
@@ -261,6 +263,7 @@ class FireflyAlgorithm(
                 self.history.append(self.best_solution.copy())
 
             # For visualization
-            self.firefly_pos_history.append(self.positions.copy())
+            if self.stat:
+                self.firefly_pos_history.append(self.positions.copy())
 
         return cast(np.ndarray, self.best_solution)
