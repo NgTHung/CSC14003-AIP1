@@ -1,5 +1,5 @@
 from .ackley import *
-from .cigar import *
+from .griewank import *
 from .rastrigin import *
-from .ridge import *
+from .Rosenbrock import *
 from .sphere import *
