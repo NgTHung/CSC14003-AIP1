@@ -1,9 +1,15 @@
-"""Cuckoo Search (CS) algorithm for continuous optimization.
+"""Cuckoo Search (CS) algorithm for continuous and discrete optimization.
 
 Inspired by the brood parasitism of cuckoo birds and Lévy flight foraging
 patterns. Each egg (nest) represents a solution, and new solutions are
 generated via Lévy flights. A fraction of the worst nests are abandoned
 and replaced each generation.
+
+For **continuous** problems, Lévy flights are used to generate new cuckoos
+and biased random walks to replace abandoned nests.
+For **discrete** problems (e.g. TSP, Knapsack), a random neighbour from
+the problem's ``neighbors()`` method is used instead, preserving solution
+validity.
 
 Reference: Yang, X.-S. & Deb, S. (2009). Cuckoo search via Lévy flights.
 Proc. World Congress on Nature & Biologically Inspired Computing, pp. 210-214.
@@ -14,7 +20,7 @@ from typing import cast, override
 from math import gamma, sin, pi
 
 import numpy as np
-from problems import ContinuousProblem
+from problems import ContinuousProblem, DiscreteProblem, Problem
 from algorithm import Model
 
 
@@ -45,25 +51,28 @@ class CuckooSearchParameter:
 
 
 class CuckooSearch(
-    Model[ContinuousProblem, np.ndarray | None, float, CuckooSearchParameter]
+    Model[Problem, np.ndarray | None, float, CuckooSearchParameter]
 ):
-    """Cuckoo Search for continuous optimization.
+    """Cuckoo Search for continuous and discrete optimization.
 
     Algorithm outline per iteration:
-    1. Generate a new cuckoo egg via Lévy flight from a random nest.
-    2. Replace a random nest if the new egg is better.
-    3. Abandon fraction pa of the worst nests and replace with new random ones.
+    1. Generate a new cuckoo egg (Lévy flight for continuous, random
+       neighbour for discrete) from each nest.
+    2. Replace the nest if the new egg is better.
+    3. Abandon fraction pa of the worst nests and replace with new
+       random solutions.
     """
 
     nests: np.ndarray
     fitness: np.ndarray
     n_dim: int
     sigma_u: float
-    nests_history: list[np.ndarray] 
+    _is_continuous: bool
+    nests_history: list[np.ndarray]
     stat: bool
 
     def __init__(
-        self, configuration: CuckooSearchParameter, problem: ContinuousProblem, stat: bool = False
+        self, configuration: CuckooSearchParameter, problem: Problem, stat: bool = False
     ):
         """Initialize Cuckoo Search.
 
@@ -71,28 +80,37 @@ class CuckooSearch(
         ----------
         configuration : CuckooSearchParameter
             Algorithm hyperparameters.
-        problem : ContinuousProblem
-            Continuous optimization problem to solve.
+        problem : Problem
+            Optimization problem to solve. Accepts both
+            :class:`~problems.ContinuousProblem` and
+            :class:`~problems.DiscreteProblem` instances.
         stat : bool, optional
             If True, record full nest snapshots each iteration into
             ``nests_history`` for later analysis or visualisation.
             Defaults to False to save memory.
         """
         super().__init__(configuration, problem)
-        self.n_dim = problem.n_dim
+        self._is_continuous = isinstance(problem, ContinuousProblem)
+        if self._is_continuous:
+            self.n_dim = problem.n_dim  # type: ignore[union-attr]
+        else:
+            self.n_dim = problem.n_dims  # type: ignore[union-attr]
         self.nests = problem.sample(configuration.n_nests)
         self.fitness = cast(np.ndarray, problem.eval(self.nests))
 
-        # Precompute Mantegna's sigma_u (depends only on beta)
-        beta = configuration.beta
-        num = gamma(1 + beta) * sin(pi * beta / 2)
-        den = gamma((1 + beta) / 2) * beta * 2 ** ((beta - 1) / 2)
-        self.sigma_u = (num / den) ** (1 / beta)
+        # Precompute Mantegna's sigma_u for continuous Lévy flights
+        if self._is_continuous:
+            beta = configuration.beta
+            num = gamma(1 + beta) * sin(pi * beta / 2)
+            den = gamma((1 + beta) / 2) * beta * 2 ** ((beta - 1) / 2)
+            self.sigma_u = (num / den) ** (1 / beta)
+        else:
+            self.sigma_u = 0.0  # unused for discrete
 
         best_idx = int(np.argmin(self.fitness))
         self.best_solution = self.nests[best_idx].copy()
         self.best_fitness = float(self.fitness[best_idx])
-        
+
         self.stat = stat
         if stat:
             self.nests_history = []
@@ -139,26 +157,53 @@ class CuckooSearch(
         np.ndarray
             Clamped solution(s) with same shape as input.
         """
+        assert isinstance(self.problem, ContinuousProblem)
         lower = self.problem.bounds[:, 0]  # (n_dim,)
         upper = self.problem.bounds[:, 1]  # (n_dim,)
         return np.clip(solution, lower, upper)
 
-    def generate_cuckoos(self) -> np.ndarray:
-        """Generate new cuckoo eggs for every nest via batch Lévy flights.
+    def _generate_cuckoo_discrete(self, idx: int) -> np.ndarray:
+        """Neighbour-based candidate for discrete problems.
 
-        Each nest produces one candidate by adding a Lévy-flight step
-        scaled by the search-space range per dimension.
+        Delegates to the problem's ``neighbors()`` method and selects
+        one at random, preserving solution validity.
+
+        Parameters
+        ----------
+        idx : int
+            Index of the current nest.
+
+        Returns
+        -------
+        np.ndarray
+            A random neighbour of the current nest.
+        """
+        problem = cast(DiscreteProblem, self.problem)
+        nbrs = problem.neighbors(self.nests[idx])
+        return nbrs[np.random.randint(len(nbrs))]
+
+    def generate_cuckoos(self) -> np.ndarray:
+        """Generate new cuckoo eggs for every nest.
+
+        For continuous problems, uses batch Lévy flights scaled by the
+        distance to the global best. For discrete problems, generates
+        a random neighbour for each nest.
 
         Returns
         -------
         np.ndarray
             New candidate solutions of shape (n_nests, n_dim).
         """
+        if not self._is_continuous:
+            return np.array([
+                self._generate_cuckoo_discrete(i)
+                for i in range(self.conf.n_nests)
+            ])
+
         n = self.conf.n_nests
         steps = self._levy_flight((n, self.n_dim))  # (n_nests, n_dim)
 
         # Scale step by problem range so displacement is problem-relative
-
         new_nests = self.nests + self.conf.alpha * steps * (
             self.best_solution - self.nests
         )
@@ -188,10 +233,11 @@ class CuckooSearch(
     def abandon_worst_nests(self):
         """Abandon the worst pa fraction of nests (rank-based elitism).
 
-        The top (1 - pa) nests by fitness are kept. The remaining worst
-        nests are replaced via biased random walks mixing two random
-        existing nests, scaled by a random factor.  All operations are
-        fully vectorized.
+        The top (1 - pa) nests by fitness are kept. For continuous
+        problems the remaining worst nests are replaced via biased
+        random walks mixing two random existing nests. For discrete
+        problems they are replaced by fresh random samples from
+        the problem's ``sample()`` method.
         """
         n = self.conf.n_nests
         n_abandon = int(n * self.conf.pa)
@@ -203,15 +249,19 @@ class CuckooSearch(
         ranked = np.argsort(self.fitness)
         abandon_idx = ranked[-n_abandon:]
 
-        # Biased random walk using two random permutations
-        perm1 = np.random.randint(0, n, size=n_abandon)
-        perm2 = np.random.randint(0, n, size=n_abandon)
-        step_size = np.random.rand(n_abandon, 1)
+        if self._is_continuous:
+            # Biased random walk using two random permutations
+            perm1 = np.random.randint(0, n, size=n_abandon)
+            perm2 = np.random.randint(0, n, size=n_abandon)
+            step_size = np.random.rand(n_abandon, 1)
 
-        new_nests = self.nests[abandon_idx] + step_size * (
-            self.nests[perm1] - self.nests[perm2]
-        )
-        new_nests = self._clamp(new_nests)
+            new_nests = self.nests[abandon_idx] + step_size * (
+                self.nests[perm1] - self.nests[perm2]
+            )
+            new_nests = self._clamp(new_nests)
+        else:
+            # Discrete: replace with fresh random solutions
+            new_nests = self.problem.sample(n_abandon)
 
         self.nests[abandon_idx] = new_nests
 

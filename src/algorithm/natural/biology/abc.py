@@ -1,9 +1,13 @@
-"""Artificial Bee Colony (ABC) algorithm for continuous optimization.
+"""Artificial Bee Colony (ABC) algorithm for continuous and discrete optimization.
 
 Models the foraging behaviour of honeybee colonies. The colony is divided into
 three groups: employed bees, onlooker bees, and scout bees. Employed bees
 exploit known food sources, onlooker bees select sources based on fitness-
 proportional probability, and scouts replace exhausted sources with random ones.
+
+For **continuous** problems the standard arithmetic perturbation is used.
+For **discrete** problems (e.g. TSP) a two-position swap operator is used
+instead, which preserves solution validity.
 
 Reference: Karaboga, D. (2005). An Idea Based on Honey Bee Swarm for
 Numerical Optimization. Technical Report TR06, Erciyes University.
@@ -13,7 +17,7 @@ from dataclasses import dataclass
 from typing import cast, override
 
 import numpy as np
-from problems import ContinuousProblem
+from problems import ContinuousProblem, DiscreteProblem, Problem
 from algorithm import Model
 
 
@@ -40,9 +44,9 @@ class ABCParameter:
 
 
 class ArtificialBeeColony(
-    Model[ContinuousProblem, np.ndarray | None, float, ABCParameter]
+    Model[Problem, np.ndarray | None, float, ABCParameter]
 ):
-    """Artificial Bee Colony for continuous optimization.
+    """Artificial Bee Colony for continuous and discrete optimization.
 
     Algorithm outline per iteration:
     1. **Employed bee phase** - Each employed bee generates a new candidate
@@ -53,6 +57,10 @@ class ArtificialBeeColony(
     3. **Scout bee phase** - If a food source has not improved for *limit*
        trials, the employed bee becomes a scout and is placed at a random
        position in the search space.
+
+    For **continuous** problems the standard arithmetic perturbation is used
+    to generate candidates.  For **discrete** problems a two-position swap
+    operator is applied instead, preserving solution feasibility.
     """
 
     food_sources: np.ndarray   # shape (n_bees, n_dim)
@@ -60,11 +68,12 @@ class ArtificialBeeColony(
     fit_values: np.ndarray     # transformed fitness for probability calc
     trials: np.ndarray         # stagnation counters per source
     n_dim: int
-    food_sources_history: list[np.ndarray] 
+    _is_continuous: bool
+    food_sources_history: list[np.ndarray]
     stat: bool
 
     def __init__(
-        self, configuration: ABCParameter, problem: ContinuousProblem, stat: bool = False
+        self, configuration: ABCParameter, problem: Problem, stat: bool = False
     ):
         """Initialize the Artificial Bee Colony.
 
@@ -72,15 +81,21 @@ class ArtificialBeeColony(
         ----------
         configuration : ABCParameter
             Algorithm hyperparameters.
-        problem : ContinuousProblem
-            Continuous optimization problem to solve.
+        problem : Problem
+            Optimization problem to solve. Accepts both
+            :class:`~problems.ContinuousProblem` and
+            :class:`~problems.DiscreteProblem` instances.
         stat : bool, optional
             If True, record full population snapshots each iteration
             into ``food_sources_history`` for later analysis or
             visualisation. Defaults to False to save memory.
         """
         super().__init__(configuration, problem)
-        self.n_dim = problem.n_dim
+        self._is_continuous = isinstance(problem, ContinuousProblem)
+        if self._is_continuous:
+            self.n_dim = problem.n_dim  # type: ignore[union-attr]
+        else:
+            self.n_dim = problem.n_dims  # type: ignore[union-attr]
         self.food_sources = problem.sample(configuration.n_bees)
         self.fitness = cast(np.ndarray, problem.eval(self.food_sources))
         self.fit_values = self._calculate_fit(self.fitness)
@@ -123,7 +138,7 @@ class ArtificialBeeColony(
         return fit
 
     def _clamp(self, solution: np.ndarray) -> np.ndarray:
-        """Clamp a solution to the problem bounds.
+        """Clamp a solution to the problem bounds (continuous problems only).
 
         Parameters
         ----------
@@ -135,12 +150,13 @@ class ArtificialBeeColony(
         np.ndarray
             Clamped solution.
         """
-        lower = self.problem.bounds[:, 0]
-        upper = self.problem.bounds[:, 1]
+        problem = cast(ContinuousProblem, self.problem)
+        lower = problem.bounds[:, 0]
+        upper = problem.bounds[:, 1]
         return np.clip(solution, lower, upper)
 
-    def _generate_candidate(self, idx: int) -> np.ndarray:
-        """Generate a candidate solution near food source *idx*.
+    def _generate_candidate_continuous(self, idx: int) -> np.ndarray:
+        """Arithmetic perturbation candidate for continuous problems.
 
         A random dimension *j* is selected and perturbed using a randomly
         chosen partner source *k* (k ≠ idx):
@@ -161,10 +177,8 @@ class ArtificialBeeColony(
         """
         candidate = self.food_sources[idx].copy()
 
-        # Pick a random dimension to mutate
         j = np.random.randint(0, self.n_dim)
 
-        # Pick a random partner (different from idx)
         k = idx
         while k == idx:
             k = np.random.randint(0, self.conf.n_bees)
@@ -175,6 +189,48 @@ class ArtificialBeeColony(
             + phi * (self.food_sources[idx, j] - self.food_sources[k, j])
         )
         return self._clamp(candidate)
+
+    def _generate_candidate_discrete(self, idx: int) -> np.ndarray:
+        """Neighbour-based candidate for discrete problems.
+
+        Delegates to the problem's ``neighbors()`` method and selects
+        one at random.  This keeps ABC generic — the neighbourhood
+        structure (bit-flip for Knapsack, 2-opt for TSP, etc.) is
+        defined by the problem itself.
+
+        Parameters
+        ----------
+        idx : int
+            Index of the current food source.
+
+        Returns
+        -------
+        np.ndarray
+            A random neighbour of the current food source.
+        """
+        problem = cast(DiscreteProblem, self.problem)
+        nbrs = problem.neighbors(self.food_sources[idx])
+        return nbrs[np.random.randint(len(nbrs))]
+
+    def _generate_candidate(self, idx: int) -> np.ndarray:
+        """Generate a candidate solution near food source *idx*.
+
+        Delegates to the continuous (arithmetic) or discrete (swap)
+        strategy depending on the problem type.
+
+        Parameters
+        ----------
+        idx : int
+            Index of the current food source.
+
+        Returns
+        -------
+        np.ndarray
+            New candidate solution of shape ``(n_dim,)``.
+        """
+        if self._is_continuous:
+            return self._generate_candidate_continuous(idx)
+        return self._generate_candidate_discrete(idx)
 
     def _update_best(self):
         """Update the global best solution from the current population."""
