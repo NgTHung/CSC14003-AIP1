@@ -3,7 +3,7 @@
 import numpy as np
 import random
 import math
-from problems.base_problem import Problem
+from problems.base_problem import Problem, DiscreteProblem
 from algorithm.base_model import Model
 
 
@@ -14,6 +14,10 @@ class SimulatedAnnealing(Model[Problem, np.ndarray, float | None, dict]):
     SA is inspired by the annealing process in metallurgy. It probabilistically
     accepts worse solutions to escape local optima, with the probability
     decreasing over time (as temperature cools).
+
+    Works with both continuous and discrete (binary) problems.
+    For :class:`DiscreteProblem` instances the perturbation flips random bits
+    instead of adding Gaussian noise.
 
     Attributes
     ----------
@@ -44,6 +48,8 @@ class SimulatedAnnealing(Model[Problem, np.ndarray, float | None, dict]):
             - 'min_temperature': Stopping temperature (default: 0.01)
             - 'max_iterations': Max iterations (default: 1000)
             - 'step_size': Perturbation step size (default: 0.1)
+            - 'n_flips': Number of bits to flip per step for discrete
+              problems (default: 1)
         problem : Problem
             The optimization problem instance.
         """
@@ -53,10 +59,15 @@ class SimulatedAnnealing(Model[Problem, np.ndarray, float | None, dict]):
         self.min_temperature = configuration.get('min_temperature', 0.01)
         self.max_iterations = configuration.get('max_iterations', 1000)
         self.step_size = configuration.get('step_size', 0.1)
+        self.n_flips = configuration.get('n_flips', 1)
+        self._is_discrete = isinstance(problem, DiscreteProblem)
 
     def _perturb(self, state: np.ndarray) -> np.ndarray:
         """
         Generate a neighbor by perturbing the current state.
+
+        For discrete problems the perturbation flips ``n_flips`` random
+        bits.  For continuous problems Gaussian noise is added.
 
         Parameters
         ----------
@@ -68,6 +79,11 @@ class SimulatedAnnealing(Model[Problem, np.ndarray, float | None, dict]):
         np.ndarray
             Perturbed state.
         """
+        if self._is_discrete:
+            new_state = state.copy()
+            indices = np.random.choice(len(state), size=self.n_flips, replace=False)
+            new_state[indices] = 1.0 - new_state[indices]
+            return new_state
         perturbation = np.random.randn(len(state)) * self.step_size
         return state + perturbation
 
@@ -92,14 +108,7 @@ class SimulatedAnnealing(Model[Problem, np.ndarray, float | None, dict]):
         best_state = current_state.copy()
         best_energy = current_energy
 
-        self.history = [{
-            'iteration': 0,
-            'state': current_state.copy(),
-            'fitness': float(current_energy),
-            'best_fitness': float(best_energy),
-            'temperature': self.initial_temperature,
-            'accepted': True,
-        }]
+        self.history = []
 
         temperature = self.initial_temperature
         iteration = 0
@@ -138,14 +147,7 @@ class SimulatedAnnealing(Model[Problem, np.ndarray, float | None, dict]):
             iteration += 1
 
             # Track history
-            self.history.append({
-                'iteration': iteration,
-                'state': current_state.copy(),
-                'fitness': float(current_energy),
-                'best_fitness': float(best_energy),
-                'temperature': temperature,
-                'accepted': accepted,
-            })
+            self.history.append(best_state)
 
         self.best_solution = best_state
         self.best_fitness = float(best_energy)

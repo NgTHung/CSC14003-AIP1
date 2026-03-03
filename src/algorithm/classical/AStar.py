@@ -1,11 +1,11 @@
 """A* Search algorithm for graph search problems."""
 
 import heapq
-from problems.base_problem import GraphSearchProblem
+from problems.base_problem import DiscreteProblem
 from algorithm.base_model import Model
 
 
-class AStarSearch(Model[GraphSearchProblem, list, float | None, dict]):
+class AStarSearch(Model[DiscreteProblem, list, float | None, dict]):
     """
     A* (A-star) Search algorithm.
 
@@ -26,7 +26,7 @@ class AStarSearch(Model[GraphSearchProblem, list, float | None, dict]):
 
     name = "A* Search"
 
-    def __init__(self, configuration: dict, problem: GraphSearchProblem):
+    def __init__(self, configuration: dict, problem: DiscreteProblem):
         """
         Initialize A* Search algorithm.
 
@@ -34,8 +34,8 @@ class AStarSearch(Model[GraphSearchProblem, list, float | None, dict]):
         ----------
         configuration : dict
             Configuration dictionary (can be empty for A*).
-        problem : GraphSearchProblem
-            The graph search problem instance to solve.
+        problem : DiscreteProblem
+            The problem instance (must expose graph-search interface).
         """
         super().__init__(configuration, problem)
 
@@ -77,7 +77,7 @@ class AStarSearch(Model[GraphSearchProblem, list, float | None, dict]):
         """
         problem = self.problem
         self.history = []
-        self.best_solution = None
+        self.best_solution = []
         self.best_fitness = None
 
         # Priority queue with (f_value, state)
@@ -101,14 +101,7 @@ class AStarSearch(Model[GraphSearchProblem, list, float | None, dict]):
             explored.add(current_state)
             current_g = g_score[current_state]
             current_h = problem.heuristic(current_state)
-            self.history.append({
-                'state': current_state,
-                'g': current_g,
-                'h': current_h,
-                'f': current_g + current_h,
-                'frontier_size': len(frontier),
-                'explored_count': len(explored),
-            })
+            self.history.append(current_state)
 
             if problem.is_goal(current_state):
                 self.best_solution = self._get_path(parent, current_state)

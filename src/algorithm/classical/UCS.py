@@ -1,11 +1,11 @@
 """Uniform Cost Search (UCS) algorithm for graph search problems."""
 
 import heapq
-from problems.base_problem import GraphSearchProblem
+from problems.base_problem import DiscreteProblem
 from algorithm.base_model import Model
 
 
-class UniformCostSearch(Model[GraphSearchProblem, list, float | None, dict]):
+class UniformCostSearch(Model[DiscreteProblem, list, float | None, dict]):
     """
     Uniform Cost Search algorithm.
 
@@ -21,7 +21,7 @@ class UniformCostSearch(Model[GraphSearchProblem, list, float | None, dict]):
 
     name = "Uniform Cost Search"
 
-    def __init__(self, configuration: dict, problem: GraphSearchProblem):
+    def __init__(self, configuration: dict, problem: DiscreteProblem):
         """
         Initialize UCS algorithm.
 
@@ -29,8 +29,8 @@ class UniformCostSearch(Model[GraphSearchProblem, list, float | None, dict]):
         ----------
         configuration : dict
             Configuration dictionary (can be empty for UCS).
-        problem : GraphSearchProblem
-            The graph search problem instance to solve.
+        problem : DiscreteProblem
+            The problem instance (must expose graph-search interface).
         """
         super().__init__(configuration, problem)
 
@@ -72,7 +72,7 @@ class UniformCostSearch(Model[GraphSearchProblem, list, float | None, dict]):
         """
         problem = self.problem
         self.history = []
-        self.best_solution = None
+        self.best_solution = []
         self.best_fitness = None
 
         frontier = []
@@ -89,12 +89,7 @@ class UniformCostSearch(Model[GraphSearchProblem, list, float | None, dict]):
                 continue
 
             explored.add(current_state)
-            self.history.append({
-                'state': current_state,
-                'cost': current_cost,
-                'frontier_size': len(frontier),
-                'explored_count': len(explored),
-            })
+            self.history.append(current_state)
 
             if problem.is_goal(current_state):
                 self.best_solution = self._get_path(parent, current_state)

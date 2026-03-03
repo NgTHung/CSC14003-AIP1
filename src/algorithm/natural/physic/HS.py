@@ -1,7 +1,7 @@
 """Harmony Search (HS) algorithm - music-inspired optimization."""
 
 import numpy as np
-from problems.base_problem import Problem
+from problems.base_problem import Problem, DiscreteProblem
 from algorithm.base_model import Model
 
 
@@ -14,6 +14,10 @@ class HarmonySearch(Model[Problem, np.ndarray, float | None, dict]):
     1. Selecting values from memory (memory consideration)
     2. Slightly adjusting selected values (pitch adjustment)
     3. Generating random values (randomization)
+
+    Works with both continuous and discrete (binary) problems.
+    For :class:`DiscreteProblem` instances the pitch adjustment flips bits
+    with probability ``par`` instead of adding continuous bandwidth noise.
 
     Attributes
     ----------
@@ -55,10 +59,14 @@ class HarmonySearch(Model[Problem, np.ndarray, float | None, dict]):
         self.par = configuration.get('par', 0.3)
         self.bw = configuration.get('bw', 0.1)
         self.max_iterations = configuration.get('max_iterations', 1000)
+        self._is_discrete = isinstance(problem, DiscreteProblem)
 
     def _improvise_harmony(self, harmony_memory: np.ndarray) -> np.ndarray:
         """
         Improvise a new harmony from the harmony memory.
+
+        For discrete problems pitch adjustment flips the bit.  For continuous
+        problems Gaussian bandwidth noise is added.
 
         Parameters
         ----------
@@ -81,7 +89,11 @@ class HarmonySearch(Model[Problem, np.ndarray, float | None, dict]):
 
                 # Pitch adjustment
                 if np.random.rand() < self.par:
-                    new_harmony[i] += self.bw * (np.random.rand() - 0.5) * 2
+                    if self._is_discrete:
+                        # Flip the bit for discrete problems
+                        new_harmony[i] = 1.0 - new_harmony[i]
+                    else:
+                        new_harmony[i] += self.bw * (np.random.rand() - 0.5) * 2
             else:
                 # Randomization: generate random value
                 sample = self.problem.sample(1).flatten()
@@ -94,8 +106,7 @@ class HarmonySearch(Model[Problem, np.ndarray, float | None, dict]):
         Execute Harmony Search algorithm.
 
         Saves structured history for plotting:
-        - history: list of dicts with 'iteration', 'harmony_memory', 'fitness',
-          'best_fitness', 'best_harmony'
+        - history: list of dicts with 'iteration', 'best_fitness'
         - best_fitness: best fitness value found
 
         Returns
@@ -114,13 +125,7 @@ class HarmonySearch(Model[Problem, np.ndarray, float | None, dict]):
         best_solution = harmony_memory[best_idx].copy()
         best_fitness = fitness[best_idx]
 
-        self.history = [{
-            'iteration': 0,
-            'harmony_memory': harmony_memory.copy(),
-            'fitness': fitness.copy(),
-            'best_fitness': float(best_fitness),
-            'best_harmony': best_solution.copy(),
-        }]
+        self.history = []
 
         # Main loop
         for iteration in range(self.max_iterations):
@@ -140,14 +145,8 @@ class HarmonySearch(Model[Problem, np.ndarray, float | None, dict]):
                     best_fitness = new_fitness
 
             # Track history
-            self.history.append({
-                'iteration': iteration + 1,
-                'harmony_memory': harmony_memory.copy(),
-                'fitness': fitness.copy(),
-                'best_fitness': float(best_fitness),
-                'best_harmony': best_solution.copy(),
-            })
-
+            self.history.append(best_solution)
+ 
         self.best_solution = best_solution
         self.best_fitness = float(best_fitness)
         return best_solution
