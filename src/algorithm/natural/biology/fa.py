@@ -1,9 +1,14 @@
-"""Firefly Algorithm (FA) for continuous optimization.
+"""Firefly Algorithm (FA) for continuous and discrete optimization.
 
 Inspired by the flashing behaviour of fireflies. Each firefly represents a
 candidate solution whose brightness is proportional to its fitness. Fireflies
 are attracted to brighter (better) fireflies, and the attractiveness decreases
 with distance. A random component is added to avoid premature convergence.
+
+For **continuous** problems the standard distance-based attractiveness
+movement is used. For **discrete** problems (e.g. TSP, Knapsack), when a
+firefly is attracted to a brighter one it moves to a random neighbour from
+the problem's ``neighbors()`` method instead.
 
 Reference: Yang, X.-S. (2008). Nature-Inspired Metaheuristic Algorithms.
 Luniver Press. Chapter 8 — Firefly Algorithms.
@@ -13,7 +18,7 @@ from dataclasses import dataclass
 from typing import cast, override
 
 import numpy as np
-from problems import ContinuousProblem
+from problems import ContinuousProblem, DiscreteProblem, Problem
 from algorithm import Model
 
 
@@ -50,18 +55,17 @@ class FireflyParameter:
     cycle: int
 
 
-class FireflyAlgorithm(
-    Model[ContinuousProblem, np.ndarray | None, float, FireflyParameter]
-):
-    """Firefly Algorithm for continuous optimization.
+class FireflyAlgorithm(Model[Problem, np.ndarray | None, float, FireflyParameter]):
+    """Firefly Algorithm for continuous and discrete optimization.
 
     Algorithm outline per iteration:
     1. **Pairwise comparison** — For every pair of fireflies *(i, j)*,
        if firefly *j* appears brighter than firefly *i* (comparing
        distance-attenuated light intensity), firefly *i* moves toward
-       *j* with an attractiveness that decays exponentially with distance.
-    2. **Random perturbation** — A small random step scaled by *alpha*
-       is added to each firefly's position to maintain exploration.
+       *j*. For continuous problems this uses attractiveness-weighted
+       movement; for discrete problems a random neighbour is selected.
+    2. **Random perturbation** — (Continuous only) A small random step
+       scaled by *alpha* is added to maintain exploration.
     3. **Alpha decay** — The randomness parameter *alpha* is reduced
        by the decay factor to shift from exploration to exploitation
        over time.
@@ -71,18 +75,23 @@ class FireflyAlgorithm(
     fitness: np.ndarray  # shape (n_fireflies,)
     light_intensity: np.ndarray  # shape (n_fireflies,) — intrinsic brightness
     n_dim: int
+    _is_continuous: bool
     firefly_pos_history: list[np.ndarray]
     stat: bool
 
-    def __init__(self, configuration: FireflyParameter, problem: ContinuousProblem, stat: bool = False):
+    def __init__(
+        self, configuration: FireflyParameter, problem: Problem, stat: bool = False
+    ):
         """Initialize the Firefly Algorithm.
 
         Parameters
         ----------
         configuration : FireflyParameter
             Algorithm hyperparameters.
-        problem : ContinuousProblem
-            Continuous optimization problem to solve.
+        problem : Problem
+            Optimization problem to solve. Accepts both
+            :class:`~problems.ContinuousProblem` and
+            :class:`~problems.DiscreteProblem` instances.
         stat : bool, optional
             If True, record full firefly position snapshots each
             iteration into ``firefly_pos_history`` for later analysis
@@ -90,7 +99,11 @@ class FireflyAlgorithm(
         """
         super().__init__(configuration, problem)
         self.name = "Firefly Algorithm"
-        self.n_dim = problem.n_dim
+        self._is_continuous = isinstance(problem, ContinuousProblem)
+        if self._is_continuous:
+            self.n_dim = problem.n_dim  # type: ignore[union-attr]
+        else:
+            self.n_dim = problem.n_dims  # type: ignore[union-attr]
 
         # Initialise firefly positions uniformly within bounds
         self.positions = problem.sample(configuration.n_fireflies)
@@ -112,7 +125,7 @@ class FireflyAlgorithm(
     # ------------------------------------------------------------------
 
     def _clamp(self, position: np.ndarray) -> np.ndarray:
-        """Clamp a position to the problem bounds.
+        """Clamp a position to the problem bounds (continuous only).
 
         Parameters
         ----------
@@ -124,8 +137,9 @@ class FireflyAlgorithm(
         np.ndarray
             Clamped position.
         """
-        lower = self.problem.bounds[:, 0]
-        upper = self.problem.bounds[:, 1]
+        problem = cast(ContinuousProblem, self.problem)
+        lower = problem.bounds[:, 0]
+        upper = problem.bounds[:, 1]
         return np.clip(position, lower, upper)
 
     @staticmethod
@@ -191,12 +205,13 @@ class FireflyAlgorithm(
             I_j(r_ij) = I0_j * exp(-gamma * r_ij^2)
 
         If firefly *j* appears brighter than *i*'s own intrinsic brightness,
-        firefly *i* moves toward *j*:
+        firefly *i* moves toward *j*.
 
+        For **continuous** problems:
             x[i] += beta(r_ij) * (x[j] - x[i]) + alpha * (rand - 0.5) * span
 
-        This distance-dependent comparison allows nearby dim fireflies to
-        still attract each other, promoting niching and multi-modal search.
+        For **discrete** problems:
+            x[i] = random neighbour of x[i]  (via problem.neighbors())
 
         Parameters
         ----------
@@ -204,38 +219,54 @@ class FireflyAlgorithm(
             Current randomisation parameter (may be decayed).
         """
         n = self.conf.n_fireflies
-        span = self.problem.bounds[:, 1] - self.problem.bounds[:, 0]
+        span = None
+        if self._is_continuous:
+            problem = cast(ContinuousProblem, self.problem)
+            span = problem.bounds[:, 1] - problem.bounds[:, 0]
 
         for i in range(n):
+            moved = False
             for j in range(n):
                 # Perceived intensity of j at the position of i
                 diff = self.positions[j] - self.positions[i]
-                distance_sq = float(np.sum(diff ** 2))
-                perceived_intensity_j = (
-                    self.light_intensity[j]
-                    * np.exp(-self.conf.gamma * distance_sq)
+                distance_sq = float(np.sum(diff**2))
+                perceived_intensity_j = self.light_intensity[j] * np.exp(
+                    -self.conf.gamma * distance_sq
                 )
 
                 if perceived_intensity_j > self.light_intensity[i]:
-                    # Distance-dependent attractiveness
-                    beta = self._attractiveness(distance_sq)
+                    if self._is_continuous:
+                        assert span is not None
+                        # Distance-dependent attractiveness
+                        beta = self._attractiveness(distance_sq)
 
-                    # Move firefly i toward j with random perturbation
-                    random_step = (
-                        alpha * (np.random.rand(self.n_dim) - 0.5) * span
-                    )
-                    self.positions[i] += beta * diff + random_step
-                    self.positions[i] = self._clamp(self.positions[i])
+                        # Move firefly i toward j with random perturbation
+                        random_step = alpha * (np.random.rand(self.n_dim) - 0.5) * span
+                        self.positions[i] += beta * diff + random_step
+                        self.positions[i] = self._clamp(self.positions[i])
+                    else:
+                        # Discrete: move to a random neighbour
+                        discrete_problem = cast(DiscreteProblem, self.problem)
+                        nbrs = discrete_problem.neighbors(self.positions[i])
+                        self.positions[i] = nbrs[np.random.randint(len(nbrs))]
 
                     # Re-evaluate fitness and light intensity after move
-                    self.fitness[i] = cast(
-                        float, self.problem.eval(self.positions[i])
-                    )
+                    self.fitness[i] = cast(float, self.problem.eval(self.positions[i]))
                     self.light_intensity[i] = float(
-                        self._compute_light_intensity(
-                            np.array([self.fitness[i]])
-                        )[0]
+                        self._compute_light_intensity(np.array([self.fitness[i]]))[0]
                     )
+                    moved = True
+
+            # If no brighter firefly was found (brightest firefly),
+            # apply a random move for exploration
+            if not moved and not self._is_continuous:
+                discrete_problem = cast(DiscreteProblem, self.problem)
+                nbrs = discrete_problem.neighbors(self.positions[i])
+                self.positions[i] = nbrs[np.random.randint(len(nbrs))]
+                self.fitness[i] = cast(float, self.problem.eval(self.positions[i]))
+                self.light_intensity[i] = float(
+                    self._compute_light_intensity(np.array([self.fitness[i]]))[0]
+                )
 
     # ------------------------------------------------------------------
     # Main loop

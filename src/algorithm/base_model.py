@@ -27,7 +27,7 @@ class Model[Prob: Problem, T, Tr, Opt]:
     name: Human-readable name of the algorithm.
     """
 
-    history: list[T] = []
+    history: list[T]
     best_solution: T
     conf: Opt
     best_fitness: Tr

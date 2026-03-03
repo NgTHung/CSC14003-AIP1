@@ -23,7 +23,7 @@ try:
 except ImportError:
     HAS_PLT = False
 
-from problems import Sphere, Rastrigin, Ackley, Cigar, Ridge
+from problems import Sphere, Rastrigin, Ackley, Griewank, Rosenbrock
 from algorithm import (
     GeneticAlgorithm,
     GAParameter,
@@ -325,8 +325,8 @@ def main():
         "sphere": Sphere,
         "rastrigin": Rastrigin,
         "ackley": Ackley,
-        "cigar": Cigar,
-        "ridge": Ridge,
+        "rosenbrock": Rosenbrock,
+        "griewank": Griewank,
     }
     problem = problems[args.problem](n_dim=args.dim)
     print(f"Problem: {problem._name}, Dimensions: {problem._n_dim}")
@@ -357,7 +357,7 @@ def main():
     for variant in es_variants:
         es_results.append(run_es(problem, args.dim, args.cycle, variant))
 
-    abc_config = ABCParameter(n_bees=50,limit=50 * args.dim/2,cycle=args.cycle)
+    abc_config = ABCParameter(n_bees=50,limit=50 * args.dim/2,iteration=args.cycle)
     abc = ArtificialBeeColony(abc_config,problem)
     abc.run()
 
