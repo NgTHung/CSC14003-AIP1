@@ -2,11 +2,11 @@
 
 from typing import Any
 
-from problems.base_problem import LocalSearchProblem
+from problems.base_problem import DiscreteProblem
 from algorithm.base_model import Model
 
 
-class HillClimbing(Model[LocalSearchProblem, Any, float, dict]):
+class HillClimbing(Model[DiscreteProblem, Any, float, dict]):
     """
     Simple Hill Climbing algorithm (first-choice variant).
 
@@ -14,12 +14,16 @@ class HillClimbing(Model[LocalSearchProblem, Any, float, dict]):
     better neighboring state. This variant accepts the first neighbor that
     improves the current state.
 
+    Works with any problem exposing ``random_state()``, ``neighbors(state)``,
+    ``value(state)`` and ``is_better(v1, v2)`` — i.e.
+    :class:`DiscreteProblem` and :class:`ContinuousProblem`.
+
     Attributes
     ----------
     name : str
         Algorithm name.
-    problem : LocalSearchProblem
-        The problem instance to solve.
+    problem : DiscreteProblem
+        The problem instance (DiscreteProblem or ContinuousProblem).
     current_state : Any
         Current state during search.
     current_value : float
@@ -35,7 +39,7 @@ class HillClimbing(Model[LocalSearchProblem, Any, float, dict]):
     def __init__(
         self,
         configuration: dict,
-        problem: LocalSearchProblem,
+        problem: DiscreteProblem,
     ):
         """
         Initialize Hill Climbing algorithm.
@@ -45,8 +49,8 @@ class HillClimbing(Model[LocalSearchProblem, Any, float, dict]):
         configuration : dict
             Configuration with keys:
             - 'max_iterations': Maximum iterations (default: 1000).
-        problem : LocalSearchProblem
-            The local search problem to solve.
+        problem : DiscreteProblem
+            A problem with random_state/neighbors/value/is_better methods.
         """
         super().__init__(configuration, problem)
         self.max_iterations = configuration.get('max_iterations', 1000)

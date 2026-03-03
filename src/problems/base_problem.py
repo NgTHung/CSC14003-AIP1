@@ -92,250 +92,120 @@ class Problem(ABC):
         raise NotImplementedError
 
 
-class GraphSearchProblem(Problem):
+class DiscreteProblem(Problem):
     """
-    Abstract base class for graph search problems.
+    Abstract base class for discrete optimization problems.
 
-    This class defines the interface for graph-based search problems
-    where we need to find a path from an initial state to a goal state.
+    Provides a unified interface so that a single problem class can be solved
+    by **all** algorithm families:
 
-    Inherits from Problem to share a common interface across all problem types.
+    * **Population-based / physics-inspired** — via ``sample()``, ``eval()``,
+      ``is_valid()`` inherited from :class:`Problem`.
+    * **Local search** — via ``random_state()``, ``neighbors()``, ``value()``,
+      ``is_better()``.
+    * **Classical graph search** — via ``actions()``, ``result()``, ``cost()``,
+      ``is_goal()``, ``heuristic()``.
 
-    Attributes
-    ----------
-    initial_state : Any
-        The starting state of the search.
-    goal_state : Any
-        The target state to reach.
-    """
+    Sub-classes **must** implement the abstract methods from :class:`Problem`
+    (``sample``, ``eval``, ``is_valid``) **and** the local-search methods
+    (``random_state``, ``neighbors``, ``value``).
 
-    def __init__(self, initial_state, goal_state, name: str = "Graph Search Problem"):
-        """
-        Initialize the GraphSearchProblem instance.
-
-        Parameters
-        ----------
-        initial_state : Any
-            The starting state of the search.
-        goal_state : Any
-            The target state to reach.
-        name : str, optional
-            The name of the problem (default: 'Graph Search Problem').
-        """
-        super().__init__(name)
-        self.initial_state = initial_state
-        self.goal_state = goal_state
-
-    def sample(self, pop_size: int = 1) -> np.ndarray:
-        """Not applicable for graph search problems."""
-        raise NotImplementedError("sample() is not applicable for graph search problems.")
-
-    def eval(self, values: np.ndarray) -> float | np.ndarray:
-        """Not applicable for graph search problems."""
-        raise NotImplementedError("eval() is not applicable for graph search problems.")
-
-    def is_valid(self, x: np.ndarray) -> bool:
-        """Not applicable for graph search problems."""
-        raise NotImplementedError("is_valid() is not applicable for graph search problems.")
-
-    @abstractmethod
-    def actions(self, state) -> list:
-        """
-        Return available actions from a given state.
-
-        Parameters
-        ----------
-        state : Any
-            The current state.
-
-        Returns
-        -------
-        list
-            List of available actions from this state.
-        """
-        raise NotImplementedError
-
-    @abstractmethod
-    def result(self, state, action):
-        """
-        Return the state that results from executing an action.
-
-        Parameters
-        ----------
-        state : Any
-            The current state.
-        action : Any
-            The action to execute.
-
-        Returns
-        -------
-        Any
-            The resulting state after executing the action.
-        """
-        raise NotImplementedError
-
-    @abstractmethod
-    def cost(self, state, action, next_state) -> float:
-        """
-        Return the cost of executing an action from state to next_state.
-
-        Parameters
-        ----------
-        state : Any
-            The current state.
-        action : Any
-            The action to execute.
-        next_state : Any
-            The resulting state.
-
-        Returns
-        -------
-        float
-            The cost of the action.
-        """
-        raise NotImplementedError
-
-    def is_goal(self, state) -> bool:
-        """
-        Check if a state is the goal state.
-
-        Parameters
-        ----------
-        state : Any
-            The state to check.
-
-        Returns
-        -------
-        bool
-            True if the state is the goal state, False otherwise.
-        """
-        return state == self.goal_state
-
-    def heuristic(self, state) -> float:
-        """
-        Return the estimated cost from state to the goal state.
-
-        This is used by informed search algorithms like A* and Greedy Best-First.
-        Default implementation returns 0 (uninformed search).
-
-        Parameters
-        ----------
-        state : Any
-            The state to evaluate.
-
-        Returns
-        -------
-        float
-            Estimated cost to reach the goal from this state.
-        """
-        return 0.0
-
-
-class LocalSearchProblem(Problem):
-    """
-    Abstract base class for local search problems.
-
-    This class defines the interface for optimization problems that can be
-    solved using local search algorithms like Hill Climbing, Simulated Annealing, etc.
-
-    Inherits from Problem to share a common interface across all problem types.
+    The graph-search methods have default implementations that raise
+    ``NotImplementedError``; override them if you want to use classical
+    search on the problem.
 
     Attributes
     ----------
     minimize : bool
-        If True, we're minimizing the objective function; if False, maximizing.
+        If True, we are minimizing ``eval``/``value``; if False, maximizing.
+    n_dims : int
+        Dimensionality of the solution vector (number of decision variables).
     """
 
-    def __init__(self, minimize: bool = True, name: str = "Local Search Problem"):
+    def __init__(self, n_dims: int, minimize: bool = True,
+                 name: str = "Discrete Problem"):
         """
-        Initialize the LocalSearchProblem instance.
-
         Parameters
         ----------
+        n_dims : int
+            Number of decision variables in the solution vector.
         minimize : bool, optional
-            If True, minimize the objective function; if False, maximize (default: True).
+            Optimization direction (default: True = minimize).
         name : str, optional
-            The name of the problem (default: 'Local Search Problem').
+            Human-readable problem name.
         """
         super().__init__(name)
+        self.n_dims = n_dims
         self.minimize = minimize
 
-    def sample(self, pop_size: int = 1) -> np.ndarray:
-        """Not applicable for local search problems."""
-        raise NotImplementedError("sample() is not applicable for local search problems.")
-
-    def eval(self, values: np.ndarray) -> float | np.ndarray:
-        """Not applicable for local search problems."""
-        raise NotImplementedError("eval() is not applicable for local search problems.")
-
-    def is_valid(self, x: np.ndarray) -> bool:
-        """Not applicable for local search problems."""
-        raise NotImplementedError("is_valid() is not applicable for local search problems.")
+    # ------------------------------------------------------------------
+    # Local-search interface
+    # ------------------------------------------------------------------
 
     @abstractmethod
-    def random_state(self):
-        """
-        Generate a random state/solution.
-
-        Returns
-        -------
-        Any
-            A random state in the problem's state space.
-        """
-        raise NotImplementedError
-
-    @abstractmethod
-    def neighbors(self, state) -> list:
-        """
-        Return all neighboring states of the given state.
+    def neighbors(self, state: np.ndarray) -> list[np.ndarray]:
+        """Return neighboring solutions of *state*.
 
         Parameters
         ----------
-        state : Any
-            The current state.
+        state : np.ndarray
+            Current solution vector.
 
         Returns
         -------
-        list
-            List of neighboring states.
-        """
-        raise NotImplementedError
-
-    @abstractmethod
-    def value(self, state) -> float:
-        """
-        Evaluate the objective function for a state.
-
-        Parameters
-        ----------
-        state : Any
-            The state to evaluate.
-
-        Returns
-        -------
-        float
-            The objective function value (lower is better for minimization,
-            higher is better for maximization).
+        list[np.ndarray]
+            List of neighbor solution vectors.
         """
         raise NotImplementedError
 
     def is_better(self, value1: float, value2: float) -> bool:
-        """
-        Check if value1 is better than value2 according to the optimization direction.
+        """Compare two objective values respecting the optimization direction.
 
         Parameters
         ----------
         value1 : float
-            First value to compare.
+            First value.
         value2 : float
-            Second value to compare.
+            Second value.
 
         Returns
         -------
         bool
-            True if value1 is better than value2.
+            True if *value1* is strictly better than *value2*.
         """
-        if self.minimize:
-            return value1 < value2
-        else:
-            return value1 > value2
+        return value1 < value2 if self.minimize else value1 > value2
+
+    # ------------------------------------------------------------------
+    # Graph-search interface  (optional — override in subclass)
+    # ------------------------------------------------------------------
+
+    @property
+    def initial_state(self):
+        """Starting state for graph search.  Override in subclass."""
+        raise NotImplementedError(
+            "initial_state is not defined — override in subclass if you need "
+            "classical graph search."
+        )
+
+    def actions(self, state) -> list:
+        """Available actions from *state*.  Override for graph search."""
+        raise NotImplementedError("actions() not implemented for this problem.")
+
+    def result(self, state, action):
+        """State resulting from *action*.  Override for graph search."""
+        raise NotImplementedError("result() not implemented for this problem.")
+
+    def cost(self, state, action, next_state) -> float:
+        """Step cost.  Override for graph search."""
+        raise NotImplementedError("cost() not implemented for this problem.")
+
+    def is_goal(self, state) -> bool:
+        """Goal test.  Override for graph search."""
+        raise NotImplementedError("is_goal() not implemented for this problem.")
+
+    def heuristic(self, state) -> float:
+        """Admissible heuristic.  Override for informed graph search."""
+        return 0.0
+
+
+

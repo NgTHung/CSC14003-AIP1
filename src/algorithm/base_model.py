@@ -4,8 +4,7 @@ Defines a generic `Model` interface that stores configuration, problem
 instances, and solution history for algorithm implementations.
 """
 
-from problems import Problem
-from problems.base_problem import GraphSearchProblem
+from problems import Problem, DiscreteProblem
 
 
 class Model[Prob: Problem, T, Tr, Opt]:
@@ -87,7 +86,7 @@ class Model[Prob: Problem, T, Tr, Opt]:
         self.conf = config
 
 
-class SearchGraphAlgorithm[T, Tr, Opt](Model[GraphSearchProblem, T, Tr, Opt]):
+class SearchGraphAlgorithm[T, Tr, Opt](Model[DiscreteProblem, T, Tr, Opt]):
     """Generic graph search algorithm interface.
 
     Type parameters
@@ -102,7 +101,7 @@ class SearchGraphAlgorithm[T, Tr, Opt](Model[GraphSearchProblem, T, Tr, Opt]):
     best_solution: The best solution (path) found.
     conf: Algorithm configuration/options.
     best_fitness: Best fitness value (typically None for search).
-    problem: GraphSearchProblem instance to solve.
+    problem: Problem instance to solve.
     name: Human-readable name of the algorithm.
     """
 

@@ -1,22 +1,14 @@
 """Gravitational Search Algorithm (GSA) - physics-inspired optimization."""
 
 import numpy as np
-from problems.base_problem import Problem
+from dataclasses import dataclass
+from problems.base_problem import Problem, DiscreteProblem
 from algorithm.base_model import Model
 
-
-class GravitationalSearchAlgorithm(Model[Problem, np.ndarray, float | None, dict]):
+@dataclass
+class GravitationalSearchParameter:
     """
-    Gravitational Search Algorithm (GSA).
-
-    GSA is based on the law of gravity and mass interactions. Agents (masses)
-    attract each other with gravitational force proportional to their masses
-    (fitness) and inversely proportional to distance.
-
-    Attributes
-    ----------
-    name : str
-        Algorithm name.
+    Configuration parameters for Gravitational Search
     pop_size : int
         Population size (number of agents).
     max_iterations : int
@@ -26,29 +18,57 @@ class GravitationalSearchAlgorithm(Model[Problem, np.ndarray, float | None, dict
     alpha : float
         Gravitational constant reduction coefficient.
     """
+    iteration: int
+    G0: float
+    alpha: float
+    pop_size: int
+
+class GravitationalSearchAlgorithm(Model[Problem, np.ndarray, float | None, GravitationalSearchParameter]):
+    """
+    Gravitational Search Algorithm (GSA).
+
+    GSA is based on the law of gravity and mass interactions. Agents (masses)
+    attract each other with gravitational force proportional to their masses
+    (fitness) and inversely proportional to distance.
+
+    Works with both continuous and discrete (binary) problems.
+    For :class:`DiscreteProblem` instances positions are discretized to
+    binary values after each update via a sigmoid transfer function.
+
+    Attributes
+    ----------
+    name : str
+        Algorithm name.
+    """
 
     name = "Gravitational Search Algorithm"
 
-    def __init__(self, configuration: dict, problem: Problem):
+    def __init__(self, configuration: GravitationalSearchParameter, problem: Problem):
         """
         Initialize GSA algorithm.
 
         Parameters
         ----------
-        configuration : dict
-            Configuration with keys:
-            - 'pop_size': Population size (default: 30)
-            - 'max_iterations': Max iterations (default: 100)
-            - 'G0': Initial gravitational constant (default: 100.0)
-            - 'alpha': G reduction coefficient (default: 20.0)
+        configuration : Gravitational Search parameter
         problem : Problem
             The optimization problem instance.
         """
         super().__init__(configuration, problem)
-        self.pop_size = configuration.get('pop_size', 30)
-        self.max_iterations = configuration.get('max_iterations', 100)
-        self.G0 = configuration.get('G0', 100.0)
-        self.alpha = configuration.get('alpha', 20.0)
+        self.pop_size = configuration.pop_size
+        self.max_iterations = configuration.iteration
+        self.G0 = configuration.G0
+        self.alpha = configuration.alpha
+        self._is_discrete = isinstance(problem, DiscreteProblem)
+
+    @staticmethod
+    def _sigmoid(x: np.ndarray) -> np.ndarray:
+        """Element-wise sigmoid for transfer function."""
+        return 1.0 / (1.0 + np.exp(-np.clip(x, -500, 500)))
+
+    def _discretize(self, positions: np.ndarray) -> np.ndarray:
+        """Convert continuous positions to binary using sigmoid transfer."""
+        probs = self._sigmoid(positions)
+        return (np.random.rand(*probs.shape) < probs).astype(float)
 
     def _calculate_mass(self, fitness: np.ndarray) -> np.ndarray:
         """
@@ -81,8 +101,7 @@ class GravitationalSearchAlgorithm(Model[Problem, np.ndarray, float | None, dict
         Execute GSA algorithm.
 
         Saves structured history for plotting:
-        - history: list of dicts with 'iteration', 'positions', 'fitness',
-          'best_fitness', 'G', 'best_position'
+        - history: list of dicts with 'iteration', 'best_fitness'
         - best_fitness: best fitness value found
 
         Returns
@@ -102,14 +121,7 @@ class GravitationalSearchAlgorithm(Model[Problem, np.ndarray, float | None, dict
         best_solution = positions[best_idx].copy()
         best_fitness = fitness[best_idx]
 
-        self.history = [{
-            'iteration': 0,
-            'positions': positions.copy(),
-            'fitness': fitness.copy(),
-            'best_fitness': float(best_fitness),
-            'G': self.G0,
-            'best_position': best_solution.copy(),
-        }]
+        self.history = []
 
         # Main loop
         for iteration in range(self.max_iterations):
@@ -142,6 +154,10 @@ class GravitationalSearchAlgorithm(Model[Problem, np.ndarray, float | None, dict
             velocities = np.random.rand(self.pop_size, dim) * velocities + acceleration
             positions = positions + velocities
 
+            # Discretize for binary problems
+            if self._is_discrete:
+                positions = self._discretize(positions)
+
             # Evaluate new population
             fitness = np.array([self.problem.eval(positions[i]) for i in range(self.pop_size)])
 
@@ -152,15 +168,10 @@ class GravitationalSearchAlgorithm(Model[Problem, np.ndarray, float | None, dict
                 best_fitness = fitness[current_best_idx]
 
             # Track history
-            self.history.append({
-                'iteration': iteration + 1,
-                'positions': positions.copy(),
-                'fitness': fitness.copy(),
-                'best_fitness': float(best_fitness),
-                'G': G,
-                'best_position': best_solution.copy(),
-            })
+            self.history.append(best_solution)
 
         self.best_solution = best_solution
         self.best_fitness = float(best_fitness)
         return best_solution
+
+    def get_stat

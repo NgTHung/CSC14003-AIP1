@@ -1,10 +1,10 @@
 """Depth-First Search (DFS) algorithm for graph search problems."""
 
-from problems.base_problem import GraphSearchProblem
+from problems.base_problem import DiscreteProblem
 from algorithm.base_model import Model
 
 
-class DepthFirstSearch(Model[GraphSearchProblem, list, float | None, dict]):
+class DepthFirstSearch(Model[DiscreteProblem, list, float | None, dict]):
     """
     Depth-First Search algorithm.
 
@@ -19,7 +19,7 @@ class DepthFirstSearch(Model[GraphSearchProblem, list, float | None, dict]):
 
     name = "Depth First Search"
 
-    def __init__(self, configuration: dict, problem: GraphSearchProblem):
+    def __init__(self, configuration: dict, problem: DiscreteProblem):
         """
         Initialize DFS algorithm.
 
@@ -27,8 +27,8 @@ class DepthFirstSearch(Model[GraphSearchProblem, list, float | None, dict]):
         ----------
         configuration : dict
             Configuration dictionary (can be empty for DFS).
-        problem : GraphSearchProblem
-            The graph search problem instance to solve.
+        problem : DiscreteProblem
+            The problem instance (must expose graph-search interface).
         """
         super().__init__(configuration, problem)
 
@@ -70,7 +70,7 @@ class DepthFirstSearch(Model[GraphSearchProblem, list, float | None, dict]):
         """
         problem = self.problem
         self.history = []
-        self.best_solution = None
+        self.best_solution = []
         self.best_fitness = None
 
         frontier = [problem.initial_state]
@@ -84,11 +84,7 @@ class DepthFirstSearch(Model[GraphSearchProblem, list, float | None, dict]):
                 continue
 
             explored.add(current_state)
-            self.history.append({
-                'state': current_state,
-                'frontier_size': len(frontier),
-                'explored_count': len(explored),
-            })
+            self.history.append(self.best_solution)
 
             if problem.is_goal(current_state):
                 self.best_solution = self._get_path(parent, current_state)
