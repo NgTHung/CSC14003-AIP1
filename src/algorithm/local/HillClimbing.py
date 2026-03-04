@@ -1,12 +1,16 @@
 """Hill Climbing algorithm for local search problems."""
 
 from typing import Any
-
-from problems.base_problem import DiscreteProblem
+from dataclasses import dataclass
+from problems.base_problem import Problem,DiscreteProblem
+from problems.continuous import ContinuousProblem
 from algorithm.base_model import Model
 
+@dataclass
+class HillClimbingParameter:
+    iteration: int 
 
-class HillClimbing(Model[DiscreteProblem, Any, float, dict]):
+class HillClimbing(Model[Problem, Any, float, HillClimbingParameter]):
     """
     Simple Hill Climbing algorithm (first-choice variant).
 
@@ -38,8 +42,8 @@ class HillClimbing(Model[DiscreteProblem, Any, float, dict]):
 
     def __init__(
         self,
-        configuration: dict,
-        problem: DiscreteProblem,
+        configuration: HillClimbingParameter,
+        problem: Problem,
     ):
         """
         Initialize Hill Climbing algorithm.
@@ -53,7 +57,7 @@ class HillClimbing(Model[DiscreteProblem, Any, float, dict]):
             A problem with random_state/neighbors/value/is_better methods.
         """
         super().__init__(configuration, problem)
-        self.max_iterations = configuration.get('max_iterations', 1000)
+        self.max_iterations = configuration.iteration
         self.current_state = None
         self.current_value = None
         self.history = []
@@ -79,22 +83,22 @@ class HillClimbing(Model[DiscreteProblem, Any, float, dict]):
         """
         # Initialize
         if initial_state is None:
-            self.current_state = self.problem.random_state()
+            self.current_state = self.problem.sample()
         else:
             self.current_state = initial_state
 
-        self.current_value = self.problem.value(self.current_state)
-        self.history = [{
-            'iteration': 0,
-            'state': self.current_state,
-            'value': self.current_value,
-            'improved': True,
-        }]
+        self.current_value = self.problem.eval(self.current_state)
+        self.history = [self.current_value]
 
         # Main loop
         for iteration in range(self.max_iterations):
             # Get all neighbors
-            neighbors = self.problem.neighbors(self.current_state)
+
+            neighbors = None
+            if isinstance(self.problem,DiscreteProblem):
+                neighbors = self.problem.neighbors(self.current_state)
+            elif isinstance(self.problem,ContinuousProblem):
+                neighbors = self.problem.neighbors(self.current_state)
 
             if not neighbors:
                 break
@@ -102,28 +106,22 @@ class HillClimbing(Model[DiscreteProblem, Any, float, dict]):
             # Find first improving neighbor
             found_better = False
             for neighbor in neighbors:
-                neighbor_value = self.problem.value(neighbor)
+                neighbor_value = self.problem.eval(neighbor)
 
                 # Check if neighbor is better
-                if self.problem.is_better(neighbor_value, self.current_value):
+                if (isinstance(self.problem,DiscreteProblem) or isinstance(self.problem,ContinuousProblem))  and self.problem.is_better(float(neighbor_value), float(self.current_value)):
                     self.current_state = neighbor
                     self.current_value = neighbor_value
-                    self.history.append({
-                        'iteration': iteration + 1,
-                        'state': self.current_state,
-                        'value': self.current_value,
-                        'improved': True,
-                    })
                     found_better = True
                     break
-
+                self.history.append(self.current_value)
             # Local optimum reached
             if not found_better:
                 break
-
+    
         self.best_solution = self.current_state
-        self.best_fitness = self.current_value
-        return self.current_state, self.current_value
+        self.best_fitness = float(self.current_value)
+        return self.current_state   
 
     def get_statistics(self) -> dict:
         """
@@ -134,10 +132,9 @@ class HillClimbing(Model[DiscreteProblem, Any, float, dict]):
         dict
             Dictionary with search statistics.
         """
-        initial_value = self.history[0]['value'] if self.history else None
         return {
-            'iterations': len(self.history),
-            'final_value': self.current_value,
-            'initial_value': initial_value,
-            'improvement': abs(initial_value - self.current_value) if initial_value is not None else 0
+            'history fitness': self.history,
+            'best fitness': self.best_fitness,
+            'best solution': self.best_solution
+
         }

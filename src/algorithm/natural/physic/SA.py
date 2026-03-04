@@ -66,8 +66,10 @@ class SimulatedAnnealing(Model[Problem, np.ndarray, float | None, dict]):
         """
         Generate a neighbor by perturbing the current state.
 
-        For discrete problems the perturbation flips ``n_flips`` random
-        bits.  For continuous problems Gaussian noise is added.
+        For discrete problems the perturbation is delegated to
+        ``problem.perturb()`` (which handles both binary-vector and
+        permutation representations correctly).  For continuous problems
+        Gaussian noise is added.
 
         Parameters
         ----------
@@ -80,10 +82,7 @@ class SimulatedAnnealing(Model[Problem, np.ndarray, float | None, dict]):
             Perturbed state.
         """
         if self._is_discrete:
-            new_state = state.copy()
-            indices = np.random.choice(len(state), size=self.n_flips, replace=False)
-            new_state[indices] = 1.0 - new_state[indices]
-            return new_state
+            return self.problem.perturb(state, n_flips=self.n_flips)
         perturbation = np.random.randn(len(state)) * self.step_size
         return state + perturbation
 

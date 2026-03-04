@@ -86,7 +86,7 @@ class BreadthFirstSearch(Model[DiscreteProblem, list, float | None, dict]):
                 continue
 
             explored.add(current_state)
-            self.history.append(self.best_solution)
+            self.history.append(current_state)
 
             if problem.is_goal(current_state):
                 self.best_solution = self._get_path(parent, current_state)

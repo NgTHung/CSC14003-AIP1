@@ -134,10 +134,7 @@ class Knapsack(DiscreteProblem):
     # Local-search interface
     # ==================================================================
 
-    @override
-    def random_state(self) -> np.ndarray:
-        """Return a random binary vector."""
-        return self.sample(1).flatten()
+
 
     @override
     def neighbors(self, state: np.ndarray) -> list[np.ndarray]:
@@ -148,11 +145,6 @@ class Knapsack(DiscreteProblem):
             nbr[i] = 1.0 - nbr[i]
             nbrs.append(nbr)
         return nbrs
-
-    @override
-    def value(self, state: np.ndarray) -> float:
-        """Objective value (same as ``eval`` for a single solution)."""
-        return float(self.eval(state))
 
     # ==================================================================
     # Graph-search interface  (classical algorithms)

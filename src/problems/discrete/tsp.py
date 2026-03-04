@@ -128,6 +128,19 @@ class TSP(DiscreteProblem):
     # ==================================================================
 
     @override
+    def perturb(self, state: np.ndarray, **kwargs) -> np.ndarray:
+        """Random 2-opt swap: reverse a random sub-tour segment.
+
+        This preserves the permutation structure, unlike the default
+        bit-flip perturbation in :class:`DiscreteProblem`.
+        """
+        new_state = state.copy()
+        n = len(new_state)
+        i, j = sorted(np.random.choice(n, size=2, replace=False))
+        new_state[i:j + 1] = new_state[i:j + 1][::-1]
+        return new_state
+
+    @override
     def neighbors(self, state: np.ndarray) -> list[np.ndarray]:
         """2-opt swap neighborhood.
 
@@ -228,9 +241,10 @@ class TSP(DiscreteProblem):
             ``{tour, tour_names, total_distance}``
         """
         order = perm.astype(int).tolist()
+        round_trip = order + [order[0]]
         return {
-            "tour": order,
-            "tour_names": [self.city_names[i] for i in order],
+            "tour": round_trip,
+            "tour_names": [self.city_names[i] for i in round_trip],
             "total_distance": self._tour_distance(perm),
         }
 
