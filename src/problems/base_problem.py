@@ -158,6 +158,31 @@ class DiscreteProblem(Problem):
         """
         raise NotImplementedError
 
+    def perturb(self, state: np.ndarray, **kwargs) -> np.ndarray:
+        """Generate a single neighbor by perturbing *state*.
+
+        Default implementation flips ``n_flips`` random bits, suitable for
+        binary-vector problems (e.g. knapsack).  Subclasses with other
+        representations (e.g. permutations) should override this method.
+
+        Parameters
+        ----------
+        state : np.ndarray
+            Current solution vector.
+        **kwargs
+            ``n_flips`` (int) — number of positions to flip (default 1).
+
+        Returns
+        -------
+        np.ndarray
+            Perturbed solution vector.
+        """
+        n_flips = kwargs.get("n_flips", 1)
+        new_state = state.copy()
+        indices = np.random.choice(len(state), size=n_flips, replace=False)
+        new_state[indices] = 1.0 - new_state[indices]
+        return new_state
+
     def is_better(self, value1: float, value2: float) -> bool:
         """Compare two objective values respecting the optimization direction.
 

@@ -146,6 +146,23 @@ class GraphColoring(DiscreteProblem):
     # ==================================================================
 
     @override
+    def perturb(self, state: np.ndarray, **kwargs) -> np.ndarray:
+        """Randomly recolor one vertex to a different color.
+
+        Unlike the default bit-flip in :class:`DiscreteProblem`, this
+        preserves the color-domain constraint ``[0, n_colors)``.
+        """
+        new_state = state.copy()
+        v = np.random.randint(self.n_vertices)
+        current_color = int(new_state[v])
+        # Pick a different color uniformly at random
+        new_color = current_color
+        while new_color == current_color:
+            new_color = np.random.randint(self.n_colors)
+        new_state[v] = float(new_color)
+        return new_state
+
+    @override
     def neighbors(self, state: np.ndarray) -> list[np.ndarray]:
         """Single-vertex re-coloring neighborhood.
 

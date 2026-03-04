@@ -90,8 +90,11 @@ class HarmonySearch(Model[Problem, np.ndarray, float | None, dict]):
                 # Pitch adjustment
                 if np.random.rand() < self.par:
                     if self._is_discrete:
-                        # Flip the bit for discrete problems
-                        new_harmony[i] = 1.0 - new_harmony[i]
+                        # Delegate to problem's perturb for correct handling
+                        # of non-binary discrete (e.g. graph coloring, TSP)
+                        tmp = new_harmony.copy()
+                        tmp = self.problem.perturb(tmp)
+                        new_harmony[i] = tmp[i]
                     else:
                         new_harmony[i] += self.bw * (np.random.rand() - 0.5) * 2
             else:

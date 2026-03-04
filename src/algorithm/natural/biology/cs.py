@@ -110,6 +110,7 @@ class CuckooSearch(
         best_idx = int(np.argmin(self.fitness))
         self.best_solution = self.nests[best_idx].copy()
         self.best_fitness = float(self.fitness[best_idx])
+        self.history = []
 
         self.stat = stat
         if stat:

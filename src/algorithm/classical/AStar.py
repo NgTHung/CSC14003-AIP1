@@ -118,7 +118,7 @@ class AStarSearch(Model[DiscreteProblem, list, float | None, dict]):
                     # Only update if we found a better path
                     if next_state not in g_score or tentative_g < g_score[next_state]:
                         parent[next_state] = current_state
-                        g_score[next_state] = tentative_g
+                        g_score.update({next_state:tentative_g})
                         h_value = problem.heuristic(next_state)
                         f_value = tentative_g + h_value
                         heapq.heappush(frontier, (f_value, next_state))
