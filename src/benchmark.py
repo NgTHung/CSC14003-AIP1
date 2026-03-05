@@ -24,7 +24,7 @@ try:
 except ImportError:
     HAS_PLT = False
 
-from problems import Sphere, Rastrigin, Ackley, Cigar, Ridge
+from problems import Sphere, Rastrigin, Ackley
 from algorithm.natural.human.ca import CA, CAConfig
 from algorithm.natural.human.sfo import SFO, SFOConfig
 from algorithm.natural.human.tlbo import TLBO, TLBOConfig
@@ -328,8 +328,6 @@ def main() -> None:
         "sphere": Sphere,
         "rastrigin": Rastrigin,
         "ackley": Ackley,
-        "cigar": Cigar,
-        "ridge": Ridge,
     }
     problem = problems[args.problem](n_dim=args.dim)
     print(f"Problem: {problem._name}, Dimensions: {problem._n_dim}")
