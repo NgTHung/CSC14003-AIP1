@@ -1,0 +1,7 @@
+# TSP Tiny Instance — 3 cities (triangle)
+# Format: first line = n_cities, second line = city names, then distance matrix
+3
+A B C
+0 10 15
+10 0 20
+15 20 0
