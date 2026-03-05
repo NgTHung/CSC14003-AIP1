@@ -17,11 +17,15 @@ standard minimization algorithms find the shortest tour.
 
 from __future__ import annotations
 
+import os
+from pathlib import Path
 from typing import override
 
 import numpy as np
 
 from problems.base_problem import DiscreteProblem
+
+_DATA_DIR = Path(__file__).resolve().parent / "data"
 
 
 class TSP(DiscreteProblem):
@@ -276,28 +280,55 @@ class TSP(DiscreteProblem):
     # ==================================================================
 
     @staticmethod
+    def from_file(filepath: str | Path) -> TSP:
+        """Load a TSP instance from a text file.
+
+        File format (lines starting with ``#`` are ignored)::
+
+            <n_cities>
+            <city_name_1> <city_name_2> ... <city_name_n>
+            <row 0 of distance matrix>
+            <row 1 of distance matrix>
+            ...
+
+        Parameters
+        ----------
+        filepath : str or Path
+            Path to the data file.
+
+        Returns
+        -------
+        TSP
+            A new TSP instance built from the file data.
+        """
+        lines = [l.strip() for l in Path(filepath).read_text().splitlines()
+                 if l.strip() and not l.strip().startswith("#")]
+        n_cities = int(lines[0])
+        city_names = lines[1].split()
+        dist = []
+        for i in range(n_cities):
+            dist.append([float(x) for x in lines[2 + i].split()])
+        return TSP(dist, city_names=city_names)
+
+    @staticmethod
+    def create_tiny() -> TSP:
+        """3-city instance loaded from ``data/tsp_tiny.txt``."""
+        return TSP.from_file(_DATA_DIR / "tsp_tiny.txt")
+
+    @staticmethod
     def create_small() -> TSP:
-        """4-city symmetric instance."""
-        dist = [
-            [0, 10, 15, 20],
-            [10,  0, 35, 25],
-            [15, 35,  0, 30],
-            [20, 25, 30,  0],
-        ]
-        return TSP(dist, city_names=["A", "B", "C", "D"])
+        """4-city instance loaded from ``data/tsp_small.txt``."""
+        return TSP.from_file(_DATA_DIR / "tsp_small.txt")
 
     @staticmethod
     def create_medium() -> TSP:
-        """6-city symmetric instance."""
-        dist = [
-            [ 0, 12, 10, 19, 8,  14],
-            [12,  0,  3, 7,  6,  20],
-            [10,  3,  0, 2,  20, 11],
-            [19,  7,  2, 0,  4,  15],
-            [ 8,  6, 20, 4,  0,  17],
-            [14, 20, 11, 15, 17,  0],
-        ]
-        return TSP(dist, city_names=["A", "B", "C", "D", "E", "F"])
+        """8-city instance loaded from ``data/tsp_medium.txt``."""
+        return TSP.from_file(_DATA_DIR / "tsp_medium.txt")
+
+    @staticmethod
+    def create_large() -> TSP:
+        """20-city Euclidean instance loaded from ``data/tsp_large.txt``."""
+        return TSP.from_file(_DATA_DIR / "tsp_large.txt")
 
     @staticmethod
     def random(

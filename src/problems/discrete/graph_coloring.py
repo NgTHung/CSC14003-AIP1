@@ -18,11 +18,15 @@ so that standard minimization algorithms seek a legal coloring.
 
 from __future__ import annotations
 
+import os
+from pathlib import Path
 from typing import override
 
 import numpy as np
 
 from problems.base_problem import DiscreteProblem
+
+_DATA_DIR = Path(__file__).resolve().parent / "data"
 
 
 class GraphColoring(DiscreteProblem):
@@ -296,32 +300,56 @@ class GraphColoring(DiscreteProblem):
     # ==================================================================
 
     @staticmethod
+    def from_file(filepath: str | Path) -> GraphColoring:
+        """Load a Graph Coloring instance from a text file.
+
+        File format (lines starting with ``#`` are ignored)::
+
+            <n_vertices> <n_colors>
+            <vertex_name_1> <vertex_name_2> ... <vertex_name_n>
+            <row 0 of adjacency matrix>
+            <row 1 of adjacency matrix>
+            ...
+
+        Parameters
+        ----------
+        filepath : str or Path
+            Path to the data file.
+
+        Returns
+        -------
+        GraphColoring
+            A new GraphColoring instance built from the file data.
+        """
+        lines = [l.strip() for l in Path(filepath).read_text().splitlines()
+                 if l.strip() and not l.strip().startswith("#")]
+        parts = lines[0].split()
+        n_vertices, n_colors = int(parts[0]), int(parts[1])
+        vertex_names = lines[1].split()
+        adj = []
+        for i in range(n_vertices):
+            adj.append([int(x) for x in lines[2 + i].split()])
+        return GraphColoring(adj, n_colors=n_colors, vertex_names=vertex_names)
+
+    @staticmethod
+    def create_tiny() -> GraphColoring:
+        """3-vertex triangle loaded from ``data/gc_tiny.txt``."""
+        return GraphColoring.from_file(_DATA_DIR / "gc_tiny.txt")
+
+    @staticmethod
     def create_small() -> GraphColoring:
-        """4-vertex, 4-edge graph (a cycle).  Chromatic number = 2."""
-        #  0 -- 1
-        #  |    |
-        #  3 -- 2
-        adj = [
-            [0, 1, 0, 1],
-            [1, 0, 1, 0],
-            [0, 1, 0, 1],
-            [1, 0, 1, 0],
-        ]
-        return GraphColoring(adj, n_colors=3, vertex_names=["A", "B", "C", "D"])
+        """4-vertex cycle loaded from ``data/gc_small.txt``."""
+        return GraphColoring.from_file(_DATA_DIR / "gc_small.txt")
 
     @staticmethod
     def create_medium() -> GraphColoring:
-        """Petersen graph (10 vertices, 15 edges).  Chromatic number = 3."""
-        adj = np.zeros((10, 10), dtype=int)
-        edges = [
-            (0, 1), (1, 2), (2, 3), (3, 4), (4, 0),  # outer cycle
-            (0, 5), (1, 6), (2, 7), (3, 8), (4, 9),  # spokes
-            (5, 7), (7, 9), (9, 6), (6, 8), (8, 5),  # inner star
-        ]
-        for u, v in edges:
-            adj[u, v] = 1
-            adj[v, u] = 1
-        return GraphColoring(adj, n_colors=3)
+        """Petersen graph loaded from ``data/gc_medium.txt``."""
+        return GraphColoring.from_file(_DATA_DIR / "gc_medium.txt")
+
+    @staticmethod
+    def create_large() -> GraphColoring:
+        """20-vertex, 65-edge graph loaded from ``data/gc_large.txt``."""
+        return GraphColoring.from_file(_DATA_DIR / "gc_large.txt")
 
     @staticmethod
     def create_complete(n: int, n_colors: int | None = None) -> GraphColoring:

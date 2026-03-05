@@ -1,0 +1,11 @@
+# Graph Coloring Small Instance — 4-vertex cycle, chromatic number = 2
+# Format: first line = n_vertices n_colors, second line = vertex names, then adjacency matrix
+#  A -- B
+#  |    |
+#  D -- C
+4 3
+A B C D
+0 1 0 1
+1 0 1 0
+0 1 0 1
+1 0 1 0

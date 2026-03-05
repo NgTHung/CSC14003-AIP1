@@ -18,11 +18,14 @@ maximize profit.
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import cast, override
 
 import numpy as np
 
 from problems.base_problem import DiscreteProblem
+
+_DATA_DIR = Path(__file__).resolve().parent / "data"
 
 
 class Knapsack(DiscreteProblem):
@@ -277,22 +280,52 @@ class Knapsack(DiscreteProblem):
     # ==================================================================
 
     @staticmethod
+    def from_file(filepath: str | Path) -> Knapsack:
+        """Load a Knapsack instance from a text file.
+
+        File format (lines starting with ``#`` are ignored)::
+
+            <n_items> <capacity>
+            <weight_1> <weight_2> ... <weight_n>
+            <value_1>  <value_2>  ... <value_n>
+
+        Parameters
+        ----------
+        filepath : str or Path
+            Path to the data file.
+
+        Returns
+        -------
+        Knapsack
+            A new Knapsack instance built from the file data.
+        """
+        lines = [l.strip() for l in Path(filepath).read_text().splitlines()
+                 if l.strip() and not l.strip().startswith("#")]
+        parts = lines[0].split()
+        n_items, capacity = int(parts[0]), float(parts[1])
+        weights = [float(x) for x in lines[1].split()]
+        values = [float(x) for x in lines[2].split()]
+        return Knapsack(weights=weights, values=values, capacity=capacity)
+
+    @staticmethod
+    def create_tiny() -> Knapsack:
+        """3-item instance loaded from ``data/knapsack_tiny.txt``."""
+        return Knapsack.from_file(_DATA_DIR / "knapsack_tiny.txt")
+
+    @staticmethod
     def create_small() -> Knapsack:
-        """4-item instance.  Optimal: items {1,3} → value 10, weight 8."""
-        return Knapsack(
-            weights=[2, 3, 4, 5],
-            values=[3, 4, 5, 6],
-            capacity=8,
-        )
+        """4-item instance loaded from ``data/knapsack_small.txt``."""
+        return Knapsack.from_file(_DATA_DIR / "knapsack_small.txt")
 
     @staticmethod
     def create_medium() -> Knapsack:
-        """10-item classic benchmark instance."""
-        return Knapsack(
-            weights=[23, 31, 29, 44, 53, 38, 63, 85, 89, 82],
-            values=[92, 57, 49, 68, 60, 43, 67, 84, 87, 72],
-            capacity=165,
-        )
+        """10-item benchmark loaded from ``data/knapsack_medium.txt``."""
+        return Knapsack.from_file(_DATA_DIR / "knapsack_medium.txt")
+
+    @staticmethod
+    def create_large() -> Knapsack:
+        """30-item instance loaded from ``data/knapsack_large.txt``."""
+        return Knapsack.from_file(_DATA_DIR / "knapsack_large.txt")
 
     @staticmethod
     def random(

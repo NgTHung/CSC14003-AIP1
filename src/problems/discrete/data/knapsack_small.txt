@@ -1,0 +1,5 @@
+# Knapsack Small Instance — 4 items, optimal: items {1,3} -> value 10, weight 8
+# Format: first line = n_items capacity, second line = weights, third line = values
+4 8
+2 3 4 5
+3 4 5 6
