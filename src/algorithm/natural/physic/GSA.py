@@ -173,5 +173,3 @@ class GravitationalSearchAlgorithm(Model[Problem, np.ndarray, float | None, Grav
         self.best_solution = best_solution
         self.best_fitness = float(best_fitness)
         return best_solution
-
-    def get_stat
