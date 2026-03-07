@@ -86,7 +86,8 @@ class Knapsack(DiscreteProblem):
         self.n_items = len(self.weights)
 
         # minimize=True because eval returns -value + penalty
-        super().__init__(n_dims=self.n_items, minimize=True, name="0/1 Knapsack")
+        super().__init__(n_dims=self.n_items, minimize=True, name="0/1 Knapsack",
+                         solution_type="assignment", domain_size=2)
 
         # Pre-compute for graph search
         self._initial_state = (0, self.capacity)
@@ -137,7 +138,30 @@ class Knapsack(DiscreteProblem):
     # Local-search interface
     # ==================================================================
 
+    @override
+    def random_neighbor(self, state: np.ndarray) -> np.ndarray:
+        """Flip a single random bit — efficient O(1) neighbour sampling."""
+        nbr = state.copy()
+        i = np.random.randint(self.n_items)
+        nbr[i] = 1.0 - nbr[i]
+        return nbr
 
+    @override
+    def perturb(self, state: np.ndarray, **kwargs) -> np.ndarray:
+        """Flip ``n_flips`` random bits.
+
+        Parameters
+        ----------
+        state : np.ndarray
+            Binary vector.
+        **kwargs
+            ``n_flips`` (int) — number of bits to flip (default 1).
+        """
+        n_flips = kwargs.get("n_flips", 1)
+        new_state = state.copy()
+        indices = np.random.choice(self.n_items, size=n_flips, replace=False)
+        new_state[indices] = 1.0 - new_state[indices]
+        return new_state
 
     @override
     def neighbors(self, state: np.ndarray) -> list[np.ndarray]:

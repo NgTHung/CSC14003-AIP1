@@ -88,7 +88,8 @@ class GraphColoring(DiscreteProblem):
 
         # minimize number of conflicts (0 = legal coloring)
         super().__init__(n_dims=self.n_vertices, minimize=True,
-                         name="Graph Coloring")
+                         name="Graph Coloring",
+                         solution_type="assignment", domain_size=n_colors)
 
         # Graph-search initial state: all vertices uncolored (-1)
         self._initial_state = tuple([-1] * self.n_vertices)
@@ -150,21 +151,29 @@ class GraphColoring(DiscreteProblem):
     # ==================================================================
 
     @override
-    def perturb(self, state: np.ndarray, **kwargs) -> np.ndarray:
-        """Randomly recolor one vertex to a different color.
+    def random_neighbor(self, state: np.ndarray) -> np.ndarray:
+        """Recolor one random vertex to a different random color.
 
-        Unlike the default bit-flip in :class:`DiscreteProblem`, this
-        preserves the color-domain constraint ``[0, n_colors)``.
+        Efficient O(1) neighbour sampling without generating the full
+        O(n * k) neighbourhood.
         """
         new_state = state.copy()
         v = np.random.randint(self.n_vertices)
         current_color = int(new_state[v])
-        # Pick a different color uniformly at random
         new_color = current_color
         while new_color == current_color:
             new_color = np.random.randint(self.n_colors)
         new_state[v] = float(new_color)
         return new_state
+
+    @override
+    def perturb(self, state: np.ndarray, **kwargs) -> np.ndarray:
+        """Randomly recolor one vertex to a different color.
+
+        Unlike the default in :class:`DiscreteProblem`, this
+        preserves the color-domain constraint ``[0, n_colors)``.
+        """
+        return self.random_neighbor(state)
 
     @override
     def neighbors(self, state: np.ndarray) -> list[np.ndarray]:

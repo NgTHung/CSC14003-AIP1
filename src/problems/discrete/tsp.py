@@ -68,7 +68,8 @@ class TSP(DiscreteProblem):
         self.city_names = city_names or [str(i) for i in range(self.n_cities)]
 
         # minimize total tour distance
-        super().__init__(n_dims=self.n_cities, minimize=True, name="TSP")
+        super().__init__(n_dims=self.n_cities, minimize=True, name="TSP",
+                         solution_type="permutation")
 
         # For graph search: start at city 0
         self._initial_state = (0, frozenset([0]))
@@ -132,17 +133,26 @@ class TSP(DiscreteProblem):
     # ==================================================================
 
     @override
-    def perturb(self, state: np.ndarray, **kwargs) -> np.ndarray:
-        """Random 2-opt swap: reverse a random sub-tour segment.
+    def random_neighbor(self, state: np.ndarray) -> np.ndarray:
+        """Return a single random 2-opt neighbour.
 
-        This preserves the permutation structure, unlike the default
-        bit-flip perturbation in :class:`DiscreteProblem`.
+        Much faster than generating the full O(n^2) neighbourhood
+        via ``neighbors()`` when only one sample is needed.
         """
         new_state = state.copy()
         n = len(new_state)
         i, j = sorted(np.random.choice(n, size=2, replace=False))
         new_state[i:j + 1] = new_state[i:j + 1][::-1]
         return new_state
+
+    @override
+    def perturb(self, state: np.ndarray, **kwargs) -> np.ndarray:
+        """Random 2-opt swap: reverse a random sub-tour segment.
+
+        This preserves the permutation structure, unlike the default
+        in :class:`DiscreteProblem`.
+        """
+        return self.random_neighbor(state)
 
     @override
     def neighbors(self, state: np.ndarray) -> list[np.ndarray]:

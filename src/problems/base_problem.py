@@ -101,14 +101,18 @@ class DiscreteProblem(Problem):
 
     * **Population-based / physics-inspired** — via ``sample()``, ``eval()``,
       ``is_valid()`` inherited from :class:`Problem`.
-    * **Local search** — via ``random_state()``, ``neighbors()``, ``value()``,
-      ``is_better()``.
+    * **Local search** — via ``random_state()``, ``neighbors()``,
+      ``random_neighbor()``, ``perturb()``, ``value()``, ``is_better()``.
     * **Classical graph search** — via ``actions()``, ``result()``, ``cost()``,
       ``is_goal()``, ``heuristic()``.
 
     Sub-classes **must** implement the abstract methods from :class:`Problem`
-    (``sample``, ``eval``, ``is_valid``) **and** the local-search methods
-    (``random_state``, ``neighbors``, ``value``).
+    (``sample``, ``eval``, ``is_valid``) **and** the local-search method
+    ``neighbors``.
+
+    Sub-classes **should** override ``random_neighbor`` for efficient
+    single-neighbour sampling (the default picks a random element from
+    ``neighbors()``, which can be expensive for large neighbourhoods).
 
     The graph-search methods have default implementations that raise
     ``NotImplementedError``; override them if you want to use classical
@@ -120,10 +124,17 @@ class DiscreteProblem(Problem):
         If True, we are minimizing ``eval``/``value``; if False, maximizing.
     n_dims : int
         Dimensionality of the solution vector (number of decision variables).
+    solution_type : str
+        ``"permutation"`` or ``"assignment"`` — controls how ACO
+        algorithms construct solutions and lay pheromone.
+    domain_size : int
+        Number of possible values per dimension (assignment problems).
     """
 
     def __init__(self, n_dims: int, minimize: bool = True,
-                 name: str = "Discrete Problem"):
+                 name: str = "Discrete Problem",
+                 solution_type: str = "assignment",
+                 domain_size: int = 2):
         """
         Parameters
         ----------
@@ -133,14 +144,39 @@ class DiscreteProblem(Problem):
             Optimization direction (default: True = minimize).
         name : str, optional
             Human-readable problem name.
+        solution_type : str, optional
+            ``"permutation"`` if solutions are permutations of
+            ``[0, n_dims)`` (e.g. TSP).  ``"assignment"`` if each
+            position independently takes a value from a finite
+            domain (e.g. Knapsack, Graph Coloring).
+            Default: ``"assignment"``.
+        domain_size : int, optional
+            Number of possible values per position for assignment
+            problems (ignored for permutation problems).  Default: 2
+            (binary).
         """
         super().__init__(name)
         self.n_dims = n_dims
         self.minimize = minimize
+        self.solution_type = solution_type
+        self.domain_size = domain_size
 
     # ------------------------------------------------------------------
     # Local-search interface
     # ------------------------------------------------------------------
+
+    def random_state(self) -> np.ndarray:
+        """Generate a single random valid solution.
+
+        Convenience wrapper around ``sample(1)`` for local-search
+        algorithms that need a random starting state.
+
+        Returns
+        -------
+        np.ndarray
+            A random solution vector of shape ``(n_dims,)``.
+        """
+        return self.sample(1).flatten()
 
     @abstractmethod
     def neighbors(self, state: np.ndarray) -> list[np.ndarray]:
@@ -158,30 +194,68 @@ class DiscreteProblem(Problem):
         """
         raise NotImplementedError
 
+    def random_neighbor(self, state: np.ndarray) -> np.ndarray:
+        """Return a single random neighbour of *state*.
+
+        Override this in subclasses to avoid generating the full
+        neighbourhood when only one neighbour is needed (e.g. for
+        SA, ABC, CS, FA).
+
+        The default implementation calls ``neighbors()`` and picks
+        one uniformly at random.
+
+        Parameters
+        ----------
+        state : np.ndarray
+            Current solution vector.
+
+        Returns
+        -------
+        np.ndarray
+            A neighbouring solution vector.
+        """
+        nbrs = self.neighbors(state)
+        return nbrs[np.random.randint(len(nbrs))]
+
     def perturb(self, state: np.ndarray, **kwargs) -> np.ndarray:
         """Generate a single neighbor by perturbing *state*.
 
-        Default implementation flips ``n_flips`` random bits, suitable for
-        binary-vector problems (e.g. knapsack).  Subclasses with other
-        representations (e.g. permutations) should override this method.
+        Default implementation delegates to ``random_neighbor()``.
+        Subclasses may override for specialised perturbation logic
+        (e.g. controlling the number of flips or the swap radius).
 
         Parameters
         ----------
         state : np.ndarray
             Current solution vector.
         **kwargs
-            ``n_flips`` (int) — number of positions to flip (default 1).
+            Subclass-specific options (e.g. ``n_flips`` for binary
+            problems).
 
         Returns
         -------
         np.ndarray
             Perturbed solution vector.
         """
-        n_flips = kwargs.get("n_flips", 1)
-        new_state = state.copy()
-        indices = np.random.choice(len(state), size=n_flips, replace=False)
-        new_state[indices] = 1.0 - new_state[indices]
-        return new_state
+        return self.random_neighbor(state)
+
+    def value(self, state: np.ndarray) -> float:
+        """Evaluate the objective value of a single solution.
+
+        Convenience wrapper around ``eval()`` for local-search
+        algorithms.  Returns a Python float.
+
+        Parameters
+        ----------
+        state : np.ndarray
+            Solution vector of shape ``(n_dims,)``.
+
+        Returns
+        -------
+        float
+            Objective value.
+        """
+        return float(self.eval(state))
 
     def is_better(self, value1: float, value2: float) -> bool:
         """Compare two objective values respecting the optimization direction.

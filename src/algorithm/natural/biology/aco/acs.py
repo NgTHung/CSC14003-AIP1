@@ -4,6 +4,12 @@ Extends Ant System with pseudorandom-proportional selection, local pheromone
 updates during construction, and global pheromone updates using only the
 best-so-far solution.
 
+Supports two solution types through ``DiscreteProblem.solution_type``:
+
+* **Permutation** (e.g. TSP): edge-based pheromone ``tau[from][to]``.
+* **Assignment** (e.g. Knapsack, Graph Coloring): position–value pheromone
+  ``tau[position][value]``.
+
 Reference: Dorigo, M. & Gambardella, L.M. (1997). Ant colony system: a
 cooperative learning approach to the traveling salesman problem.
 """
@@ -12,7 +18,7 @@ from dataclasses import dataclass
 from typing import cast, override
 
 import numpy as np
-from problems import Problem
+from problems import DiscreteProblem
 from algorithm import Model
 
 
@@ -47,124 +53,159 @@ class ACSParameter:
     cycle: int
 
 
-class ACS(Model[Problem, np.ndarray | None, float, ACSParameter]):
+class ACS(Model[DiscreteProblem, np.ndarray | None, float, ACSParameter]):
     """Ant Colony System for discrete optimization.
 
     Key differences from Ant System:
     - Pseudorandom-proportional rule: with probability q0 the ant greedily
-      picks the best next node, otherwise uses roulette-wheel selection.
-    - Local pheromone update: pheromone on visited edges is reduced during
-      construction to encourage exploration.
+      picks the best option, otherwise uses roulette-wheel selection.
+    - Local pheromone update: pheromone on chosen edges/values is reduced
+      during construction to encourage exploration.
     - Global pheromone update: only the best-so-far ant deposits pheromone.
+
+    Automatically adapts to permutation or assignment problems based on
+    ``problem.solution_type``.
     """
 
     tau: np.ndarray
     eta: np.ndarray
     tau0: float
-    n_nodes: int
+    _is_permutation: bool
 
-    def __init__(self, configuration: ACSParameter, problem: Problem):
+    def __init__(self, configuration: ACSParameter, problem: DiscreteProblem):
         """Initialize ACS.
 
         Parameters
         ----------
         configuration : ACSParameter
             Algorithm hyperparameters.
-        problem : Problem
-            Optimization problem to solve.
+        problem : DiscreteProblem
+            Discrete optimization problem to solve.
         """
         super().__init__(configuration, problem)
+        n = problem.n_dims
+        self._is_permutation = problem.solution_type == "permutation"
+
+        # Estimate tau0 from a random solution cost
         sample = problem.sample(1)[0]
-        self.n_nodes = len(sample)
+        nn_cost = abs(cast(float, problem.eval(sample)))
+        self.tau0 = 1.0 / (n * nn_cost) if nn_cost > 0 else 0.1
 
-        self.eta = np.ones((self.n_nodes, self.n_nodes))
-
-        # Initial pheromone: tau0 = 1 / (n * L_nn)
-        # where L_nn is the cost of a nearest-neighbor heuristic tour
-        nn_cost = cast(float, problem.eval(sample))
-        self.tau0 = 1.0 / (self.n_nodes * nn_cost) if nn_cost > 0 else 0.1
-        self.tau = np.full((self.n_nodes, self.n_nodes), self.tau0)
+        if self._is_permutation:
+            self.tau = np.full((n, n), self.tau0)
+            self.eta = np.ones((n, n))
+        else:
+            d = problem.domain_size
+            self.tau = np.full((n, d), self.tau0)
+            self.eta = np.ones((n, d))
 
         self.best_solution = None
         self.best_fitness = float("inf")
         self.history = []
 
-    def _select_next_node(self, current_node: int, visited: set[int]) -> int:
-        """Pseudorandom-proportional selection rule.
+    # ------------------------------------------------------------------
+    # Selection helpers
+    # ------------------------------------------------------------------
 
-        With probability q0 choose the node maximizing tau * eta^beta
-        (exploitation). Otherwise, use roulette-wheel selection (exploration).
+    def _select_next_permutation(self, current: int, visited: set[int]) -> int:
+        """Pseudorandom-proportional rule for permutation problems.
 
-        Parameters
-        ----------
-        current_node : int
-            Current node position.
-        visited : set[int]
-            Already visited nodes.
-
-        Returns
-        -------
-        int
-            Next node to visit.
+        With probability q0 pick the best unvisited node (exploitation),
+        otherwise roulette-wheel (exploration).
         """
-        unvisited = [i for i in range(self.n_nodes) if i not in visited]
+        unvisited = [i for i in range(self.problem.n_dims) if i not in visited]
         if not unvisited:
-            return current_node
+            return current
 
         scores = np.array([
-            self.tau[current_node][j] ** self.conf.alpha
-            * self.eta[current_node][j] ** self.conf.beta
+            self.tau[current][j] ** self.conf.alpha
+            * self.eta[current][j] ** self.conf.beta
             for j in unvisited
         ])
 
-        q = np.random.random()
-        if q <= self.conf.q0:
-            # Exploitation: greedy choice
+        if np.random.random() <= self.conf.q0:
             return unvisited[int(np.argmax(scores))]
 
-        # Exploration: roulette-wheel
-        total = np.sum(scores)
+        total = scores.sum()
         if total == 0:
             return np.random.choice(unvisited)
         probs = scores / total
         return np.random.choice(unvisited, p=probs)
 
-    def _local_pheromone_update(self, i: int, j: int):
-        """Apply local pheromone update on edge (i, j).
+    def _select_value_assignment(self, pos: int) -> int:
+        """Pseudorandom-proportional rule for assignment problems.
 
-        Reduces pheromone on visited edges to encourage diversity.
-
-        Parameters
-        ----------
-        i : int
-            From node.
-        j : int
-            To node.
+        With probability q0 pick the best value (exploitation),
+        otherwise roulette-wheel (exploration).
         """
+        d = self.problem.domain_size
+        scores = (
+            self.tau[pos] ** self.conf.alpha
+            * self.eta[pos] ** self.conf.beta
+        )
+
+        if np.random.random() <= self.conf.q0:
+            return int(np.argmax(scores))
+
+        total = scores.sum()
+        if total == 0:
+            return np.random.randint(d)
+        probs = scores / total
+        return int(np.random.choice(d, p=probs))
+
+    # ------------------------------------------------------------------
+    # Local pheromone update
+    # ------------------------------------------------------------------
+
+    def _local_pheromone_update_edge(self, i: int, j: int):
+        """Reduce pheromone on edge (i, j) during construction."""
         self.tau[i][j] = (1 - self.conf.xi) * self.tau[i][j] + self.conf.xi * self.tau0
         self.tau[j][i] = self.tau[i][j]
 
-    def _construct_ant_solution(self) -> np.ndarray:
-        """Construct a single ant's solution with local pheromone updates.
+    def _local_pheromone_update_value(self, pos: int, val: int):
+        """Reduce pheromone on (position, value) during construction."""
+        self.tau[pos][val] = (
+            (1 - self.conf.xi) * self.tau[pos][val]
+            + self.conf.xi * self.tau0
+        )
 
-        Returns
-        -------
-        np.ndarray
-            Complete solution.
-        """
-        current = np.random.randint(0, self.n_nodes)
+    # ------------------------------------------------------------------
+    # Solution construction
+    # ------------------------------------------------------------------
+
+    def _construct_ant_solution(self) -> np.ndarray:
+        """Construct a single ant's solution with local pheromone updates."""
+        if self._is_permutation:
+            return self._construct_permutation()
+        return self._construct_assignment()
+
+    def _construct_permutation(self) -> np.ndarray:
+        """Build a permutation visiting each node exactly once."""
+        n = self.problem.n_dims
+        current = np.random.randint(0, n)
         solution = [current]
         visited = {current}
 
-        while len(solution) < self.n_nodes:
-            next_node = self._select_next_node(current, visited)
+        while len(solution) < n:
+            next_node = self._select_next_permutation(current, visited)
             solution.append(next_node)
-            if len(solution) == self.n_nodes:
-                self._local_pheromone_update(current, next_node)
+            self._local_pheromone_update_edge(current, next_node)
             visited.add(next_node)
             current = next_node
 
-        return np.array(solution)
+        return np.array(solution, dtype=float)
+
+    def _construct_assignment(self) -> np.ndarray:
+        """Build an assignment choosing a value for each position."""
+        n = self.problem.n_dims
+        solution = np.zeros(n, dtype=float)
+
+        for pos in range(n):
+            val = self._select_value_assignment(pos)
+            solution[pos] = float(val)
+            self._local_pheromone_update_value(pos, val)
+
+        return solution
 
     def construct_solution(self) -> list[tuple[np.ndarray, float]]:
         """Construct solutions for all ants.
@@ -187,25 +228,43 @@ class ACS(Model[Problem, np.ndarray | None, float, ACSParameter]):
 
         return solutions
 
+    # ------------------------------------------------------------------
+    # Global pheromone update
+    # ------------------------------------------------------------------
+
     def global_pheromone_update(self):
         """Global pheromone update using only the best-so-far solution.
 
         Only the globally best ant deposits pheromone, reinforcing the
-        best tour found across all iterations.
+        best solution found across all iterations.
         """
         if self.best_solution is None:
             return
 
-        # Evaporation on all edges
+        # Evaporation
         self.tau *= (1 - self.conf.rho)
 
-        # Deposit only on best-so-far tour edges
-        deposit = self.conf.rho / self.best_fitness if self.best_fitness > 0 else self.conf.rho
+        # Deposit
+        deposit = (
+            self.conf.rho / self.best_fitness
+            if self.best_fitness > 0
+            else self.conf.rho
+        )
 
-        for i, a in enumerate(self.best_solution):
-            b = self.best_solution[(i + 1) % len(self.best_solution)]
-            self.tau[a][b] += deposit
-            self.tau[b][a] += deposit
+        if self._is_permutation:
+            sol = self.best_solution.astype(int)
+            for i in range(len(sol)):
+                a, b = sol[i], sol[(i + 1) % len(sol)]
+                self.tau[a][b] += deposit
+                self.tau[b][a] += deposit
+        else:
+            for pos in range(self.problem.n_dims):
+                val = int(self.best_solution[pos])
+                self.tau[pos][val] += deposit
+
+    # ------------------------------------------------------------------
+    # Main loop
+    # ------------------------------------------------------------------
 
     @override
     def run(self) -> np.ndarray:
