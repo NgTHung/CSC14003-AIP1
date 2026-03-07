@@ -107,8 +107,8 @@ uv run src/main.py --seed 123
 
 ```python
 import numpy as np
-from problems import Ackley
-from algorithm.natural.human.tlbo import TLBO, TLBOConfig
+from AIP.problems import Ackley
+from AIP.algorithm.natural.human.tlbo import TLBO, TLBOConfig
 
 # Initialize the problem — 10D Ackley
 problem = Ackley(n_dim=10)
