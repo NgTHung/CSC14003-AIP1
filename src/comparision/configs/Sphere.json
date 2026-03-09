@@ -1,0 +1,60 @@
+{
+  "TLBO": {
+    "pop_size": 100
+  },
+  "GA": {
+    "pop_size": 100,
+    "pc": 0.9,
+    "pm": 0.01
+  },
+  "DE": {
+    "pop_size": 100,
+    "F": 0.5,
+    "Cr": 0.9
+  },
+  "PSO": {
+    "n_particles": 100,
+    "w": 0.4,
+    "c1": 1.5,
+    "c2": 1.5
+  },
+  "ABC": {
+    "n_bees": 100,
+    "limit": 20
+  },
+  "CS": {
+    "n_nests": 50,
+    "pa": 0.35,
+    "alpha": 1.0
+  },
+  "FA": {
+    "n_fireflies": 50,
+    "alpha": 0.2,
+    "beta0": 1.0,
+    "gamma": 0.5,
+    "alpha_decay": 0.95
+  },
+  "SA": {
+    "initial_temperature": 100.0,
+    "cooling_rate": 0.9,
+    "step_size": 0.5
+  },
+  "HS": {
+    "hms": 50,
+    "hmcr": 0.9,
+    "par": 0.3,
+    "bw": 0.05
+  },
+  "CA": {
+    "pop_size": 50,
+    "accepted_ratio": 0.2,
+    "exploit_ratio": 0.9,
+    "explore_sigma": 0.05
+  },
+  "SFO": {
+    "pop_size": 50,
+    "w": 0.7,
+    "c_attract": 1.0,
+    "c_social": 1.5
+  }
+}
