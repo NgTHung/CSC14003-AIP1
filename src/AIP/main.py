@@ -51,11 +51,11 @@ from AIP.algorithm import (
     FireflyAlgorithm,
     FireflyParameter,
 )
-from algorithm.natural.physic.SA import SimulatedAnnealing
-from algorithm.natural.physic.HS import HarmonySearch
-from algorithm.natural.human.ca import CA, CAConfig
-from algorithm.natural.human.sfo import SFO, SFOConfig
-from algorithm.natural.human.tlbo import TLBO, TLBOConfig
+from AIP.algorithm.natural.physic.SA import SimulatedAnnealing
+from AIP.algorithm.natural.physic.HS import HarmonySearch
+from AIP.algorithm.natural.human.ca import CA, CAConfig
+from AIP.algorithm.natural.human.sfo import SFO, SFOConfig
+from AIP.algorithm.natural.human.tlbo import TLBO, TLBOConfig
 
 # ---------------------------------------------------------------------------
 # Utility helpers

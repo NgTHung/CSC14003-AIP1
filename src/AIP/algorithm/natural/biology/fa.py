@@ -227,14 +227,10 @@ class FireflyAlgorithm(Model[Problem, np.ndarray | None, float, FireflyParameter
         for i in range(n):
             moved = False
             for j in range(n):
-                # Perceived intensity of j at the position of i
                 diff = self.positions[j] - self.positions[i]
                 distance_sq = float(np.sum(diff**2))
-                perceived_intensity_j = self.light_intensity[j] * np.exp(
-                    -self.conf.gamma * distance_sq
-                )
 
-                if perceived_intensity_j > self.light_intensity[i]:
+                if self.light_intensity[j] > self.light_intensity[i]:
                     if self._is_continuous:
                         assert span is not None
                         # Distance-dependent attractiveness

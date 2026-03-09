@@ -26,11 +26,11 @@ if _SRC not in sys.path:
 
 import matplotlib.pyplot as plt
 
-from problems.continuous.ackley import Ackley
-from problems.continuous.griewank import Griewank
-from problems.continuous.rastrigin import Rastrigin
-from problems.continuous.Rosenbrock import Rosenbrock
-from problems.continuous.sphere import Sphere
+from AIP.problems.continuous.ackley import Ackley
+from AIP.problems.continuous.griewank import Griewank
+from AIP.problems.continuous.rastrigin import Rastrigin
+from AIP.problems.continuous.Rosenbrock import Rosenbrock
+from AIP.problems.continuous.sphere import Sphere
 
 from comparision.comparison_utils import (
     run_comparison,
