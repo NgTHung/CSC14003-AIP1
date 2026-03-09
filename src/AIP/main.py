@@ -14,6 +14,8 @@ The script
 import random
 import argparse
 import itertools
+import json
+import os
 import numpy as np
 
 try:
@@ -33,6 +35,7 @@ from AIP.algorithm import (
     DEParameter,
     MutationStrategy,
     DECrossoverType,
+    VariableType,
     EvolutionStrategy,
     ESVariant,
     OnePlusOneESParameter,
@@ -46,12 +49,218 @@ from AIP.algorithm import (
     CuckooSearch,
     CuckooSearchParameter,
     FireflyAlgorithm,
-    FireflyParameter
+    FireflyParameter,
 )
+from algorithm.natural.physic.SA import SimulatedAnnealing
+from algorithm.natural.physic.HS import HarmonySearch
+from algorithm.natural.human.ca import CA, CAConfig
+from algorithm.natural.human.sfo import SFO, SFOConfig
+from algorithm.natural.human.tlbo import TLBO, TLBOConfig
 
 # ---------------------------------------------------------------------------
 # Utility helpers
 # ---------------------------------------------------------------------------
+
+
+
+# ── Parameter grids for all algorithms ────────────────────────────────
+PARAM_GRIDS: dict[str, dict[str, list]] = {
+    "GA": {
+        "pop_size": [50, 100],
+        "pc":       [0.7, 0.8, 0.9],
+        "pm":       [0.01, 0.02, 0.05],
+    },
+    "DE": {
+        "pop_size": [50, 100],
+        "F":        [0.5, 0.8, 1.0],
+        "Cr":       [0.7, 0.9],
+    },
+    "PSO": {
+        "n_particles": [30, 50, 100],
+        "w":           [0.4, 0.7, 0.9],
+        "c1":          [1.5, 2.0],
+        "c2":          [1.5, 2.0],
+    },
+    "ABC": {
+        "n_bees": [30, 50, 100],
+        "limit":  [20, 50, 100],
+    },
+    "CS": {
+        "n_nests": [25, 50],
+        "pa":      [0.15, 0.25, 0.35],
+        "alpha":   [0.1, 0.5, 1.0],
+    },
+    "FA": {
+        "n_fireflies": [25, 50],
+        "alpha":       [0.2, 0.5],
+        "beta0":       [0.5, 1.0],
+        "gamma":       [0.5, 1.0],
+        "alpha_decay":  [0.95, 0.98],
+    },
+    "SA": {
+        "initial_temperature": [100.0, 1000.0],
+        "cooling_rate":        [0.9, 0.95, 0.99],
+        "step_size":           [0.05, 0.1, 0.5],
+    },
+    "HS": {
+        "hms":  [20, 50],
+        "hmcr": [0.8, 0.9, 0.95],
+        "par":  [0.1, 0.3, 0.5],
+        "bw":   [0.05, 0.1, 0.2],
+    },
+    "CA": {
+        "pop_size":       [50, 100],
+        "accepted_ratio": [0.1, 0.2, 0.3],
+        "exploit_ratio":  [0.7, 0.8, 0.9],
+        "explore_sigma":  [0.05, 0.1, 0.2],
+    },
+    "SFO": {
+        "pop_size":  [50, 100],
+        "w":         [0.7, 0.9],
+        "c_attract": [1.0, 1.5, 2.0],
+        "c_social":  [1.0, 1.5, 2.0],
+    },
+    "TLBO": {
+        "pop_size": [50, 100, 150],
+    },
+}
+
+
+def _build_algo_from_params(
+    algo_name: str,
+    params: dict,
+    problem,
+    cycle: int,
+):
+    """Construct an algorithm instance from a name + parameter dict.
+
+    Parameters
+    ----------
+    algo_name : str
+        Algorithm key (e.g. ``'GA'``, ``'PSO'``).
+    params : dict
+        Hyperparameter values for the algorithm.
+    problem : ContinuousProblem
+        The benchmark problem.
+    cycle : int
+        Number of iterations.
+
+    Returns
+    -------
+    model
+        A ready-to-run algorithm instance.
+    """
+    match algo_name:
+        case "GA":
+            cfg = GAParameter(
+                pop_size=params.get("pop_size", 50),
+                n_bits=params.get("n_bits", 16),
+                pc=params.get("pc", 0.8),
+                pm=params.get("pm", 0.02),
+                cycle=cycle,
+                selection=params.get("selection", SelectionMethod.STOCHASTIC_REMAINDER),
+                crossover=params.get("crossover", CrossoverMethod.TWO_SITE),
+            )
+            return GeneticAlgorithm(cfg, problem)
+        case "DE":
+            cfg = DEParameter(
+                pop_size=params.get("pop_size", 50),
+                F=params.get("F", 0.8),
+                Cr=params.get("Cr", 0.9),
+                cycle=cycle,
+                strategy=params.get("strategy", MutationStrategy.RAND_1),
+                crossover_type=params.get("crossover_type", DECrossoverType.BIN),
+                variable_type=params.get("variable_type", VariableType.CONTINUOUS),
+            )
+            return DifferentialEvolution(cfg, problem)
+        case "PSO":
+            cfg = PSOParameter(
+                n_particles=params.get("n_particles", 50),
+                w=params.get("w", 0.7),
+                c1=params.get("c1", 1.5),
+                c2=params.get("c2", 1.5),
+                v_max=params.get("v_max", None),
+                cycle=cycle,
+            )
+            return ParticleSwarmOptimization(cfg, problem)
+        case "ABC":
+            cfg = ABCParameter(
+                n_bees=params.get("n_bees", 50),
+                limit=params.get("limit", 20),
+                iteration=cycle,
+            )
+            return ArtificialBeeColony(cfg, problem)
+        case "CS":
+            cfg = CuckooSearchParameter(
+                n_nests=params.get("n_nests", 50),
+                pa=params.get("pa", 0.25),
+                alpha=params.get("alpha", 0.5),
+                beta=params.get("beta", 1.5),
+                iteration=cycle,
+            )
+            return CuckooSearch(cfg, problem)
+        case "FA":
+            cfg = FireflyParameter(
+                n_fireflies=params.get("n_fireflies", 50),
+                alpha=params.get("alpha", 0.5),
+                beta0=params.get("beta0", 1.0),
+                gamma=params.get("gamma", 1.0),
+                alpha_decay=params.get("alpha_decay", 0.97),
+                cycle=cycle,
+            )
+            return FireflyAlgorithm(cfg, problem)
+        case "SA":
+            return SimulatedAnnealing(
+                {
+                    "initial_temperature": params.get("initial_temperature", 100.0),
+                    "cooling_rate": params.get("cooling_rate", 0.95),
+                    "min_temperature": params.get("min_temperature", 1e-8),
+                    "max_iterations": cycle,
+                    "step_size": params.get("step_size", 0.1),
+                },
+                problem,
+            )
+        case "HS":
+            return HarmonySearch(
+                {
+                    "hms": params.get("hms", 50),
+                    "hmcr": params.get("hmcr", 0.9),
+                    "par": params.get("par", 0.3),
+                    "bw": params.get("bw", 0.1),
+                    "max_iterations": cycle,
+                },
+                problem,
+            )
+        case "CA":
+            cfg = CAConfig(
+                pop_size=params.get("pop_size", 50),
+                iterations=cycle,
+                minimization=True,
+                accepted_ratio=params.get("accepted_ratio", 0.2),
+                exploit_ratio=params.get("exploit_ratio", 0.8),
+                explore_sigma=params.get("explore_sigma", 0.1),
+            )
+            return CA(cfg, problem)
+        case "SFO":
+            cfg = SFOConfig(
+                pop_size=params.get("pop_size", 50),
+                iterations=cycle,
+                minimization=True,
+                w=params.get("w", 0.9),
+                w_decay=params.get("w_decay", 0.99),
+                c_attract=params.get("c_attract", 1.5),
+                c_social=params.get("c_social", 1.5),
+            )
+            return SFO(cfg, problem)
+        case "TLBO":
+            cfg = TLBOConfig(
+                pop_size=params.get("pop_size", 50),
+                iterations=cycle,
+                minimization=True,
+            )
+            return TLBO(cfg, problem)
+        case _:
+            raise ValueError(f"Unknown algorithm: {algo_name}")
 
 
 def run_grid_search(
@@ -60,7 +269,7 @@ def run_grid_search(
     n_dim: int,
     cycle: int,
     n_runs: int,
-) -> None:
+) -> dict:
     """Execute a grid search over hyperparameters for a given algorithm.
 
     For each combination in the parameter grid the algorithm is executed
@@ -70,7 +279,9 @@ def run_grid_search(
     Parameters
     ----------
     target_algo : str
-        One of ``'CA'``, ``'SFO'``, ``'TLBO'``.
+        Algorithm key, e.g. ``'GA'``, ``'DE'``, ``'PSO'``, ``'ABC'``,
+        ``'CS'``, ``'FA'``, ``'SA'``, ``'HS'``, ``'CA'``, ``'SFO'``,
+        ``'TLBO'``.
     problem : ContinuousProblem
         The benchmark problem instance to optimise.
     n_dim : int
@@ -80,38 +291,14 @@ def run_grid_search(
     n_runs : int
         Independent repetitions for each parameter combination to
         ensure statistical robustness.
+
+    Returns
+    -------
+    dict
+        Best hyperparameter dict found by the grid search.
     """
 
-    # ------------------------------------------------------------------
-    # 1. Define the parameter grids per algorithm
-    # ------------------------------------------------------------------
-    grids: dict[str, dict[str, list]] = {
-        "CA": {
-            "pop_size":      [50, 100],
-            "accepted_ratio": [0.1, 0.2, 0.3],
-            "exploit_ratio":  [0.7, 0.8, 0.9],
-            "explore_sigma":  [0.05, 0.1, 0.2],
-        },
-        "SFO": {
-            "pop_size":  [50, 100],
-            "w":         [0.7, 0.9],
-            "c_attract": [1.0, 1.5, 2.0],
-            "c_social":  [1.0, 1.5, 2.0],
-        },
-        "TLBO": {
-            "pop_size": [50, 100, 150],
-        },
-    }
-
-    # Mapping from AIP.algorithm name to (ConfigClass, AlgorithmClass)
-    algo_map: dict[str, tuple[type, type]] = {
-        "CA":   (CAConfig, CA),
-        "SFO":  (SFOConfig, SFO),
-        "TLBO": (TLBOConfig, TLBO),
-    }
-
-    grid = grids[target_algo]
-    ConfigCls, AlgoCls = algo_map[target_algo]
+    grid = PARAM_GRIDS[target_algo]
 
     # Build all parameter combinations using itertools.product
     param_names = list(grid.keys())
@@ -128,22 +315,17 @@ def run_grid_search(
     best_config_dict: dict = {}
 
     # ------------------------------------------------------------------
-    # 2. Iterate over every combination
+    # Iterate over every combination
     # ------------------------------------------------------------------
     for idx, combo in enumerate(combinations, start=1):
         config_dict = dict(zip(param_names, combo))
 
-        # Build the config object with the current grid values + fixed params
-        cfg = ConfigCls(
-            iterations=cycle,
-            minimization=True,
-            **config_dict,
-        )
-
         run_fitnesses: list[float] = []
 
         for run_id in range(n_runs):
-            model = AlgoCls(configuration=cfg, problem=problem)
+            model = _build_algo_from_params(
+                target_algo, config_dict, problem, cycle
+            )
             model.run()
             run_fitnesses.append(float(model.best_fitness))
 
@@ -159,7 +341,7 @@ def run_grid_search(
             best_config_dict = config_dict.copy()
 
     # ------------------------------------------------------------------
-    # 3. Print summary
+    # Print summary
     # ------------------------------------------------------------------
     print(f"\n{'=' * 65}")
     print(f"  GRID SEARCH RESULTS  –  {target_algo}")
@@ -169,6 +351,25 @@ def run_grid_search(
     for k, v in best_config_dict.items():
         print(f"    {k:<18s} = {v}")
     print(f"{'=' * 65}\n")
+
+    # Save to config file: configs/<problem_name>.json
+    configs_dir = os.path.join(os.path.dirname(__file__), "comparision", "configs")
+    os.makedirs(configs_dir, exist_ok=True)
+    config_path = os.path.join(configs_dir, f"{problem._name}.json")
+
+    existing: dict = {}
+    if os.path.isfile(config_path):
+        with open(config_path, "r") as f:
+            existing = json.load(f)
+
+    existing[target_algo] = best_config_dict
+
+    with open(config_path, "w") as f:
+        json.dump(existing, f, indent=2, default=str)
+
+    print(f"  Config saved to: {os.path.abspath(config_path)}")
+
+    return best_config_dict
 
 def set_seed(seed: int | float | None):
     """Set random seed for reproducibility."""
@@ -308,7 +509,8 @@ def main():
     )
     parser.add_argument(
         "--tune", type=str, default="NONE",
-        choices=["CA", "SFO", "TLBO", "NONE"],
+        choices=["GA", "DE", "PSO", "ABC", "CS", "FA", "SA", "HS",
+                 "CA", "SFO", "TLBO", "NONE"],
         help="Run grid-search parameter tuning for the specified algorithm "
              "instead of the normal comparison (default: NONE)",
     )

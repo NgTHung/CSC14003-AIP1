@@ -328,8 +328,6 @@ def main() -> None:
         "sphere": Sphere,
         "rastrigin": Rastrigin,
         "ackley": Ackley,
-        "cigar": Cigar,
-        "ridge": Ridge,
     }
     problem = problems[args.problem](n_dim=args.dim)
     print(f"Problem: {problem._name}, Dimensions: {problem._n_dim}")
