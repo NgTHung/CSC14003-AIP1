@@ -6,12 +6,12 @@ sys.path.append('src')
 import numpy as np
 import matplotlib.pyplot as plt
 
-from problems.continuous.sphere import Sphere
-from problems.continuous.rastrigin import Rastrigin
-from problems.continuous.ackley import Ackley
-from algorithm.physics.SA import SimulatedAnnealing
-from algorithm.physics.GSA import GravitationalSearchAlgorithm
-from algorithm.physics.HS import HarmonySearch
+from AIP.problems.continuous.sphere import Sphere
+from AIP.problems.continuous.rastrigin import Rastrigin
+from AIP.problems.continuous.ackley import Ackley
+from AIP.algorithm.physics.SA import SimulatedAnnealing
+from AIP.algorithm.physics.GSA import GravitationalSearchAlgorithm
+from AIP.algorithm.physics.HS import HarmonySearch
 
 
 # ---------------------------------------------------------------------------

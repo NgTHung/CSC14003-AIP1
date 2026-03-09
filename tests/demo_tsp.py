@@ -13,21 +13,21 @@ sys.path.append("src")
 
 import time
 import numpy as np
-from problems.discrete.tsp import TSP
-from algorithm.classical.DFS import DepthFirstSearch
-from algorithm.classical.BFS import BreadthFirstSearch
-from algorithm.classical.UCS import UniformCostSearch
-from algorithm.classical.GreedyBestFirst import GreedyBestFirstSearch
-from algorithm.classical.AStar import AStarSearch
-from algorithm.local.HillClimbing import HillClimbing, HillClimbingParameter
-from algorithm.natural.physic.SA import SimulatedAnnealing
-from algorithm.natural.physic.HS import HarmonySearch
-from algorithm.natural.biology.abc import ArtificialBeeColony, ABCParameter
-from algorithm.natural.biology.cs import CuckooSearch, CuckooSearchParameter
-from algorithm.natural.biology.fa import FireflyAlgorithm, FireflyParameter
-from algorithm.natural.biology.aco import AntSystem, AntSystemParameter
-from algorithm.natural.biology.aco import ACS, ACSParameter
-from algorithm.natural.biology.aco import MMAS, MMASParameter
+from AIP.problems.discrete.tsp import TSP
+from AIP.algorithm.classical.DFS import DepthFirstSearch
+from AIP.algorithm.classical.BFS import BreadthFirstSearch
+from AIP.algorithm.classical.UCS import UniformCostSearch
+from AIP.algorithm.classical.GreedyBestFirst import GreedyBestFirstSearch
+from AIP.algorithm.classical.AStar import AStarSearch
+from AIP.algorithm.local.HillClimbing import HillClimbing, HillClimbingParameter
+from AIP.algorithm.natural.physic.SA import SimulatedAnnealing
+from AIP.algorithm.natural.physic.HS import HarmonySearch
+from AIP.algorithm.natural.biology.abc import ArtificialBeeColony, ABCParameter
+from AIP.algorithm.natural.biology.cs import CuckooSearch, CuckooSearchParameter
+from AIP.algorithm.natural.biology.fa import FireflyAlgorithm, FireflyParameter
+from AIP.algorithm.natural.biology.aco import AntSystem, AntSystemParameter
+from AIP.algorithm.natural.biology.aco import ACS, ACSParameter
+from AIP.algorithm.natural.biology.aco import MMAS, MMASParameter
 
 
 # ============================================================================

@@ -1,5 +1,0 @@
-# Knapsack Tiny Instance — 3 items
-# Format: first line = n_items capacity, second line = weights, third line = values
-3 5
-2 3 4
-3 4 5

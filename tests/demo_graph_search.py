@@ -5,13 +5,13 @@ sys.path.append('src')
 
 import matplotlib.pyplot as plt
 
-from problems.discrete.simple_graph import SimpleGraph
-from problems.discrete.romania_map import RomaniaMap
-from algorithm.classical.DFS import DepthFirstSearch
-from algorithm.classical.BFS import BreadthFirstSearch
-from algorithm.classical.UCS import UniformCostSearch
-from algorithm.classical.GreedyBestFirst import GreedyBestFirstSearch
-from algorithm.classical.AStar import AStarSearch
+from AIP.problems.discrete.simple_graph import SimpleGraph
+from AIP.problems.discrete.romania_map import RomaniaMap
+from AIP.algorithm.classical.DFS import DepthFirstSearch
+from AIP.algorithm.classical.BFS import BreadthFirstSearch
+from AIP.algorithm.classical.UCS import UniformCostSearch
+from AIP.algorithm.classical.GreedyBestFirst import GreedyBestFirstSearch
+from AIP.algorithm.classical.AStar import AStarSearch
 
 
 # ---------------------------------------------------------------------------

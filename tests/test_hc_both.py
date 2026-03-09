@@ -3,10 +3,10 @@
 import sys
 sys.path.append("src")
 
-from problems.discrete.knapsack import Knapsack
-from problems.continuous.sphere import Sphere
-from algorithm.local.HillClimbing import HillClimbing
-from algorithm.local.SteepestAscentHC import SteepestAscentHillClimbing
+from AIP.problems.discrete.knapsack import Knapsack
+from AIP.problems.continuous.sphere import Sphere
+from AIP.algorithm.local.HillClimbing import HillClimbing
+from AIP.algorithm.local.SteepestAscentHC import SteepestAscentHillClimbing
 
 # --- Discrete: Knapsack ---
 ks = Knapsack.create_small()

@@ -1,0 +1,5 @@
+# Knapsack Large Instance - 30 items (seed=42)
+# Format: first line = n_items capacity, second line = weights, third line = values
+30 545
+11 63 54 37 37 69 11 57 20 12 44 78 60 62 58 63 43 14 67 38 42 32 18 74 63 53 35 66 45 38
+73 41 22 87 134 18 130 125 48 98 33 116 108 59 19 145 72 135 104 118 116 37 60 75 79 16 86 31 114 105

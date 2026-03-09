@@ -1,7 +1,0 @@
-# Graph Coloring Tiny Instance — 3 vertices (triangle), chromatic number = 3
-# Format: first line = n_vertices n_colors, second line = vertex names, then adjacency matrix
-3 3
-A B C
-0 1 1
-1 0 1
-1 1 0
