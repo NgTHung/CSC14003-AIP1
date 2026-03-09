@@ -17,3 +17,8 @@ module-name = "AIP"
 # It lives at the project root (not under src/)
 module-root = "src"
 namespace   = true
+
+[dependency-groups]
+dev = [
+    "ipykernel>=7.2.0",
+]

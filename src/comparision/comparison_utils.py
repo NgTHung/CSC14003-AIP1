@@ -16,6 +16,7 @@ import time
 import random
 import itertools
 from dataclasses import dataclass
+from typing import Callable
 
 import numpy as np
 
@@ -27,25 +28,25 @@ if _SRC not in sys.path:
 import matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator
 
-from problems.continuous.continuous import ContinuousProblem
+from AIP.problems.continuous.continuous import ContinuousProblem
 
 # ── Algorithm imports ────────────────────────────────────────────────────
-from algorithm.natural.evolution.ga import (
+from AIP.algorithm.natural.evolution.ga import (
     GeneticAlgorithm, GAParameter, SelectionMethod, CrossoverMethod,
 )
-from algorithm.natural.evolution.de import (
+from AIP.algorithm.natural.evolution.de import (
     DifferentialEvolution, DEParameter, MutationStrategy, DECrossoverType,
     VariableType,
 )
-from algorithm.natural.biology.pso import ParticleSwarmOptimization, PSOParameter
-from algorithm.natural.biology.abc import ArtificialBeeColony, ABCParameter
-from algorithm.natural.biology.cs import CuckooSearch, CuckooSearchParameter
-from algorithm.natural.biology.fa import FireflyAlgorithm, FireflyParameter
-from algorithm.natural.physic.SA import SimulatedAnnealing
-from algorithm.natural.physic.HS import HarmonySearch
-from algorithm.natural.human.ca import CA, CAConfig
-from algorithm.natural.human.sfo import SFO, SFOConfig
-from algorithm.natural.human.tlbo import TLBO, TLBOConfig
+from AIP.algorithm.natural.biology.pso import ParticleSwarmOptimization, PSOParameter
+from AIP.algorithm.natural.biology.abc import ArtificialBeeColony, ABCParameter
+from AIP.algorithm.natural.biology.cs import CuckooSearch, CuckooSearchParameter
+from AIP.algorithm.natural.biology.fa import FireflyAlgorithm, FireflyParameter
+from AIP.algorithm.natural.physic.SA import SimulatedAnnealing
+from AIP.algorithm.natural.physic.HS import HarmonySearch
+from AIP.algorithm.natural.human.ca import CA, CAConfig
+from AIP.algorithm.natural.human.sfo import SFO, SFOConfig
+from AIP.algorithm.natural.human.tlbo import TLBO, TLBOConfig
 
 
 # =====================================================================
@@ -114,7 +115,7 @@ def save_all_tuned_configs(
     problem_name : str
         Problem key.
     tuned_params : dict[str, dict]
-        Mapping from algorithm name to best-parameter dict.
+        Mapping from AIP.algorithm name to best-parameter dict.
 
     Returns
     -------
@@ -154,7 +155,7 @@ def load_tuned_config(
     Returns
     -------
     dict[str, dict] or None
-        Mapping from algorithm name to parameter dict, or ``None``
+        Mapping from AIP.algorithm name to parameter dict, or ``None``
         if the config file does not exist.
     """
     path = _config_path(problem_name)
@@ -440,7 +441,8 @@ def tune_algorithm(
             random.seed(seed + rid)
             model = build_algo(algo_name, params, problem, cycle)
             model.run()
-            fitnesses.append(float(model.best_fitness))
+            assert model.best_fitness is not None
+            fitnesses.append(model.best_fitness)
 
         mean_f = float(np.mean(fitnesses))
         print(
@@ -493,7 +495,7 @@ def tune_all_algorithms(
     Returns
     -------
     dict[str, dict]
-        Mapping from algorithm name to best parameter dict.
+        Mapping from AIP.algorithm name to best parameter dict.
     """
     if algo_names is None:
         algo_names = list(PARAM_GRIDS.keys())
@@ -522,7 +524,7 @@ def tune_all_algorithms(
 # These use sensible defaults.  Use ``build_algo_registry`` to create
 # a registry from tuned parameters.
 
-ALGO_REGISTRY: dict[str, callable] = {
+ALGO_REGISTRY: dict[str, Callable] = {
     "GA": lambda prob, cyc: build_algo("GA", {}, prob, cyc),
     "DE": lambda prob, cyc: build_algo("DE", {}, prob, cyc),
     "PSO": lambda prob, cyc: build_algo("PSO", {}, prob, cyc),
@@ -539,13 +541,13 @@ ALGO_REGISTRY: dict[str, callable] = {
 
 def build_algo_registry(
     tuned_params: dict[str, dict] | None = None,
-) -> dict[str, callable]:
+) -> dict[str, Callable]:
     """Create an algorithm registry that uses tuned parameters.
 
     Parameters
     ----------
     tuned_params : dict[str, dict] or None
-        Mapping from algorithm name to best-parameter dict.  Algorithms
+        Mapping from AIP.algorithm name to best-parameter dict.  Algorithms
         not present fall back to defaults.
 
     Returns
@@ -556,7 +558,7 @@ def build_algo_registry(
     if tuned_params is None:
         return dict(ALGO_REGISTRY)
 
-    registry: dict[str, callable] = {}
+    registry: dict[str, Callable] = {}
     for name in ALGO_REGISTRY:
         params = tuned_params.get(name, {})
         # Capture ``name`` and ``params`` in the closure correctly
@@ -633,7 +635,7 @@ def run_comparison(
     algo_names : list[str] or None
         Subset of algorithm names to run. ``None`` → run all.
     tuned_params : dict[str, dict] or None
-        Optional mapping from algorithm name to tuned hyperparameter dict.
+        Optional mapping from AIP.algorithm name to tuned hyperparameter dict.
         When provided, algorithms are built using ``build_algo`` with the
         tuned parameters instead of the default registry.
 
@@ -814,7 +816,7 @@ def plot_comparison(
     lines2, labels2 = ax2.get_legend_handles_labels()
     ax.legend(lines1 + lines2, labels1 + labels2, fontsize=8, loc="upper left")
 
-    plt.tight_layout(rect=[0, 0, 1, 0.95])
+    plt.tight_layout(rect=(0, 0, 1, 0.95))
 
     if save_path:
         os.makedirs(os.path.dirname(save_path) or ".", exist_ok=True)
