@@ -204,7 +204,19 @@ class Knapsack(DiscreteProblem):
 
     @override
     def cost(self, state, action, next_state) -> float:
-        """Negative item value for 'take', 0 for 'skip'."""
+        """Negative item value for 'take', 0 for 'skip'.
+
+        Handles both calling conventions:
+        - ``cost(state, "take"/"skip", next_state)`` — from UCS / A*
+        - ``cost(state, next_state_tuple, next_state)`` — from DFS / BFS / Greedy
+        """
+        if isinstance(action, tuple):
+            # DFS/BFS/Greedy convention: action is the next_state tuple
+            idx, cap_cur = state
+            _, cap_next = action
+            if cap_next < cap_cur:  # item was taken
+                return cast(float, -self.values[idx])
+            return 0.0
         if action == "take":
             idx, _ = state
             return cast(float, -self.values[idx])

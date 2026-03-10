@@ -44,9 +44,17 @@ from AIP.algorithm.natural.biology.cs import CuckooSearch, CuckooSearchParameter
 from AIP.algorithm.natural.biology.fa import FireflyAlgorithm, FireflyParameter
 from AIP.algorithm.natural.physic.SA import SimulatedAnnealing
 from AIP.algorithm.natural.physic.HS import HarmonySearch
+from AIP.algorithm.natural.physic.GSA import GravitationalSearchAlgorithm, GravitationalSearchParameter
 from AIP.algorithm.natural.human.ca import CA, CAConfig
 from AIP.algorithm.natural.human.sfo import SFO, SFOConfig
 from AIP.algorithm.natural.human.tlbo import TLBO, TLBOConfig
+from AIP.algorithm.natural.evolution.es import (
+    OnePlusOneES, OnePlusOneESParameter,
+    SelfAdaptiveES, SelfAdaptiveESParameter,
+    CMAES, CMAESParameter,
+    MuRhoPlusLambdaES, MuRhoPlusLambdaESParameter,
+)
+from AIP.algorithm.local.HillClimbing import HillClimbing, HillClimbingParameter
 
 
 # =====================================================================
@@ -237,6 +245,32 @@ PARAM_GRIDS: dict[str, dict[str, list]] = {
     "TLBO": {
         "pop_size": [50, 100, 150],
     },
+    "(1+1)-ES": {
+        "sigma": [0.1, 0.5, 1.0],
+    },
+    "SA-ES": {
+        "mu": [10, 20],
+        "lam": [50, 100],
+        "rho": [2, 5],
+        "sigma_init": [0.1, 0.5],
+    },
+    "CMA-ES": {
+        "sigma": [0.3, 0.5, 1.0],
+    },
+    "(μ/ρ+λ)-ES": {
+        "mu": [10, 20],
+        "rho": [2, 5],
+        "lam": [50, 100],
+        "sigma_init": [0.1, 0.5],
+    },
+    "GSA": {
+        "pop_size": [30, 50],
+        "G0": [50.0, 100.0],
+        "alpha": [10.0, 20.0],
+    },
+    "HC": {
+        "iteration": [500, 1000, 2000],
+    },
 }
 
 
@@ -377,6 +411,49 @@ def build_algo(
                 minimization=True,
             )
             return TLBO(cfg, problem)
+        case "(1+1)-ES":
+            cfg = OnePlusOneESParameter(
+                sigma=params.get("sigma", 0.5),
+                cycle=cycle,
+            )
+            return OnePlusOneES(cfg, problem)
+        case "SA-ES":
+            cfg = SelfAdaptiveESParameter(
+                mu=params.get("mu", 15),
+                lam=params.get("lam", 100),
+                rho=params.get("rho", 2),
+                sigma_init=params.get("sigma_init", 0.5),
+                cycle=cycle,
+            )
+            return SelfAdaptiveES(cfg, problem)
+        case "CMA-ES":
+            cfg = CMAESParameter(
+                sigma=params.get("sigma", 0.5),
+                cycle=cycle,
+            )
+            return CMAES(cfg, problem)
+        case "(μ/ρ+λ)-ES":
+            cfg = MuRhoPlusLambdaESParameter(
+                mu=params.get("mu", 15),
+                rho=params.get("rho", 2),
+                lam=params.get("lam", 100),
+                sigma_init=params.get("sigma_init", 0.5),
+                cycle=cycle,
+            )
+            return MuRhoPlusLambdaES(cfg, problem)
+        case "GSA":
+            cfg = GravitationalSearchParameter(
+                iteration=cycle,
+                G0=params.get("G0", 100.0),
+                alpha=params.get("alpha", 20.0),
+                pop_size=params.get("pop_size", 30),
+            )
+            return GravitationalSearchAlgorithm(cfg, problem)
+        case "HC":
+            cfg = HillClimbingParameter(
+                iteration=params.get("iteration", cycle),
+            )
+            return HillClimbing(cfg, problem)
         case _:
             raise ValueError(f"Unknown algorithm: {algo_name}")
 
@@ -536,6 +613,12 @@ ALGO_REGISTRY: dict[str, Callable] = {
     "CA": lambda prob, cyc: build_algo("CA", {}, prob, cyc),
     "SFO": lambda prob, cyc: build_algo("SFO", {}, prob, cyc),
     "TLBO": lambda prob, cyc: build_algo("TLBO", {}, prob, cyc),
+    "(1+1)-ES": lambda prob, cyc: build_algo("(1+1)-ES", {}, prob, cyc),
+    "SA-ES": lambda prob, cyc: build_algo("SA-ES", {}, prob, cyc),
+    "CMA-ES": lambda prob, cyc: build_algo("CMA-ES", {}, prob, cyc),
+    "(μ/ρ+λ)-ES": lambda prob, cyc: build_algo("(μ/ρ+λ)-ES", {}, prob, cyc),
+    "GSA": lambda prob, cyc: build_algo("GSA", {}, prob, cyc),
+    "HC": lambda prob, cyc: build_algo("HC", {}, prob, cyc),
 }
 
 
@@ -568,7 +651,11 @@ def build_algo_registry(
     return registry
 
 # Algorithms whose history stores float fitness values directly
-_FLOAT_HISTORY_ALGOS = {"CA", "SFO", "TLBO"}
+_FLOAT_HISTORY_ALGOS = {
+    "CA", "SFO", "TLBO",
+    "(1+1)-ES", "SA-ES", "CMA-ES", "(μ/ρ+λ)-ES",
+    "HC",
+}
 
 
 # =====================================================================
@@ -728,14 +815,24 @@ def plot_comparison(
     n_algos = len(algo_names)
     colors = (_COLORS * ((n_algos // len(_COLORS)) + 1))[:n_algos]
 
-    fig, axes = plt.subplots(2, 2, figsize=(18, 13))
-    fig.suptitle(
-        f"Algorithm Comparison on {problem_name} (dim = {n_dim})",
+    title_suffix = f" (dim = {n_dim})"
+
+    # Derive separate save paths from save_path
+    if save_path:
+        base, ext = os.path.splitext(save_path)
+        save_convergence = f"{base}_convergence{ext}"
+        save_quality = f"{base}_quality{ext}"
+        save_time = f"{base}_time{ext}"
+        save_robustness = f"{base}_robustness{ext}"
+    else:
+        save_convergence = save_quality = save_time = save_robustness = None
+
+    # ── 1. Convergence Speed (separate window) ───────────────────────
+    fig1, ax1 = plt.subplots(figsize=(10, 7))
+    fig1.suptitle(
+        f"Convergence Speed — {problem_name}{title_suffix}",
         fontsize=16, fontweight="bold", y=0.98,
     )
-
-    # ── 1. Convergence Speed ─────────────────────────────────────────
-    ax = axes[0, 0]
     for idx, name in enumerate(algo_names):
         curves = [r.fitness_curve for r in grouped[name]]
         max_len = max(len(c) for c in curves)
@@ -745,84 +842,109 @@ def plot_comparison(
         mean_c = np.nanmean(arr, axis=0)
         std_c = np.nanstd(arr, axis=0)
         x = np.arange(1, max_len + 1)
-        ax.plot(x, mean_c, label=name, color=colors[idx], linewidth=1.4)
-        ax.fill_between(x, mean_c - std_c, mean_c + std_c,
-                        color=colors[idx], alpha=0.12)
-    ax.set_yscale("log")
-    ax.set_xlabel("Iteration", fontsize=11)
-    ax.set_ylabel("Best Fitness (log)", fontsize=11)
-    ax.set_title("Convergence Speed", fontsize=13, fontweight="bold")
-    ax.legend(fontsize=7, ncol=2, loc="upper right")
-    ax.grid(True, alpha=0.3, which="both", linestyle="--")
+        ax1.plot(x, mean_c, label=name, color=colors[idx], linewidth=1.4)
+        ax1.fill_between(x, mean_c - std_c, mean_c + std_c,
+                         color=colors[idx], alpha=0.12)
+    ax1.set_yscale("log")
+    ax1.set_xlabel("Iteration", fontsize=11)
+    ax1.set_ylabel("Best Fitness (log)", fontsize=11)
+    ax1.set_title("Convergence Speed", fontsize=13, fontweight="bold")
+    ax1.legend(fontsize=7, ncol=2, loc="upper right")
+    ax1.grid(True, alpha=0.3, which="both", linestyle="--")
+    fig1.tight_layout(rect=(0, 0, 1, 0.95))
 
-    # ── 2. Solution Quality (box plot) ───────────────────────────────
-    ax = axes[0, 1]
+    if save_convergence:
+        os.makedirs(os.path.dirname(save_convergence) or ".", exist_ok=True)
+        fig1.savefig(save_convergence, dpi=150, bbox_inches="tight")
+        print(f"\nConvergence figure saved to: {save_convergence}")
+
+    # ── 2. Solution Quality (separate window) ────────────────────────
+    fig2, ax2 = plt.subplots(figsize=(10, 7))
+    fig2.suptitle(
+        f"Solution Quality — {problem_name}{title_suffix}",
+        fontsize=16, fontweight="bold", y=0.98,
+    )
     box_data = [
         [r.best_fitness for r in grouped[name]] for name in algo_names
     ]
-    bp = ax.boxplot(
+    bp = ax2.boxplot(
         box_data, tick_labels=algo_names, patch_artist=True, widths=0.6,
     )
     for patch, c in zip(bp["boxes"], colors):
         patch.set_facecolor(c)
         patch.set_alpha(0.55)
-    ax.set_ylabel("Best Fitness", fontsize=11)
-    ax.set_title("Solution Quality", fontsize=13, fontweight="bold")
-    ax.tick_params(axis="x", rotation=45)
-    ax.grid(True, alpha=0.3, axis="y", linestyle="--")
+    ax2.set_ylabel("Best Fitness", fontsize=11)
+    ax2.set_title("Solution Quality", fontsize=13, fontweight="bold")
+    ax2.tick_params(axis="x", rotation=45)
+    ax2.grid(True, alpha=0.3, axis="y", linestyle="--")
+    fig2.tight_layout(rect=(0, 0, 1, 0.95))
 
-    # ── 3. Computational Time ────────────────────────────────────────
-    ax = axes[1, 0]
+    if save_quality:
+        os.makedirs(os.path.dirname(save_quality) or ".", exist_ok=True)
+        fig2.savefig(save_quality, dpi=150, bbox_inches="tight")
+        print(f"\nQuality figure saved to: {save_quality}")
+
+    # ── 3. Computational Time (separate window) ──────────────────────
+    fig3, ax3 = plt.subplots(figsize=(10, 7))
+    fig3.suptitle(
+        f"Computational Time — {problem_name}{title_suffix}",
+        fontsize=16, fontweight="bold", y=0.98,
+    )
     means_t = [np.mean([r.time_ms for r in grouped[n]]) for n in algo_names]
     stds_t = [np.std([r.time_ms for r in grouped[n]]) for n in algo_names]
-    bars = ax.bar(algo_names, means_t, yerr=stds_t, capsize=4,
-                  color=colors, alpha=0.7, edgecolor="black", linewidth=0.5)
-    ax.set_ylabel("Time (ms)", fontsize=11)
-    ax.set_title("Computational Time", fontsize=13, fontweight="bold")
-    ax.tick_params(axis="x", rotation=45)
-    ax.grid(True, alpha=0.3, axis="y", linestyle="--")
-    # Add value labels on bars
+    bars = ax3.bar(algo_names, means_t, yerr=stds_t, capsize=4,
+                   color=colors, alpha=0.7, edgecolor="black", linewidth=0.5)
+    ax3.set_ylabel("Time (ms)", fontsize=11)
+    ax3.set_title("Computational Time", fontsize=13, fontweight="bold")
+    ax3.tick_params(axis="x", rotation=45)
+    ax3.grid(True, alpha=0.3, axis="y", linestyle="--")
     for bar, m in zip(bars, means_t):
-        ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height(),
-                f"{m:.0f}", ha="center", va="bottom", fontsize=7)
+        ax3.text(bar.get_x() + bar.get_width() / 2, bar.get_height(),
+                 f"{m:.0f}", ha="center", va="bottom", fontsize=7)
+    fig3.tight_layout(rect=(0, 0, 1, 0.95))
 
-    # ── 4. Robustness ────────────────────────────────────────────────
-    ax = axes[1, 1]
+    if save_time:
+        os.makedirs(os.path.dirname(save_time) or ".", exist_ok=True)
+        fig3.savefig(save_time, dpi=150, bbox_inches="tight")
+        print(f"\nTime figure saved to: {save_time}")
 
-    # Left y-axis: std-dev of final fitness
+    # ── 4. Robustness (separate window) ──────────────────────────────
+    fig4, ax4 = plt.subplots(figsize=(10, 7))
+    fig4.suptitle(
+        f"Robustness — {problem_name}{title_suffix}",
+        fontsize=16, fontweight="bold", y=0.98,
+    )
     stds_f = [np.std([r.best_fitness for r in grouped[n]]) for n in algo_names]
     x_pos = np.arange(n_algos)
     width = 0.4
-    bars1 = ax.bar(x_pos - width / 2, stds_f, width, label="Std Dev (fitness)",
-                   color=colors, alpha=0.6, edgecolor="black", linewidth=0.5)
-    ax.set_ylabel("Std Dev of Best Fitness", fontsize=11)
-    ax.set_title("Robustness", fontsize=13, fontweight="bold")
-    ax.set_xticks(x_pos)
-    ax.set_xticklabels(algo_names, rotation=45, fontsize=9)
-    ax.grid(True, alpha=0.3, axis="y", linestyle="--")
+    bars1 = ax4.bar(x_pos - width / 2, stds_f, width, label="Std Dev (fitness)",
+                    color=colors, alpha=0.6, edgecolor="black", linewidth=0.5)
+    ax4.set_ylabel("Std Dev of Best Fitness", fontsize=11)
+    ax4.set_title("Robustness", fontsize=13, fontweight="bold")
+    ax4.set_xticks(x_pos)
+    ax4.set_xticklabels(algo_names, rotation=45, fontsize=9)
+    ax4.grid(True, alpha=0.3, axis="y", linestyle="--")
 
-    # Right y-axis: coefficient of variation (CV = std/mean)
-    ax2 = ax.twinx()
+    ax4r = ax4.twinx()
     means_f = [np.mean([r.best_fitness for r in grouped[n]]) for n in algo_names]
     cv = [s / abs(m) if abs(m) > 1e-30 else 0.0
           for s, m in zip(stds_f, means_f)]
-    ax2.plot(x_pos, cv, "D-", color="red", markersize=5, linewidth=1.2,
-             label="CV (Std/Mean)")
-    ax2.set_ylabel("Coefficient of Variation", fontsize=10, color="red")
-    ax2.tick_params(axis="y", labelcolor="red")
+    ax4r.plot(x_pos, cv, "D-", color="red", markersize=5, linewidth=1.2,
+              label="CV (Std/Mean)")
+    ax4r.set_ylabel("Coefficient of Variation", fontsize=10, color="red")
+    ax4r.tick_params(axis="y", labelcolor="red")
 
-    # Combined legend
-    lines1, labels1 = ax.get_legend_handles_labels()
-    lines2, labels2 = ax2.get_legend_handles_labels()
-    ax.legend(lines1 + lines2, labels1 + labels2, fontsize=8, loc="upper left")
+    lines1, labels1 = ax4.get_legend_handles_labels()
+    lines2, labels2 = ax4r.get_legend_handles_labels()
+    ax4.legend(lines1 + lines2, labels1 + labels2, fontsize=8, loc="upper left")
+    fig4.tight_layout(rect=(0, 0, 1, 0.95))
 
-    plt.tight_layout(rect=(0, 0, 1, 0.95))
+    if save_robustness:
+        os.makedirs(os.path.dirname(save_robustness) or ".", exist_ok=True)
+        fig4.savefig(save_robustness, dpi=150, bbox_inches="tight")
+        print(f"\nRobustness figure saved to: {save_robustness}")
 
-    if save_path:
-        os.makedirs(os.path.dirname(save_path) or ".", exist_ok=True)
-        fig.savefig(save_path, dpi=150, bbox_inches="tight")
-        print(f"\nFigure saved to: {save_path}")
-    else:
+    if not save_path:
         plt.show()
 
 

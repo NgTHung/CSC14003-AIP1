@@ -6,7 +6,7 @@ Generates a 1×2 comparison plot.
 Algorithms compared:
   Classical : DFS, BFS, UCS, Greedy Best-First, A*
   Local     : HC (Hill Climbing)
-  Natural   : SA, HS, ABC, CS, FA
+  Natural   : SA, HS, GSA, ABC, CS, FA
 
 Note: Knapsack uses *minimization* of ``-total_value + penalty``, so
 lower fitness is better (higher profit).
