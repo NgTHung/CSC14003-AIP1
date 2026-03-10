@@ -98,8 +98,12 @@ def main() -> None:
                   "Use --tune to run parameter tuning.")
 
     skip_algos = _CLASSICAL_ALGOS if args.no_classical else set()
+    # BFS exhausts memory on medium/large instances
+    if args.size in ("medium", "large") and "BFS" not in skip_algos:
+        skip_algos = skip_algos | {"BFS"}
+        print(">>> Skipping BFS (too memory-intensive for this size)")
     if skip_algos:
-        print(">>> Skipping classical graph-search algorithms")
+        print(f">>> Skipping: {', '.join(sorted(skip_algos))}")
 
     results = run_comparison(
         problem=problem,

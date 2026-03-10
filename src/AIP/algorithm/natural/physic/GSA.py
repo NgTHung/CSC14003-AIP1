@@ -59,6 +59,10 @@ class GravitationalSearchAlgorithm(Model[Problem, np.ndarray, float | None, Grav
         self.G0 = configuration.G0
         self.alpha = configuration.alpha
         self._is_discrete = isinstance(problem, DiscreteProblem)
+        self._is_permutation = (
+            self._is_discrete
+            and getattr(problem, 'solution_type', None) == 'permutation'
+        )
 
     @staticmethod
     def _sigmoid(x: np.ndarray) -> np.ndarray:
@@ -69,6 +73,15 @@ class GravitationalSearchAlgorithm(Model[Problem, np.ndarray, float | None, Grav
         """Convert continuous positions to binary using sigmoid transfer."""
         probs = self._sigmoid(positions)
         return (np.random.rand(*probs.shape) < probs).astype(float)
+
+    def _to_permutation(self, positions: np.ndarray) -> np.ndarray:
+        """Convert continuous positions to valid permutations via random-key encoding.
+
+        Each row is converted by sorting: the rank order of the continuous
+        values becomes the permutation.  This preserves the relative
+        ordering information stored in the continuous representation.
+        """
+        return np.argsort(positions, axis=1).astype(float)
 
     def _calculate_mass(self, fitness: np.ndarray) -> np.ndarray:
         """
@@ -154,8 +167,10 @@ class GravitationalSearchAlgorithm(Model[Problem, np.ndarray, float | None, Grav
             velocities = np.random.rand(self.pop_size, dim) * velocities + acceleration
             positions = positions + velocities
 
-            # Discretize for binary problems
-            if self._is_discrete:
+            # Map continuous positions to valid discrete solutions
+            if self._is_permutation:
+                positions = self._to_permutation(positions)
+            elif self._is_discrete:
                 positions = self._discretize(positions)
 
             # Evaluate new population
