@@ -95,23 +95,22 @@ class GreedyBestFirstSearch(Model[DiscreteProblem, list, float | None, dict]):
             explored.add(current_state)
             self.history.append(current_state)
 
-            if problem.is_goal(current_state):
-                self.best_solution = self._get_path(parent, current_state)
-                # Calculate total path cost
-                path = self.best_solution
-                total_cost = sum(
-                    problem.cost(path[i], path[i + 1], path[i + 1])
-                    for i in range(len(path) - 1)
-                )
-                self.best_fitness = total_cost
-                return self.best_solution
-
             for action in problem.actions(current_state):
                 next_state = problem.result(current_state, action)
 
                 if next_state not in explored:
                     if next_state not in parent:
                         parent[next_state] = current_state
+                        if problem.is_goal(next_state):
+                            self.best_solution = self._get_path(parent, next_state)
+                            # Calculate total path cost
+                            path = self.best_solution
+                            total_cost = sum(
+                                problem.cost(path[i], path[i + 1], path[i + 1])
+                                for i in range(len(path) - 1)
+                            )
+                            self.best_fitness = total_cost
+                            return self.best_solution
                         h_value = problem.heuristic(next_state)
                         heapq.heappush(frontier, (h_value, next_state))
 
