@@ -76,11 +76,13 @@ class BreadthFirstSearch(Model[DiscreteProblem, list, float | None, dict]):
         self.best_fitness = None
 
         frontier = deque([problem.initial_state])
+        frontier_set = {problem.initial_state}
         explored = set()
         parent = {}
 
         while frontier:
             current_state = frontier.popleft()
+            frontier_set.discard(current_state)
 
             if current_state in explored:
                 continue
@@ -90,7 +92,7 @@ class BreadthFirstSearch(Model[DiscreteProblem, list, float | None, dict]):
 
             for action in problem.actions(current_state):
                 next_state = problem.result(current_state, action)
-                if next_state not in explored and next_state not in [node for node in frontier]:
+                if next_state not in explored and next_state not in frontier_set:
                     parent[next_state] = current_state
                     if problem.is_goal(next_state):
                         self.best_solution = self._get_path(parent, next_state)
@@ -103,5 +105,6 @@ class BreadthFirstSearch(Model[DiscreteProblem, list, float | None, dict]):
                         self.best_fitness = total_cost
                         return self.best_solution
                     frontier.append(next_state)
+                    frontier_set.add(next_state)
 
         return None

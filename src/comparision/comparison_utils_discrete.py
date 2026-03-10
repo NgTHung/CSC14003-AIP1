@@ -45,6 +45,7 @@ from AIP.algorithm.local.HillClimbing import HillClimbing, HillClimbingParameter
 # Natural-inspired
 from AIP.algorithm.natural.physic.SA import SimulatedAnnealing
 from AIP.algorithm.natural.physic.HS import HarmonySearch
+from AIP.algorithm.natural.physic.GSA import GravitationalSearchAlgorithm, GravitationalSearchParameter
 from AIP.algorithm.natural.biology.abc import ArtificialBeeColony, ABCParameter
 from AIP.algorithm.natural.biology.cs import CuckooSearch, CuckooSearchParameter
 from AIP.algorithm.natural.biology.fa import FireflyAlgorithm, FireflyParameter
@@ -147,6 +148,11 @@ PARAM_GRIDS_COMMON: dict[str, dict[str, list]] = {
         "beta0": [0.5, 1.0],
         "gamma": [0.5, 1.0],
         "alpha_decay": [0.95, 0.98],
+    },
+    "GSA": {
+        "pop_size": [30, 50],
+        "G0": [50.0, 100.0],
+        "alpha": [10.0, 20.0],
     },
 }
 
@@ -280,6 +286,14 @@ def build_algo(
                 cycle=cycle,
             )
             return FireflyAlgorithm(cfg, problem)
+        case "GSA":
+            cfg = GravitationalSearchParameter(
+                iteration=params.get("max_iterations", cycle),
+                G0=params.get("G0", 100.0),
+                alpha=params.get("alpha", 20.0),
+                pop_size=params.get("pop_size", 30),
+            )
+            return GravitationalSearchAlgorithm(cfg, problem)
         # ACO family (TSP only)
         case "AS":
             cfg = AntSystemParameter(
@@ -445,6 +459,7 @@ ALGO_REGISTRY_COMMON: dict[str, callable] = {
     "ABC": lambda prob, cyc: build_algo("ABC", {}, prob, cyc),
     "CS": lambda prob, cyc: build_algo("CS", {}, prob, cyc),
     "FA": lambda prob, cyc: build_algo("FA", {}, prob, cyc),
+    "GSA": lambda prob, cyc: build_algo("GSA", {}, prob, cyc),
 }
 
 ALGO_REGISTRY_TSP: dict[str, callable] = {
@@ -650,7 +665,7 @@ def run_comparison(
 _COLORS = [
     "#4C72B0", "#DD8452", "#55A868", "#C44E52", "#8172B3",
     "#937860", "#DA8BC3", "#8C8C8C", "#CCB974", "#64B5CD",
-    "#E377C2",
+    "#E377C2", "#7F7F7F", "#BCBD22", "#17BECF", "#AEC7E8",
 ]
 
 
@@ -691,53 +706,71 @@ def plot_comparison(
     colors = (_COLORS * ((n_algos // len(_COLORS)) + 1))[:n_algos]
     sign = -1.0 if negate_fitness else 1.0
 
-    fig, axes = plt.subplots(1, 2, figsize=(18, 7))
-    fig.suptitle(
-        f"Algorithm Comparison on {problem_name}"
-        + (f"  ({problem_desc})" if problem_desc else ""),
+    title_suffix = f"  ({problem_desc})" if problem_desc else ""
+
+    # Derive separate save paths from save_path
+    if save_path:
+        base, ext = os.path.splitext(save_path)
+        save_fitness = f"{base}_fitness{ext}"
+        save_time = f"{base}_time{ext}"
+    else:
+        save_fitness = None
+        save_time = None
+
+    # ── 1. Best Fitness (separate window) ────────────────────────────
+    fig1, ax1 = plt.subplots(figsize=(10, 7))
+    fig1.suptitle(
+        f"{fitness_label} — {problem_name}{title_suffix}",
         fontsize=16, fontweight="bold", y=0.98,
     )
-
-    # ── 1. Best Fitness ──────────────────────────────────────────────
-    ax = axes[0]
     means_f = [sign * np.mean([r.best_fitness for r in grouped[n]]) for n in algo_names]
     stds_f = [np.std([r.best_fitness for r in grouped[n]]) for n in algo_names]
-    bars = ax.bar(algo_names, means_f, yerr=stds_f, capsize=4,
-                  color=colors, alpha=0.7, edgecolor="black", linewidth=0.5)
-    ax.set_ylabel(fitness_label, fontsize=11)
-    ax.set_title(fitness_label, fontsize=13, fontweight="bold")
-    ax.tick_params(axis="x", rotation=45)
-    ax.grid(True, alpha=0.3, axis="y", linestyle="--")
+    bars = ax1.bar(algo_names, means_f, yerr=stds_f, capsize=4,
+                   color=colors, alpha=0.7, edgecolor="black", linewidth=0.5)
+    ax1.set_ylabel(fitness_label, fontsize=11)
+    ax1.set_title(fitness_label, fontsize=13, fontweight="bold")
+    ax1.tick_params(axis="x", rotation=45)
+    ax1.grid(True, alpha=0.3, axis="y", linestyle="--")
     for bar, m in zip(bars, means_f):
-        ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height(),
-                f"{m:.2f}", ha="center", va="bottom", fontsize=7)
+        ax1.text(bar.get_x() + bar.get_width() / 2, bar.get_height(),
+                 f"{m:.2f}", ha="center", va="bottom", fontsize=7)
+    fig1.tight_layout(rect=(0, 0, 1, 0.95))
 
-    # ── 2. Computational Time ────────────────────────────────────────
-    ax = axes[1]
+    if save_fitness:
+        os.makedirs(os.path.dirname(save_fitness) or ".", exist_ok=True)
+        fig1.savefig(save_fitness, dpi=150, bbox_inches="tight")
+        print(f"\nFitness figure saved to: {save_fitness}")
+
+    # ── 2. Computational Time (separate window) ──────────────────────
+    fig2, ax2 = plt.subplots(figsize=(10, 7))
+    fig2.suptitle(
+        f"Computational Time — {problem_name}{title_suffix}",
+        fontsize=16, fontweight="bold", y=0.98,
+    )
     means_t = [np.mean([r.time_ms for r in grouped[n]]) for n in algo_names]
     stds_t = [np.std([r.time_ms for r in grouped[n]]) for n in algo_names]
-    bars = ax.bar(algo_names, means_t, yerr=stds_t, capsize=4,
-                  color=colors, alpha=0.7, edgecolor="black", linewidth=0.5)
-    ax.set_ylabel("Time (ms)", fontsize=11)
-    ax.set_title("Computational Time", fontsize=13, fontweight="bold")
-    ax.tick_params(axis="x", rotation=45)
-    ax.grid(True, alpha=0.3, axis="y", linestyle="--")
+    bars = ax2.bar(algo_names, means_t, yerr=stds_t, capsize=4,
+                   color=colors, alpha=0.7, edgecolor="black", linewidth=0.5)
+    ax2.set_ylabel("Time (ms)", fontsize=11)
+    ax2.set_title("Computational Time", fontsize=13, fontweight="bold")
+    ax2.tick_params(axis="x", rotation=45)
+    ax2.grid(True, alpha=0.3, axis="y", linestyle="--")
     for bar, m in zip(bars, means_t):
-        ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height(),
-                f"{m:.0f}", ha="center", va="bottom", fontsize=7)
+        ax2.text(bar.get_x() + bar.get_width() / 2, bar.get_height(),
+                 f"{m:.0f}", ha="center", va="bottom", fontsize=7)
+    fig2.tight_layout(rect=(0, 0, 1, 0.95))
 
-    plt.tight_layout(rect=[0, 0, 1, 0.95])
+    if save_time:
+        os.makedirs(os.path.dirname(save_time) or ".", exist_ok=True)
+        fig2.savefig(save_time, dpi=150, bbox_inches="tight")
+        print(f"\nTime figure saved to: {save_time}")
 
-    if save_path:
-        os.makedirs(os.path.dirname(save_path) or ".", exist_ok=True)
-        fig.savefig(save_path, dpi=150, bbox_inches="tight")
-        print(f"\nFigure saved to: {save_path}")
-    else:
+    if not save_path:
         plt.show()
 
 
-# Set of algo names that have NO meaningful iterative convergence curve
-_NO_CURVE_ALGOS = _CLASSICAL_ALGOS | {"HC"}
+# Classical algos produce a single best-fitness value (no iterative curve).
+_SINGLE_POINT_ALGOS = _CLASSICAL_ALGOS
 
 
 def plot_convergence(
@@ -748,15 +781,17 @@ def plot_convergence(
     negate_fitness: bool = False,
     fitness_label: str = "Best Fitness",
 ) -> None:
-    """Plot convergence curves for **natural-inspired** algorithms only.
+    """Plot convergence curves for all algorithms.
 
-    Classical graph-search (DFS, BFS, UCS, Greedy, A*) and HC do not
-    produce meaningful iterative convergence curves, so they are excluded.
+    Classical graph-search algorithms (DFS, BFS, UCS, Greedy, A*) are
+    shown as horizontal dashed reference lines (single best-fitness value).
+    Local search (HC) and natural-inspired algorithms are shown as
+    iterative convergence curves.
 
     Parameters
     ----------
     results : list[RunResult]
-        Run results (may include classical algos — they are filtered out).
+        Run results from ``run_comparison``.
     problem_name : str
         Display name for the problem.
     problem_desc : str
@@ -768,13 +803,11 @@ def plot_convergence(
     fitness_label : str
         Y-axis label (e.g. 'Distance', 'Profit', 'Conflicts').
     """
-    # Filter to natural-inspired algorithms with a real curve
-    natural_results = [r for r in results if r.algo_name not in _NO_CURVE_ALGOS]
-    if not natural_results:
-        print("  [INFO] No natural-inspired algorithm results to plot convergence.")
+    if not results:
+        print("  [INFO] No algorithm results to plot convergence.")
         return
 
-    grouped = _group_by_algo(natural_results)
+    grouped = _group_by_algo(results)
     algo_names = list(grouped.keys())
     n_algos = len(algo_names)
     colors = (_COLORS * ((n_algos // len(_COLORS)) + 1))[:n_algos]
@@ -787,23 +820,39 @@ def plot_convergence(
         fontsize=16, fontweight="bold", y=0.98,
     )
 
+    # Find the max iteration length across iterative algorithms for x-axis
+    max_iter = 1
+    for name in algo_names:
+        if name not in _SINGLE_POINT_ALGOS:
+            for r in grouped[name]:
+                if len(r.fitness_curve) > max_iter:
+                    max_iter = len(r.fitness_curve)
+
     for idx, name in enumerate(algo_names):
         curves = [r.fitness_curve for r in grouped[name]]
-        max_len = max(len(c) for c in curves)
-        arr = np.full((len(curves), max_len), np.nan)
-        for i, c in enumerate(curves):
-            arr[i, :len(c)] = c
-        mean_c = sign * np.nanmean(arr, axis=0)
-        x = np.arange(1, max_len + 1)
-        ax.plot(x, mean_c, label=name, color=colors[idx], linewidth=1.6)
+        curve_len = max(len(c) for c in curves)
+
+        if name in _SINGLE_POINT_ALGOS:
+            # Draw a horizontal dashed line across the full x-axis
+            val = sign * curves[0][0]
+            ax.axhline(y=val, label=name, color=colors[idx],
+                        linewidth=1.4, linestyle="--", alpha=0.7)
+        else:
+            # Plot iterative convergence curve
+            arr = np.full((len(curves), curve_len), np.nan)
+            for i, c in enumerate(curves):
+                arr[i, :len(c)] = c
+            mean_c = sign * np.nanmean(arr, axis=0)
+            x = np.arange(1, curve_len + 1)
+            ax.plot(x, mean_c, label=name, color=colors[idx], linewidth=1.6)
 
     ax.set_xlabel("Iteration", fontsize=12)
     ax.set_ylabel(fitness_label, fontsize=12)
-    ax.set_title("Natural-Inspired Algorithms", fontsize=13)
+    ax.set_title("All Algorithms", fontsize=13)
     ax.legend(fontsize=9, loc="best")
     ax.grid(True, alpha=0.3, linestyle="--")
 
-    plt.tight_layout(rect=[0, 0, 1, 0.95])
+    plt.tight_layout(rect=(0, 0, 1, 0.95))
 
     if save_path:
         os.makedirs(os.path.dirname(save_path) or ".", exist_ok=True)

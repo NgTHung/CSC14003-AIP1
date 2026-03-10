@@ -83,7 +83,7 @@ class HillClimbing(Model[Problem, Any, float, HillClimbingParameter]):
         """
         # Initialize
         if initial_state is None:
-            self.current_state = self.problem.sample()
+            self.current_state = self.problem.sample(1).flatten()
         else:
             self.current_state = initial_state
 
@@ -114,7 +114,10 @@ class HillClimbing(Model[Problem, Any, float, HillClimbingParameter]):
                     self.current_value = neighbor_value
                     found_better = True
                     break
-                self.history.append(self.current_value)
+
+            # Track current best value once per iteration
+            self.history.append(self.current_value)
+
             # Local optimum reached
             if not found_better:
                 break

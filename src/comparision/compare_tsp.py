@@ -6,7 +6,7 @@ Generates a 1×2 comparison plot.
 Algorithms compared:
   Classical : DFS, BFS, UCS, Greedy Best-First, A*
   Local     : HC (Hill Climbing)
-  Natural   : SA, HS, ABC, CS, FA, AS, ACS, MMAS
+  Natural   : SA, HS, GSA, ABC, CS, FA, AS, ACS, MMAS
 
 Usage
 -----
@@ -109,9 +109,11 @@ def main() -> None:
 
     # Format solution: show city-name path
     def _fmt_tsp(sol):
-        # Classical algos return a path (list of tuples); take last state
+        # Classical algos return a path of (city, frozenset) state tuples
         if isinstance(sol, list) and sol and isinstance(sol[0], tuple):
-            sol = sol[-1]
+            cities = [s[0] for s in sol]
+            names = [problem.city_names[i] for i in cities]
+            return " -> ".join(names)
         arr = np.asarray(sol).flatten().astype(int)
         names = [problem.city_names[i] for i in arr]
         return " -> ".join(names)
