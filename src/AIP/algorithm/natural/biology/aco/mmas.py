@@ -74,6 +74,7 @@ class MMAS(Model[DiscreteProblem, np.ndarray | None, float, MMASParameter]):
     tau_max: float
     tau_min: float
     _is_permutation: bool
+    _combined: np.ndarray   # pre-computed tau^alpha * eta^beta
 
     def __init__(self, configuration: MMASParameter, problem: DiscreteProblem):
         """Initialize MMAS.
@@ -93,13 +94,22 @@ class MMAS(Model[DiscreteProblem, np.ndarray | None, float, MMASParameter]):
         self.tau_max = 1.0
         self.tau_min = self.tau_max / (2.0 * n)
 
+        # Load problem-specific heuristic (e.g. 1/distance for TSP,
+        # value/weight for Knapsack).  Falls back to all-ones when the
+        # problem does not supply one.
+        heuristic = problem.aco_heuristic()
+
         if self._is_permutation:
             self.tau = np.full((n, n), self.tau_max)
-            self.eta = np.ones((n, n))
+            self.eta = heuristic if heuristic is not None else np.ones((n, n))
         else:
             d = problem.domain_size
             self.tau = np.full((n, d), self.tau_max)
-            self.eta = np.ones((n, d))
+            self.eta = heuristic if heuristic is not None else np.ones((n, d))
+
+        # Pre-compute eta^beta (constant across iterations)
+        self._eta_beta = self.eta ** self.conf.beta
+        self._update_combined()
 
         self.best_solution = None
         self.best_fitness = float("inf")
@@ -107,6 +117,10 @@ class MMAS(Model[DiscreteProblem, np.ndarray | None, float, MMASParameter]):
 
         self._stagnation_counter = 0
         self._last_improvement = 0
+
+    def _update_combined(self):
+        """Recompute the combined score matrix tau^alpha * eta^beta."""
+        self._combined = self.tau ** self.conf.alpha * self._eta_beta
 
     # ------------------------------------------------------------------
     # Pheromone bounds
@@ -137,24 +151,8 @@ class MMAS(Model[DiscreteProblem, np.ndarray | None, float, MMASParameter]):
     # Selection helpers
     # ------------------------------------------------------------------
 
-    def _select_next_permutation(self, current: int, visited: set[int]) -> int:
-        """Roulette-wheel selection for the next unvisited node."""
-        unvisited = [i for i in range(self.problem.n_dims) if i not in visited]
-        if not unvisited:
-            return current
-
-        scores = np.array([
-            self.tau[current][j] ** self.conf.alpha
-            * self.eta[current][j] ** self.conf.beta
-            for j in unvisited
-        ])
-
-        total = scores.sum()
-        if total == 0:
-            return np.random.choice(unvisited)
-
-        probs = scores / total
-        return np.random.choice(unvisited, p=probs)
+    # Selection is handled inline in _construct_permutation using
+    # vectorised numpy operations on _combined.
 
     # ------------------------------------------------------------------
     # Solution construction
@@ -167,37 +165,55 @@ class MMAS(Model[DiscreteProblem, np.ndarray | None, float, MMASParameter]):
         return self._construct_assignment()
 
     def _construct_permutation(self) -> np.ndarray:
-        """Build a permutation by visiting each node exactly once."""
+        """Build a permutation by visiting each node exactly once.
+
+        Uses a boolean mask instead of a set for O(1) numpy indexing.
+        """
         n = self.problem.n_dims
+        visited = np.zeros(n, dtype=bool)
+        solution = np.empty(n, dtype=np.intp)
+
         current = np.random.randint(0, n)
-        solution = [current]
-        visited = {current}
+        solution[0] = current
+        visited[current] = True
 
-        while len(solution) < n:
-            next_node = self._select_next_permutation(current, visited)
-            solution.append(next_node)
-            visited.add(next_node)
-            current = next_node
+        for step in range(1, n):
+            scores = self._combined[current].copy()
+            scores[visited] = 0.0
 
-        return np.array(solution, dtype=float)
+            total = scores.sum()
+            if total == 0.0:
+                candidates = np.flatnonzero(~visited)
+                current = candidates[np.random.randint(len(candidates))]
+            else:
+                scores /= total
+                current = np.random.choice(n, p=scores)
+
+            solution[step] = current
+            visited[current] = True
+
+        return solution.astype(float)
 
     def _construct_assignment(self) -> np.ndarray:
-        """Build an assignment by choosing a value for each position."""
-        n = self.problem.n_dims
-        d = self.problem.domain_size
-        solution = np.zeros(n, dtype=float)
+        """Build an assignment by choosing a value for each position.
 
-        for pos in range(n):
-            scores = (
-                self.tau[pos] ** self.conf.alpha
-                * self.eta[pos] ** self.conf.beta
-            )
-            total = scores.sum()
-            if total == 0:
-                solution[pos] = float(np.random.randint(d))
-            else:
-                probs = scores / total
-                solution[pos] = float(np.random.choice(d, p=probs))
+        Vectorised: computes cumulative probabilities for all positions
+        at once and samples via uniform random draws.
+        """
+        scores = self._combined.copy()
+        totals = scores.sum(axis=1, keepdims=True)
+
+        zero_mask = (totals.ravel() == 0)
+        if zero_mask.any():
+            scores[zero_mask] = 1.0
+            totals[zero_mask] = scores.shape[1]
+
+        cumprobs = np.cumsum(scores / totals, axis=1)
+        rands = np.random.rand(scores.shape[0])
+        solution = np.array([
+            np.searchsorted(cumprobs[pos], rands[pos])
+            for pos in range(scores.shape[0])
+        ], dtype=float)
 
         return solution
 
@@ -209,6 +225,7 @@ class MMAS(Model[DiscreteProblem, np.ndarray | None, float, MMASParameter]):
         list[tuple[np.ndarray, float]]
             (solution, fitness) pairs for each ant.
         """
+        self._update_combined()
         solutions: list[tuple[np.ndarray, float]] = []
 
         for _ in range(self.conf.m):
@@ -263,15 +280,15 @@ class MMAS(Model[DiscreteProblem, np.ndarray | None, float, MMASParameter]):
         deposit = 1.0 / deposit_fit if deposit_fit > 0 else 1.0
 
         if self._is_permutation:
-            sol = deposit_sol.astype(int)
-            for i in range(len(sol)):
-                a, b = sol[i], sol[(i + 1) % len(sol)]
-                self.tau[a][b] += deposit
-                self.tau[b][a] += deposit
+            sol = deposit_sol.astype(np.intp)
+            frm = sol
+            to = np.roll(sol, -1)
+            self.tau[frm, to] += deposit
+            self.tau[to, frm] += deposit
         else:
-            for pos in range(self.problem.n_dims):
-                val = int(deposit_sol[pos])
-                self.tau[pos][val] += deposit
+            positions = np.arange(self.problem.n_dims)
+            vals = deposit_sol.astype(np.intp)
+            self.tau[positions, vals] += deposit
 
         # Clamp to [tau_min, tau_max]
         self.tau = np.clip(self.tau, self.tau_min, self.tau_max)

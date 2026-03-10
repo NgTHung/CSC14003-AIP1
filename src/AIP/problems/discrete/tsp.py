@@ -128,6 +128,23 @@ class TSP(DiscreteProblem):
         order = np.sort(x.astype(int))
         return np.array_equal(order, np.arange(self.n_cities))
 
+    @override
+    def aco_heuristic(self) -> np.ndarray:
+        """Return ``1 / distance`` matrix for ACO edge desirability.
+
+        Returns
+        -------
+        np.ndarray
+            Shape ``(n_cities, n_cities)``.  Diagonal and zero-distance
+            entries are set to a small epsilon to avoid division by zero.
+        """
+        with np.errstate(divide="ignore", invalid="ignore"):
+            eta = np.where(self.dist_matrix > 0,
+                           1.0 / self.dist_matrix,
+                           1e-10)
+        np.fill_diagonal(eta, 1e-10)
+        return eta
+
     # ==================================================================
     # Local-search interface  (2-opt neighborhood)
     # ==================================================================

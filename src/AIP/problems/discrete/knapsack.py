@@ -134,6 +134,29 @@ class Knapsack(DiscreteProblem):
             return False
         return float(np.dot(x, self.weights)) <= self.capacity
 
+    @override
+    def aco_heuristic(self) -> np.ndarray:
+        """Return value/weight ratio heuristic for ACO.
+
+        Returns
+        -------
+        np.ndarray
+            Shape ``(n_items, 2)``.  Column 0 (don't take) gets a small
+            baseline; column 1 (take) gets ``value_i / weight_i``.
+        """
+        eta = np.ones((self.n_items, 2))
+        with np.errstate(divide="ignore", invalid="ignore"):
+            ratios = np.where(self.weights > 0,
+                              self.values / self.weights,
+                              self.values)  # weight=0 → free item
+        # Normalize to [0.1, 1] range so it blends well with pheromone
+        r_max = ratios.max()
+        if r_max > 0:
+            ratios = 0.1 + 0.9 * (ratios / r_max)
+        eta[:, 0] = 0.1   # small baseline for "don't take"
+        eta[:, 1] = ratios
+        return eta
+
     # ==================================================================
     # Local-search interface
     # ==================================================================

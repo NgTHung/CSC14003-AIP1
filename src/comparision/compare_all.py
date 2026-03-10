@@ -174,43 +174,40 @@ def main() -> None:
         if not all_algo_names:
             all_algo_names = list(dict.fromkeys(r.algo_name for r in res))
 
-    # ── Build the mega-figure: 5 rows × 4 columns ────────────────────
-    n_probs = len(PROBLEMS)
+    # ── Build one figure per problem: 1 row × 4 columns each ──────────
     n_algos = len(all_algo_names)
     colors = (_COLORS * ((n_algos // len(_COLORS)) + 1))[:n_algos]
 
-    fig, axes = plt.subplots(
-        n_probs, 4, figsize=(24, 4.5 * n_probs),
-        gridspec_kw={"wspace": 0.30, "hspace": 0.40},
-    )
-
     col_titles = ["Convergence Speed", "Solution Quality",
                   "Computational Time (ms)", "Robustness (Std Dev)"]
-    for j, title in enumerate(col_titles):
-        axes[0, j].set_title(title, fontsize=12, fontweight="bold")
 
-    for i, (prob_name, res) in enumerate(all_results.items()):
-        _plot_row(axes[i], res, prob_name, all_algo_names, colors)
+    figures: list[tuple[str, plt.Figure]] = []
 
-    # Shared legend at the bottom
-    handles, labels = axes[0, 0].get_legend_handles_labels()
-    fig.legend(handles, labels, loc="lower center", ncol=min(n_algos, 6),
-               fontsize=9, frameon=True, borderpad=0.8)
+    for prob_name, res in all_results.items():
+        fig, axes = plt.subplots(1, 4, figsize=(24, 5))
+        for j, title in enumerate(col_titles):
+            axes[j].set_title(title, fontsize=12, fontweight="bold")
 
-    fig.suptitle(
-        f"Algorithm Comparison Across All Continuous Problems (dim = {n_dim})",
-        fontsize=16, fontweight="bold", y=0.99,
-    )
+        _plot_row(axes, res, prob_name, all_algo_names, colors)
 
-    plt.subplots_adjust(bottom=0.06)
+        handles, labels = axes[0].get_legend_handles_labels()
+        fig.legend(handles, labels, loc="lower center", ncol=min(n_algos, 6),
+                   fontsize=9, frameon=True, borderpad=0.8)
+
+        fig.suptitle(
+            f"{prob_name} — Algorithm Comparison (dim = {n_dim})",
+            fontsize=14, fontweight="bold", y=1.0,
+        )
+        plt.subplots_adjust(bottom=0.14)
+        figures.append((prob_name, fig))
 
     if args.save:
-        save_path = os.path.join(
-            os.path.dirname(__file__), "figures", "compare_all.png"
-        )
-        os.makedirs(os.path.dirname(save_path), exist_ok=True)
-        fig.savefig(save_path, dpi=150, bbox_inches="tight")
-        print(f"\nFigure saved to: {save_path}")
+        fig_dir = os.path.join(os.path.dirname(__file__), "figures")
+        os.makedirs(fig_dir, exist_ok=True)
+        for prob_name, fig in figures:
+            save_path = os.path.join(fig_dir, f"compare_{prob_name.lower()}_dim_{n_dim}.png")
+            fig.savefig(save_path, dpi=150, bbox_inches="tight")
+            print(f"Figure saved to: {save_path}")
     else:
         plt.show()
 
