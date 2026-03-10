@@ -336,17 +336,18 @@ def build_algo(
             )
             return ParticleSwarmOptimization(cfg, problem)
         case "ABC":
+            n_bees = 50
             cfg = ABCParameter(
-                n_bees=params.get("n_bees", 50),
-                limit=params.get("limit", 20),
+                n_bees=params.get("n_bees", n_bees),
+                limit=params.get("limit", n_bees * problem.n_dim / 2),
                 iteration=cycle,
             )
             return ArtificialBeeColony(cfg, problem)
         case "CS":
             cfg = CuckooSearchParameter(
-                n_nests=params.get("n_nests", 50),
+                n_nests=params.get("n_nests", 40),
                 pa=params.get("pa", 0.25),
-                alpha=params.get("alpha", 0.5),
+                alpha=params.get("alpha", 1),
                 beta=params.get("beta", 1.5),
                 iteration=cycle,
             )
@@ -354,7 +355,7 @@ def build_algo(
         case "FA":
             cfg = FireflyParameter(
                 n_fireflies=params.get("n_fireflies", 50),
-                alpha=params.get("alpha", 0.5),
+                alpha=params.get("alpha", 0.3),
                 beta0=params.get("beta0", 1.0),
                 gamma=params.get("gamma", 1.0),
                 alpha_decay=params.get("alpha_decay", 0.97),

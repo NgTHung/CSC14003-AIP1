@@ -180,8 +180,8 @@ class CuckooSearch(
             A random neighbour of the current nest.
         """
         problem = cast(DiscreteProblem, self.problem)
-        nbrs = problem.neighbors(self.nests[idx])
-        return nbrs[np.random.randint(len(nbrs))]
+        nbrs = problem.random_neighbor(self.nests[idx])
+        return nbrs
 
     def generate_cuckoos(self) -> np.ndarray:
         """Generate new cuckoo eggs for every nest.
