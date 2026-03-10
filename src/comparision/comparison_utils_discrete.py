@@ -375,6 +375,7 @@ def tune_algorithm(
                 model.run(initial_state=initial)
             else:
                 model.run()
+            assert model.best_fitness is not None
             fitnesses.append(float(model.best_fitness))
 
         mean_f = float(np.mean(fitnesses))
@@ -443,7 +444,7 @@ def _problem_type(problem: DiscreteProblem) -> Literal["TSP", "Knapsack", "Graph
 # Registry — default (name, builder_fn) pairs
 # =====================================================================
 
-ALGO_REGISTRY_CLASSICAL: dict[str, callable] = {
+ALGO_REGISTRY_CLASSICAL: dict[str, Callable] = {
     "DFS": lambda prob, cyc: build_algo("DFS", {}, prob, cyc),
     "BFS": lambda prob, cyc: build_algo("BFS", {}, prob, cyc),
     "UCS": lambda prob, cyc: build_algo("UCS", {}, prob, cyc),
@@ -451,7 +452,7 @@ ALGO_REGISTRY_CLASSICAL: dict[str, callable] = {
     "A*": lambda prob, cyc: build_algo("A*", {}, prob, cyc),
 }
 
-ALGO_REGISTRY_COMMON: dict[str, callable] = {
+ALGO_REGISTRY_COMMON: dict[str, Callable] = {
     **ALGO_REGISTRY_CLASSICAL,
     "HC": lambda prob, cyc: build_algo("HC", {}, prob, cyc),
     "SA": lambda prob, cyc: build_algo("SA", {}, prob, cyc),
@@ -462,7 +463,7 @@ ALGO_REGISTRY_COMMON: dict[str, callable] = {
     "GSA": lambda prob, cyc: build_algo("GSA", {}, prob, cyc),
 }
 
-ALGO_REGISTRY_TSP: dict[str, callable] = {
+ALGO_REGISTRY_TSP: dict[str, Callable] = {
     **ALGO_REGISTRY_COMMON,
     "AS": lambda prob, cyc: build_algo("AS", {}, prob, cyc),
     "ACS": lambda prob, cyc: build_algo("ACS", {}, prob, cyc),
@@ -472,23 +473,21 @@ ALGO_REGISTRY_TSP: dict[str, callable] = {
 
 def get_default_registry(
     problem_type: Literal["TSP", "Knapsack", "GraphColoring"],
-) -> dict[str, callable]:
+) -> dict[str, Callable]:
     """Return the default algorithm registry for a problem type."""
-    if problem_type == "TSP":
-        return dict(ALGO_REGISTRY_TSP)
-    return dict(ALGO_REGISTRY_COMMON)
+    return dict(ALGO_REGISTRY_TSP)
 
 
 def build_algo_registry(
     problem_type: Literal["TSP", "Knapsack", "GraphColoring"],
     tuned_params: dict[str, dict] | None = None,
-) -> dict[str, callable]:
+) -> dict[str, Callable]:
     """Create an algorithm registry, optionally using tuned parameters."""
     base = get_default_registry(problem_type)
     if tuned_params is None:
         return base
 
-    registry: dict[str, callable] = {}
+    registry: dict[str, Callable] = {}
     for name in base:
         params = tuned_params.get(name, {})
         registry[name] = (
