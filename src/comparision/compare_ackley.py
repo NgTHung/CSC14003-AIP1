@@ -19,7 +19,7 @@ _SRC = os.path.join(os.path.dirname(__file__), os.pardir)
 if _SRC not in sys.path:
     sys.path.insert(0, os.path.abspath(_SRC))
 
-from problems.continuous.ackley import Ackley
+from AIP.problems.continuous.ackley import Ackley
 from comparision.comparison_utils import (
     run_comparison, plot_comparison, print_summary_table,
     tune_all_algorithms, load_tuned_config,

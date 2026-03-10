@@ -3,8 +3,22 @@ name = "csc14003-aip1"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
-requires-python = ">=3.14"
+requires-python = ">=3.11"
 dependencies = [
     "matplotlib>=3.10.8",
     "numpy>=2.4.1",
+]
+[build-system]
+requires = ["uv_build>=0.9.8,<0.10.0"]
+build-backend = "uv_build"
+[tool.uv.build-backend]
+# Say which top-level package you are shipping
+module-name = "AIP"
+# It lives at the project root (not under src/)
+module-root = "src"
+namespace   = true
+
+[dependency-groups]
+dev = [
+    "ipykernel>=7.2.0",
 ]

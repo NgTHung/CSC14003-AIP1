@@ -5,9 +5,9 @@ sys.path.append('src')
 
 import matplotlib.pyplot as plt
 
-from problems.discrete.nqueens import NQueensProblem
-from algorithm.local.HillClimbing import HillClimbing
-from algorithm.local.SteepestAscentHC import SteepestAscentHillClimbing
+from AIP.problems.discrete.nqueens import NQueensProblem
+from AIP.algorithm.local.HillClimbing import HillClimbing
+from AIP.algorithm.local.SteepestAscentHC import SteepestAscentHillClimbing
 
 
 # ---------------------------------------------------------------------------
