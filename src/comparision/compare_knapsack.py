@@ -1,0 +1,155 @@
+"""Compare optimization algorithms on the **0/1 Knapsack** problem.
+
+Metrics: Best Fitness · Computational Time
+Generates a 1×2 comparison plot.
+
+Algorithms compared:
+  Classical : DFS, BFS, UCS, Greedy Best-First, A*
+  Local     : HC (Hill Climbing)
+  Natural   : SA, HS, ABC, CS, FA
+
+Note: Knapsack uses *minimization* of ``-total_value + penalty``, so
+lower fitness is better (higher profit).
+
+Usage
+-----
+    python -m src.comparision.compare_knapsack [--size medium] [--cycle 500] [--seed 42] [--save]
+    python -m src.comparision.compare_knapsack --no-classical --save
+    python -m src.comparision.compare_knapsack --tune --tune-runs 3 --save
+"""
+
+from __future__ import annotations
+
+import argparse
+import os
+import sys
+
+import numpy as np
+
+_SRC = os.path.join(os.path.dirname(__file__), os.pardir)
+if _SRC not in sys.path:
+    sys.path.insert(0, os.path.abspath(_SRC))
+
+from AIP.problems.discrete.knapsack import Knapsack
+from comparision.comparison_utils_discrete import (
+    run_comparison, plot_comparison, plot_convergence, print_summary_table,
+    tune_all_algorithms, load_tuned_config, _CLASSICAL_ALGOS,
+)
+
+_SIZE_FACTORIES = {
+    "tiny":   Knapsack.create_tiny,
+    "small":  Knapsack.create_small,
+    "medium": Knapsack.create_medium,
+    "large":  Knapsack.create_large,
+}
+
+CONFIG_NAME = "Knapsack"
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        description="Algorithm comparison on 0/1 Knapsack")
+    parser.add_argument("--size", type=str, default="medium",
+                        choices=list(_SIZE_FACTORIES.keys()),
+                        help="Problem instance size (default: medium)")
+    parser.add_argument("--cycle", type=int, default=500,
+                        help="Iterations per run (default: 500)")
+    parser.add_argument("--seed", type=int, default=42,
+                        help="Base random seed")
+    parser.add_argument("--save", action="store_true",
+                        help="Save figure instead of showing")
+    parser.add_argument("--tune", action="store_true",
+                        help="Force re-tuning via grid search")
+    parser.add_argument("--tune-runs", type=int, default=3,
+                        help="Independent runs per config during tuning")
+    parser.add_argument("--no-classical", action="store_true",
+                        help="Skip classical graph-search algorithms "
+                             "(recommended for large instances)")
+    parser.add_argument("--timeout", type=float, default=60.0,
+                        help="Max seconds per algorithm run (default: 60)")
+    args = parser.parse_args()
+
+    problem = _SIZE_FACTORIES[args.size]()
+    config_name = f"{CONFIG_NAME}_{args.size}"
+
+    print(f"Problem  : 0/1 Knapsack ({args.size})")
+    print(f"Items    : {problem.n_items}")
+    print(f"Capacity : {problem.capacity}")
+    print(f"Weights  : {problem.weights.tolist()}")
+    print(f"Values   : {problem.values.tolist()}")
+    print(f"Cycle    : {args.cycle}")
+
+    tuned_params = None
+    if args.tune:
+        print("\n>>> Running parameter tuning for all algorithms...")
+        tuned_params = tune_all_algorithms(
+            problem=problem,
+            problem_config_name=config_name,
+            cycle=args.cycle,
+            n_runs=args.tune_runs,
+            seed=args.seed,
+        )
+    else:
+        tuned_params = load_tuned_config(config_name)
+        if tuned_params:
+            print(f"\n>>> Loaded tuned config for {config_name} "
+                  f"({len(tuned_params)} algos)")
+        else:
+            print("\n>>> No saved config found, using defaults. "
+                  "Use --tune to run parameter tuning.")
+
+    skip_algos = _CLASSICAL_ALGOS if args.no_classical else set()
+    if skip_algos:
+        print(">>> Skipping classical graph-search algorithms")
+
+    results = run_comparison(
+        problem=problem,
+        cycle=args.cycle,
+        seed=args.seed,
+        tuned_params=tuned_params,
+        skip_algos=skip_algos,
+        timeout=args.timeout,
+    )
+
+    # Format solution: show selected item indices
+    def _fmt_knapsack(sol):
+        # Classical algos return a path (list of tuples); take last state
+        if isinstance(sol, list) and sol and isinstance(sol[0], tuple):
+            sol = sol[-1]
+        arr = np.asarray(sol).flatten()
+        selected = [str(i) for i, v in enumerate(arr) if v >= 0.5]
+        return "Items: [" + ", ".join(selected) + "]"
+
+    print_summary_table(results, negate_fitness=True, fitness_label="Profit",
+                        format_solution=_fmt_knapsack)
+
+    save_path = os.path.join(
+        os.path.dirname(__file__), "figures", f"compare_knapsack_{args.size}.png"
+    ) if args.save else None
+
+    plot_comparison(
+        results,
+        problem_name="0/1 Knapsack",
+        problem_desc=f"{args.size}, {problem.n_items} items, cap={problem.capacity:.0f}",
+        save_path=save_path,
+        negate_fitness=True,
+        fitness_label="Profit",
+    )
+
+    conv_save_path = os.path.join(
+        os.path.dirname(__file__), "figures",
+        f"convergence_knapsack_{args.size}.png",
+    ) if args.save else None
+
+    plot_convergence(
+        results,
+        problem_name="0/1 Knapsack",
+        problem_desc=f"{args.size}, {problem.n_items} items, cap={problem.capacity:.0f}",
+        save_path=conv_save_path,
+        negate_fitness=True,
+        fitness_label="Profit",
+    )
+
+
+if __name__ == "__main__":
+    main()
