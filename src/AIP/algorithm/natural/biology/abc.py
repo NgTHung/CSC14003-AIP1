@@ -209,8 +209,8 @@ class ArtificialBeeColony(
             A random neighbour of the current food source.
         """
         problem = cast(DiscreteProblem, self.problem)
-        nbrs = problem.neighbors(self.food_sources[idx])
-        return nbrs[np.random.randint(len(nbrs))]
+        nbrs = problem.random_neighbor(self.food_sources[idx])
+        return nbrs
 
     def _generate_candidate(self, idx: int) -> np.ndarray:
         """Generate a candidate solution near food source *idx*.
