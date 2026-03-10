@@ -28,27 +28,27 @@ if _SRC not in sys.path:
 
 import matplotlib.pyplot as plt
 
-from problems.base_problem import DiscreteProblem
-from problems.discrete.tsp import TSP
-from problems.discrete.knapsack import Knapsack
-from problems.discrete.graph_coloring import GraphColoring
+from AIP.problems.base_problem import DiscreteProblem
+from AIP.problems.discrete.tsp import TSP
+from AIP.problems.discrete.knapsack import Knapsack
+from AIP.problems.discrete.graph_coloring import GraphColoring
 
 # ── Algorithm imports ────────────────────────────────────────────────────
 # Classical graph-search
-from algorithm.classical.DFS import DepthFirstSearch
-from algorithm.classical.BFS import BreadthFirstSearch
-from algorithm.classical.UCS import UniformCostSearch
-from algorithm.classical.GreedyBestFirst import GreedyBestFirstSearch
-from algorithm.classical.AStar import AStarSearch
+from AIP.algorithm.classical.DFS import DepthFirstSearch
+from AIP.algorithm.classical.BFS import BreadthFirstSearch
+from AIP.algorithm.classical.UCS import UniformCostSearch
+from AIP.algorithm.classical.GreedyBestFirst import GreedyBestFirstSearch
+from AIP.algorithm.classical.AStar import AStarSearch
 # Local search
-from algorithm.local.HillClimbing import HillClimbing, HillClimbingParameter
+from AIP.algorithm.local.HillClimbing import HillClimbing, HillClimbingParameter
 # Natural-inspired
-from algorithm.natural.physic.SA import SimulatedAnnealing
-from algorithm.natural.physic.HS import HarmonySearch
-from algorithm.natural.biology.abc import ArtificialBeeColony, ABCParameter
-from algorithm.natural.biology.cs import CuckooSearch, CuckooSearchParameter
-from algorithm.natural.biology.fa import FireflyAlgorithm, FireflyParameter
-from algorithm.natural.biology.aco import (
+from AIP.algorithm.natural.physic.SA import SimulatedAnnealing
+from AIP.algorithm.natural.physic.HS import HarmonySearch
+from AIP.algorithm.natural.biology.abc import ArtificialBeeColony, ABCParameter
+from AIP.algorithm.natural.biology.cs import CuckooSearch, CuckooSearchParameter
+from AIP.algorithm.natural.biology.fa import FireflyAlgorithm, FireflyParameter
+from AIP.algorithm.natural.biology.aco import (
     AntSystem, AntSystemParameter,
     ACS, ACSParameter,
     MMAS, MMASParameter,

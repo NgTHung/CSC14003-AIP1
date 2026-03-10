@@ -30,7 +30,7 @@ _SRC = os.path.join(os.path.dirname(__file__), os.pardir)
 if _SRC not in sys.path:
     sys.path.insert(0, os.path.abspath(_SRC))
 
-from problems.discrete.knapsack import Knapsack
+from AIP.problems.discrete.knapsack import Knapsack
 from comparision.comparison_utils_discrete import (
     run_comparison, plot_comparison, plot_convergence, print_summary_table,
     tune_all_algorithms, load_tuned_config, _CLASSICAL_ALGOS,
