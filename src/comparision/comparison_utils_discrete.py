@@ -235,7 +235,7 @@ def build_algo(
         # ── Local search ─────────────────────────────────────────
         case "HC":
             cfg = HillClimbingParameter(
-                iteration=params.get("iteration", 1000),
+                iteration=params.get("iteration", cycle),
             )
             return HillClimbing(cfg, problem)
         case "SA":

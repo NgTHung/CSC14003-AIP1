@@ -60,13 +60,22 @@ class HarmonySearch(Model[Problem, np.ndarray, float | None, dict]):
         self.bw = configuration.get('bw', 0.1)
         self.max_iterations = configuration.get('max_iterations', 1000)
         self._is_discrete = isinstance(problem, DiscreteProblem)
+        self._is_permutation = (
+            self._is_discrete
+            and getattr(problem, 'solution_type', None) == 'permutation'
+        )
 
     def _improvise_harmony(self, harmony_memory: np.ndarray) -> np.ndarray:
         """
         Improvise a new harmony from the harmony memory.
 
-        For discrete problems pitch adjustment flips the bit.  For continuous
-        problems Gaussian bandwidth noise is added.
+        For permutation problems (e.g. TSP) the new harmony is built by
+        picking a whole solution from memory and optionally applying a
+        2-opt perturbation, since per-dimension mixing would break the
+        permutation constraint.
+
+        For other discrete problems pitch adjustment flips the bit.
+        For continuous problems Gaussian bandwidth noise is added.
 
         Parameters
         ----------
@@ -78,6 +87,10 @@ class HarmonySearch(Model[Problem, np.ndarray, float | None, dict]):
         np.ndarray
             New harmony vector.
         """
+        # Permutation problems need whole-solution operations
+        if self._is_permutation:
+            return self._improvise_permutation(harmony_memory)
+
         dim = harmony_memory.shape[1]
         new_harmony = np.zeros(dim)
 
@@ -91,7 +104,7 @@ class HarmonySearch(Model[Problem, np.ndarray, float | None, dict]):
                 if np.random.rand() < self.par:
                     if self._is_discrete:
                         # Delegate to problem's perturb for correct handling
-                        # of non-binary discrete (e.g. graph coloring, TSP)
+                        # of non-binary discrete (e.g. graph coloring)
                         tmp = new_harmony.copy()
                         tmp = self.problem.perturb(tmp)
                         new_harmony[i] = tmp[i]
@@ -102,6 +115,24 @@ class HarmonySearch(Model[Problem, np.ndarray, float | None, dict]):
                 sample = self.problem.sample(1).flatten()
                 new_harmony[i] = sample[i]
 
+        return new_harmony
+
+    def _improvise_permutation(self, harmony_memory: np.ndarray) -> np.ndarray:
+        """Improvise a new harmony for permutation problems.
+
+        Instead of per-dimension mixing (which breaks permutations),
+        pick a whole solution from memory and optionally perturb it.
+        """
+        if np.random.rand() < self.hmcr:
+            # Memory consideration: pick a full solution from memory
+            idx = np.random.randint(0, self.hms)
+            new_harmony = harmony_memory[idx].copy()
+            # Pitch adjustment: apply 2-opt swap(s)
+            if np.random.rand() < self.par:
+                new_harmony = self.problem.perturb(new_harmony)
+        else:
+            # Randomization: generate a fresh random permutation
+            new_harmony = self.problem.sample(1).flatten()
         return new_harmony
 
     def run(self) -> np.ndarray:
