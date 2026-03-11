@@ -3,6 +3,7 @@
 import numpy as np
 from dataclasses import dataclass
 from AIP.problems.base_problem import Problem, DiscreteProblem
+from AIP.problems.continuous.continuous import ContinuousProblem
 from AIP.algorithm.base_model import Model
 
 @dataclass
@@ -109,6 +110,14 @@ class GravitationalSearchAlgorithm(Model[Problem, np.ndarray, float | None, Grav
 
         return M
 
+    def _clamp_positions(self, positions: np.ndarray) -> np.ndarray:
+        """Clamp positions to the problem bounds (continuous problems only)."""
+        if isinstance(self.problem, ContinuousProblem):
+            lb = self.problem._bounds[:, 0]
+            ub = self.problem._bounds[:, 1]
+            return np.clip(positions, lb, ub)
+        return positions
+
     def run(self) -> np.ndarray:
         """
         Execute GSA algorithm.
@@ -145,6 +154,10 @@ class GravitationalSearchAlgorithm(Model[Problem, np.ndarray, float | None, Grav
             # Calculate mass
             M = self._calculate_mass(fitness)
 
+            # Kbest: only the K best agents exert force, K decreases linearly
+            K = max(1, int(self.pop_size * (1 - iteration / self.max_iterations)))
+            kbest_indices = np.argsort(fitness)[:K]
+
             # Calculate forces and accelerations
             dim = positions.shape[1]
             acceleration = np.zeros_like(positions)
@@ -152,7 +165,7 @@ class GravitationalSearchAlgorithm(Model[Problem, np.ndarray, float | None, Grav
             for i in range(self.pop_size):
                 force = np.zeros(dim)
 
-                for j in range(self.pop_size):
+                for j in kbest_indices:
                     if i != j:
                         # Calculate Euclidean distance
                         R = np.linalg.norm(positions[i] - positions[j]) + 1e-10
@@ -167,6 +180,9 @@ class GravitationalSearchAlgorithm(Model[Problem, np.ndarray, float | None, Grav
             # Update velocities and positions
             velocities = np.random.rand(self.pop_size, dim) * velocities + acceleration
             positions = positions + velocities
+
+            # Clamp positions to problem bounds
+            positions = self._clamp_positions(positions)
 
             # Map continuous positions to valid discrete solutions
             if self._is_permutation:
