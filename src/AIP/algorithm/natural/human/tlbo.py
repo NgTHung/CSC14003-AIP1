@@ -19,6 +19,24 @@ class TLBO(Model[ContinuousProblem, np.ndarray, float, TLBOConfig]):
     Teaching-Learning-Based Optimization (TLBO) algorithm.
     """
     name: str = "TLBO"
+    population_history: list
+    stat: bool
+
+    def __init__(self, configuration: TLBOConfig, problem: ContinuousProblem, stat: bool = False):
+        """Initialize TLBO.
+
+        Parameters
+        ----------
+        configuration : TLBOConfig
+            Algorithm hyperparameters.
+        problem : ContinuousProblem
+            Continuous optimization problem to solve.
+        stat : bool, optional
+            If True, record full population snapshots each iteration
+            into ``population_history`` for visualisation. Default False.
+        """
+        super().__init__(configuration, problem)
+        self.stat = stat
 
     def run(self):
         """Execute the optimization process."""
@@ -30,6 +48,8 @@ class TLBO(Model[ContinuousProblem, np.ndarray, float, TLBOConfig]):
         
         # Initialize history and best solution
         self.history = []
+        if self.stat:
+            self.population_history = []
         self._update_global_best()
         
         # Get bounds for clipping during movement
@@ -97,6 +117,8 @@ class TLBO(Model[ContinuousProblem, np.ndarray, float, TLBOConfig]):
             self._update_global_best()
             # Record the best fitness of the current iteration into history
             self.history.append(self.best_fitness)
+            if self.stat:
+                self.population_history.append(self.population.copy())
             
         return self.best_solution
 

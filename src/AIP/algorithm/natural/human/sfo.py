@@ -107,6 +107,24 @@ class SFO(Model[ContinuousProblem, np.ndarray, float, SFOConfig]):
     """
 
     name: str = "Social Force Optimization"
+    population_history: list
+    stat: bool
+
+    def __init__(self, configuration: SFOConfig, problem: ContinuousProblem, stat: bool = False):
+        """Initialize SFO.
+
+        Parameters
+        ----------
+        configuration : SFOConfig
+            Algorithm hyperparameters.
+        problem : ContinuousProblem
+            Continuous optimization problem to solve.
+        stat : bool, optional
+            If True, record full population snapshots each iteration
+            into ``population_history`` for visualisation. Default False.
+        """
+        super().__init__(configuration, problem)
+        self.stat = stat
 
     # ------------------------------------------------------------------
     # Initialisation
@@ -135,6 +153,8 @@ class SFO(Model[ContinuousProblem, np.ndarray, float, SFOConfig]):
 
         # --- History ---
         self.history = []
+        if self.stat:
+            self.population_history = []
 
         # --- Establish the initial global best ---
         self._update_global_best()
@@ -229,6 +249,8 @@ class SFO(Model[ContinuousProblem, np.ndarray, float, SFOConfig]):
             # ==============================================================
             self._update_global_best()
             self.history.append(self.best_fitness)
+            if self.stat:
+                self.population_history.append(self.population.copy())
 
             # ==============================================================
             # 9.  INERTIA DECAY  (multiplicative, per-iteration)
