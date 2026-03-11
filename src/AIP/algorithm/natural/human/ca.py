@@ -103,6 +103,24 @@ class CA(Model[ContinuousProblem, np.ndarray, float, CAConfig]):
     """
 
     name: str = "Cultural Algorithm (CA)"
+    population_history: list
+    stat: bool
+
+    def __init__(self, configuration: CAConfig, problem: ContinuousProblem, stat: bool = False):
+        """Initialize Cultural Algorithm.
+
+        Parameters
+        ----------
+        configuration : CAConfig
+            Algorithm hyperparameters.
+        problem : ContinuousProblem
+            Continuous optimization problem to solve.
+        stat : bool, optional
+            If True, record full population snapshots each iteration
+            into ``population_history`` for visualisation. Default False.
+        """
+        super().__init__(configuration, problem)
+        self.stat = stat
 
     # ------------------------------------------------------------------
     # Public API
@@ -146,6 +164,8 @@ class CA(Model[ContinuousProblem, np.ndarray, float, CAConfig]):
 
         # Record history
         self.history: list[float] = []
+        if self.stat:
+            self.population_history: list = []
 
         # Number of accepted individuals (at least 1)
         k_accept = max(1, int(pop_size * self.conf.accepted_ratio))
@@ -201,6 +221,8 @@ class CA(Model[ContinuousProblem, np.ndarray, float, CAConfig]):
             # ==============================================================
             self._update_global_best()
             self.history.append(float(self.best_fitness))
+            if self.stat:
+                self.population_history.append(self.population.copy())
 
         return self.best_solution
 

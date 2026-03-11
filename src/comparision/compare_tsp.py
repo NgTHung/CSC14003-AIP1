@@ -96,7 +96,7 @@ def main() -> None:
     # Filter out classical algos if requested
     skip_algos = _CLASSICAL_ALGOS if args.no_classical else set()
     if skip_algos:
-        print(">>> Skipping classical graph-search algorithms")
+        print(f">>> Skipping: {', '.join(sorted(skip_algos))}")
 
     results = run_comparison(
         problem=problem,

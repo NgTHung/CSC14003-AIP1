@@ -77,6 +77,7 @@ class AStarSearch(Model[DiscreteProblem, list, float | None, dict]):
         """
         problem = self.problem
         self.history = []
+        self.explored_count = 0
         self.best_solution = []
         self.best_fitness = None
 
@@ -101,7 +102,7 @@ class AStarSearch(Model[DiscreteProblem, list, float | None, dict]):
             explored.add(current_state)
             current_g = g_score[current_state]
             current_h = problem.heuristic(current_state)
-            self.history.append(current_state)
+            self.explored_count += 1
 
             if problem.is_goal(current_state):
                 self.best_solution = self._get_path(parent, current_state)
