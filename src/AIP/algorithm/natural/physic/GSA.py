@@ -135,6 +135,7 @@ class GravitationalSearchAlgorithm(Model[Problem, np.ndarray, float | None, Grav
         best_fitness = fitness[best_idx]
 
         self.history = []
+        self.population_history = [positions.copy()]
 
         # Main loop
         for iteration in range(self.max_iterations):
@@ -184,6 +185,7 @@ class GravitationalSearchAlgorithm(Model[Problem, np.ndarray, float | None, Grav
 
             # Track history
             self.history.append(best_solution)
+            self.population_history.append(positions.copy())
 
         self.best_solution = best_solution
         self.best_fitness = float(best_fitness)

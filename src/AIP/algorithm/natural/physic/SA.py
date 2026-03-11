@@ -108,6 +108,7 @@ class SimulatedAnnealing(Model[Problem, np.ndarray, float | None, dict]):
         best_energy = current_energy
 
         self.history = []
+        self.trajectory = [current_state.copy()]
 
         temperature = self.initial_temperature
         iteration = 0
@@ -147,6 +148,7 @@ class SimulatedAnnealing(Model[Problem, np.ndarray, float | None, dict]):
 
             # Track history
             self.history.append(best_state)
+            self.trajectory.append(current_state.copy())
 
         self.best_solution = best_state
         self.best_fitness = float(best_energy)
