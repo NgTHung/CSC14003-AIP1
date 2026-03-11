@@ -34,6 +34,7 @@ from AIP.problems.continuous.sphere import Sphere
 
 from comparision.comparison_utils import (
     run_comparison,
+    plot_comparison,
     print_summary_table,
     tune_all_algorithms,
     load_tuned_config,
@@ -53,80 +54,10 @@ PROBLEMS = {
 }
 
 
-def _plot_row(
-    axes,
-    results: list[RunResult],
-    problem_name: str,
-    algo_names: list[str],
-    colors: list[str],
-) -> None:
-    """Draw one row (4 sub-plots) for a single problem."""
-
-    grouped = _group_by_algo(results)
-
-    # 1. Convergence Speed
-    ax = axes[0]
-    for idx, name in enumerate(algo_names):
-        if name not in grouped:
-            continue
-        curves = [r.fitness_curve for r in grouped[name]]
-        max_len = max(len(c) for c in curves)
-        arr = np.full((len(curves), max_len), np.nan)
-        for i, c in enumerate(curves):
-            arr[i, :len(c)] = c
-        mean_c = np.nanmean(arr, axis=0)
-        std_c = np.nanstd(arr, axis=0)
-        x = np.arange(1, max_len + 1)
-        ax.plot(x, mean_c, label=name, color=colors[idx], linewidth=1.2)
-        ax.fill_between(x, mean_c - std_c, mean_c + std_c,
-                        color=colors[idx], alpha=0.10)
-    ax.set_yscale("log")
-    ax.set_ylabel(problem_name, fontsize=11, fontweight="bold")
-    if axes is axes:  # always label x
-        ax.set_xlabel("Iteration", fontsize=9)
-    ax.grid(True, alpha=0.25, which="both", linestyle="--")
-    ax.tick_params(labelsize=7)
-
-    # 2. Solution Quality
-    ax = axes[1]
-    box_data = [
-        [r.best_fitness for r in grouped.get(n, [])] or [np.nan]
-        for n in algo_names
-    ]
-    bp = ax.boxplot(box_data, tick_labels=algo_names, patch_artist=True, widths=0.6)
-    for patch, c in zip(bp["boxes"], colors):
-        patch.set_facecolor(c)
-        patch.set_alpha(0.55)
-    ax.tick_params(axis="x", rotation=60, labelsize=6)
-    ax.tick_params(axis="y", labelsize=7)
-    ax.grid(True, alpha=0.25, axis="y", linestyle="--")
-
-    # 3. Computational Time
-    ax = axes[2]
-    means_t = [np.mean([r.time_ms for r in grouped.get(n, [])]) if n in grouped else 0
-               for n in algo_names]
-    stds_t = [np.std([r.time_ms for r in grouped.get(n, [])]) if n in grouped else 0
-              for n in algo_names]
-    ax.bar(algo_names, means_t, yerr=stds_t, capsize=3,
-           color=colors, alpha=0.65, edgecolor="black", linewidth=0.4)
-    ax.tick_params(axis="x", rotation=60, labelsize=6)
-    ax.tick_params(axis="y", labelsize=7)
-    ax.grid(True, alpha=0.25, axis="y", linestyle="--")
-
-    # 4. Robustness (std dev)
-    ax = axes[3]
-    stds_f = [np.std([r.best_fitness for r in grouped.get(n, [])]) if n in grouped else 0
-              for n in algo_names]
-    ax.bar(algo_names, stds_f, color=colors, alpha=0.65,
-           edgecolor="black", linewidth=0.4)
-    ax.tick_params(axis="x", rotation=60, labelsize=6)
-    ax.tick_params(axis="y", labelsize=7)
-    ax.grid(True, alpha=0.25, axis="y", linestyle="--")
-
-
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Combined comparison across all continuous problems (2-D)")
+        description="Combined comparison across all continuous problems")
+    parser.add_argument("--dim", type=int, default=2, help="Problem dimensionality")
     parser.add_argument("--cycle", type=int, default=200, help="Iterations per run")
     parser.add_argument("--runs", type=int, default=10, help="Independent runs")
     parser.add_argument("--seed", type=int, default=42, help="Base random seed")
@@ -137,7 +68,7 @@ def main() -> None:
                         help="Independent runs per config during tuning (default: 5)")
     args = parser.parse_args()
 
-    n_dim = 2
+    n_dim = args.dim
     all_results: dict[str, list[RunResult]] = {}
     all_algo_names: list[str] = []
 
@@ -174,44 +105,21 @@ def main() -> None:
         if not all_algo_names:
             all_algo_names = list(dict.fromkeys(r.algo_name for r in res))
 
-    # ── Build one figure per problem: 1 row × 4 columns each ──────────
-    n_algos = len(all_algo_names)
-    colors = (_COLORS * ((n_algos // len(_COLORS)) + 1))[:n_algos]
-
-    col_titles = ["Convergence Speed", "Solution Quality",
-                  "Computational Time (ms)", "Robustness (Std Dev)"]
-
-    figures: list[tuple[str, plt.Figure]] = []
-
+    # ── Plot 4 separate figures per problem ────────────────────────
     for prob_name, res in all_results.items():
-        fig, axes = plt.subplots(1, 4, figsize=(24, 5))
-        for j, title in enumerate(col_titles):
-            axes[j].set_title(title, fontsize=12, fontweight="bold")
-
-        _plot_row(axes, res, prob_name, all_algo_names, colors)
-
-        handles, labels = axes[0].get_legend_handles_labels()
-        fig.legend(handles, labels, loc="lower center",
-                   ncol=min(n_algos, 10), fontsize=8, frameon=True,
-                   borderpad=0.6, columnspacing=1.0, handletextpad=0.4,
-                   edgecolor="#cccccc", fancybox=True, shadow=False)
-
-        fig.suptitle(
-            f"{prob_name} — Algorithm Comparison (dim = {n_dim})",
-            fontsize=14, fontweight="bold", y=1.0,
+        save_path = None
+        if args.save:
+            fig_dir = os.path.join(os.path.dirname(__file__), "figures")
+            os.makedirs(fig_dir, exist_ok=True)
+            save_path = os.path.join(
+                fig_dir, f"compare_{prob_name.lower()}_dim_{n_dim}.png"
+            )
+        plot_comparison(
+            results=res,
+            problem_name=prob_name,
+            n_dim=n_dim,
+            save_path=save_path,
         )
-        plt.subplots_adjust(bottom=0.18)
-        figures.append((prob_name, fig))
-
-    if args.save:
-        fig_dir = os.path.join(os.path.dirname(__file__), "figures")
-        os.makedirs(fig_dir, exist_ok=True)
-        for prob_name, fig in figures:
-            save_path = os.path.join(fig_dir, f"compare_{prob_name.lower()}_dim_{n_dim}.png")
-            fig.savefig(save_path, dpi=150, bbox_inches="tight")
-            print(f"Figure saved to: {save_path}")
-    else:
-        plt.show()
 
     # ── Final ranking table across all problems ──────────────────────
     print(f"\n{'='*80}")
