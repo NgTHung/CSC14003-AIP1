@@ -91,7 +91,7 @@ class DepthFirstSearch(Model[DiscreteProblem, list, float | None, dict]):
                 next_state = problem.result(current_state, action)
                 if next_state not in explored:
                     parent[next_state] = current_state
-                    if problem.is_goal(current_state):
+                    if problem.is_goal(next_state):
                         self.best_solution = self._get_path(parent, next_state)
                         # Calculate total path cost
                         path = self.best_solution
