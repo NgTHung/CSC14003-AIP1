@@ -1,9 +1,8 @@
 """Simulated Annealing (SA) algorithm - physics-inspired optimization."""
 
 import numpy as np
-import random
-import math
 from AIP.problems.base_problem import Problem, DiscreteProblem
+from AIP.problems.continuous.continuous import ContinuousProblem
 from AIP.algorithm.base_model import Model
 
 
@@ -84,7 +83,12 @@ class SimulatedAnnealing(Model[Problem, np.ndarray, float | None, dict]):
         if self._is_discrete:
             return self.problem.perturb(state, n_flips=self.n_flips)
         perturbation = np.random.randn(len(state)) * self.step_size
-        return state + perturbation
+        new_state = state + perturbation
+        if isinstance(self.problem, ContinuousProblem):
+            lb = self.problem._bounds[:, 0]
+            ub = self.problem._bounds[:, 1]
+            new_state = np.clip(new_state, lb, ub)
+        return new_state
 
     def run(self) -> np.ndarray:
         """
@@ -131,8 +135,8 @@ class SimulatedAnnealing(Model[Problem, np.ndarray, float | None, dict]):
                 accepted = True
             else:
                 # Worse solution - accept with probability
-                acceptance_probability = math.exp(-delta_energy / temperature)
-                if random.random() < acceptance_probability:
+                acceptance_probability = np.exp(-delta_energy / temperature)
+                if np.random.rand() < acceptance_probability:
                     current_state = new_state
                     current_energy = new_energy
                     accepted = True
