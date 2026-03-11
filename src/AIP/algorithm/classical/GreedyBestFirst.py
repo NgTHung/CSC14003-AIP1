@@ -75,6 +75,7 @@ class GreedyBestFirstSearch(Model[DiscreteProblem, list, float | None, dict]):
         """
         problem = self.problem
         self.history = []
+        self.explored_count = 0
         self.best_solution = []
         self.best_fitness = None
 
@@ -93,7 +94,7 @@ class GreedyBestFirstSearch(Model[DiscreteProblem, list, float | None, dict]):
                 continue
 
             explored.add(current_state)
-            self.history.append(current_state)
+            self.explored_count += 1
 
             for action in problem.actions(current_state):
                 next_state = problem.result(current_state, action)

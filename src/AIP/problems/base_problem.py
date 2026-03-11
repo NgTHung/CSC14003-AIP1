@@ -306,5 +306,22 @@ class DiscreteProblem(Problem):
         """Admissible heuristic.  Override for informed graph search."""
         return 0.0
 
+    # ------------------------------------------------------------------
+    # ACO heuristic interface  (optional — override in subclass)
+    # ------------------------------------------------------------------
+
+    def aco_heuristic(self) -> np.ndarray | None:
+        """Return a heuristic matrix for Ant Colony Optimization.
+
+        For **permutation** problems the shape is ``(n_dims, n_dims)``
+        (e.g. ``1/distance`` for TSP).  For **assignment** problems the
+        shape is ``(n_dims, domain_size)`` (e.g. value/weight ratio for
+        knapsack).
+
+        Returns ``None`` when no domain heuristic is available.  ACO
+        algorithms fall back to an all-ones matrix in that case.
+        """
+        return None
+
 
 

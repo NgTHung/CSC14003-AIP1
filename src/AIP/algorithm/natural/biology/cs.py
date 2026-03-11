@@ -209,27 +209,35 @@ class CuckooSearch(
             self.best_solution - self.nests
         )
         return self._clamp(new_nests)
-
     def evaluate_cuckoos(self, cuckoos: np.ndarray):
-        """Batch-evaluate cuckoos and replace nests where fitness improves.
+        """Evaluate cuckoos and compare each against a randomly chosen nest.
+
+        Per Yang & Deb (2009): a cuckoo egg generated from nest *i* is
+        evaluated against a **randomly chosen** nest *j* (not necessarily
+        *i*). If the cuckoo is better, it replaces nest *j*.
 
         Parameters
         ----------
         cuckoos : np.ndarray
             Candidate solutions of shape (n_nests, n_dim).
         """
+        n = self.conf.n_nests
         cuckoo_fitness = cast(np.ndarray, self.problem.eval(cuckoos))  # (n_nests,)
 
-        # Boolean mask: where the new cuckoo beats the current nest
-        improved = cuckoo_fitness < self.fitness
-        self.nests[improved] = cuckoos[improved]
-        self.fitness[improved] = cuckoo_fitness[improved]
+        # Each cuckoo is compared against a randomly chosen nest
+        targets = np.random.randint(0, n, size=n)
+
+        for i in range(n):
+            j = targets[i]
+            if cuckoo_fitness[i] < self.fitness[j]:
+                self.nests[j] = cuckoos[i].copy()
+                self.fitness[j] = cuckoo_fitness[i]
 
         # Update global best
-        best_new_idx = int(np.argmin(cuckoo_fitness))
-        if cuckoo_fitness[best_new_idx] < self.best_fitness:
-            self.best_fitness = float(cuckoo_fitness[best_new_idx])
-            self.best_solution = cuckoos[best_new_idx].copy()
+        best_idx = int(np.argmin(self.fitness))
+        if self.fitness[best_idx] < self.best_fitness:
+            self.best_fitness = float(self.fitness[best_idx])
+            self.best_solution = self.nests[best_idx].copy()
 
     def abandon_worst_nests(self):
         """Abandon the worst pa fraction of nests (rank-based elitism).

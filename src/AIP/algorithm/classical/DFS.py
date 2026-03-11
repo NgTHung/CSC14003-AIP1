@@ -70,6 +70,7 @@ class DepthFirstSearch(Model[DiscreteProblem, list, float | None, dict]):
         """
         problem = self.problem
         self.history = []
+        self.explored_count = 0
         self.best_solution = []
         self.best_fitness = None
 
@@ -84,7 +85,7 @@ class DepthFirstSearch(Model[DiscreteProblem, list, float | None, dict]):
                 continue
 
             explored.add(current_state)
-            self.history.append(current_state)
+            self.explored_count += 1
 
             if problem.is_goal(current_state):
                 self.best_solution = self._get_path(parent, current_state)

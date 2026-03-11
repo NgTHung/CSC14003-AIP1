@@ -58,17 +58,16 @@ class FireflyParameter:
 class FireflyAlgorithm(Model[Problem, np.ndarray | None, float, FireflyParameter]):
     """Firefly Algorithm for continuous and discrete optimization.
 
-    Algorithm outline per iteration:
-    1. **Pairwise comparison** — For every pair of fireflies *(i, j)*,
-       if firefly *j* appears brighter than firefly *i* (comparing
-       distance-attenuated light intensity), firefly *i* moves toward
-       *j*. For continuous problems this uses attractiveness-weighted
-       movement; for discrete problems a random neighbour is selected.
+    Algorithm outline per iteration (following Yang 2008):
+    1. **Sequential pairwise comparison** — For every pair *(i, j)*,
+       compute the apparent brightness of *j* as seen by *i*:
+       $I_j \\cdot e^{-\\gamma r_{ij}^2}$.  If this exceeds the intrinsic
+       brightness of *i*, then *i* moves toward *j* and is re-evaluated
+       immediately (positions change mid-iteration).
     2. **Random perturbation** — (Continuous only) A small random step
-       scaled by *alpha* is added to maintain exploration.
-    3. **Alpha decay** — The randomness parameter *alpha* is reduced
-       by the decay factor to shift from exploration to exploitation
-       over time.
+       scaled by *alpha* is added after each attraction move.
+    3. **Alpha decay** — *alpha* is reduced by the decay factor each
+       iteration to shift from exploration to exploitation over time.
     """
 
     positions: np.ndarray  # shape (n_fireflies, n_dim)
@@ -199,16 +198,17 @@ class FireflyAlgorithm(Model[Problem, np.ndarray | None, float, FireflyParameter
     def move_fireflies(self, alpha: float):
         """Perform one iteration of the Firefly Algorithm movement step.
 
-        For each pair of fireflies *(i, j)*, if firefly *j* is intrinsically
-        brighter than firefly *i*, firefly *i* moves toward *j* with
-        distance-dependent attractiveness.
+        Follows Yang (2008): for each pair *(i, j)*, the **apparent**
+        brightness of *j* as seen by *i* is compared against *i*'s own
+        intrinsic brightness.  If *j* appears brighter, *i* moves toward
+        *j* and is **re-evaluated immediately** so that subsequent
+        comparisons use the updated position.
 
-        For **continuous** problems the movement is vectorised:
-            x[i] += sum_j{ beta(r_ij) * (x[j] - x[i]) } + alpha * (rand - 0.5) * span
-        where the sum is over all *j* brighter than *i*.
+        For **continuous** problems the movement is:
+            x_i = x_i + beta(r_ij) * (x_j - x_i) + alpha * (rand - 0.5) * span
 
         For **discrete** problems:
-            x[i] = random neighbour of x[i]  (via problem.neighbors())
+            x_i = random neighbour of x_i  (via problem.random_neighbor())
 
         Parameters
         ----------
@@ -221,60 +221,45 @@ class FireflyAlgorithm(Model[Problem, np.ndarray | None, float, FireflyParameter
             problem = cast(ContinuousProblem, self.problem)
             span = problem.bounds[:, 1] - problem.bounds[:, 0]
 
-            # Pairwise differences: diff[i, j] = positions[j] - positions[i]
-            diff = (self.positions[np.newaxis, :, :]
-                    - self.positions[:, np.newaxis, :])          # (n, n, d)
+            for i in range(n):
+                for j in range(n):
+                    # Apparent brightness of j as seen by i
+                    diff = self.positions[j] - self.positions[i]
+                    dist_sq = float(np.dot(diff, diff))
+                    apparent_j = self.light_intensity[j] * np.exp(
+                        -self.conf.gamma * dist_sq)
 
-            # Pairwise squared distances
-            dist_sq = np.sum(diff ** 2, axis=2)                  # (n, n)
+                    if apparent_j > self.light_intensity[i]:
+                        beta = self.conf.beta0 * np.exp(
+                            -self.conf.gamma * dist_sq)
+                        # Move i toward j + random perturbation
+                        self.positions[i] += (
+                            beta * diff
+                            + alpha * (np.random.rand(self.n_dim) - 0.5) * span
+                        )
+                        self.positions[i] = self._clamp(self.positions[i])
 
-            # Attractiveness matrix: beta(r) = beta0 * exp(-gamma * r^2)
-            beta = self.conf.beta0 * np.exp(
-                -self.conf.gamma * dist_sq)                      # (n, n)
-
-            # Mask: mask[i, j] = True if j is brighter than i
-            mask = (self.light_intensity[np.newaxis, :]
-                    > self.light_intensity[:, np.newaxis])       # (n, n)
-
-            # Weighted displacement from all brighter fireflies
-            displacement = np.sum(
-                (beta * mask)[:, :, np.newaxis] * diff, axis=1)  # (n, d)
-
-            # Random perturbation
-            random_step = alpha * (
-                np.random.rand(n, self.n_dim) - 0.5) * span     # (n, d)
-
-            self.positions += displacement + random_step
-            self.positions = self._clamp(self.positions)
-
-            # Batch evaluate once
-            self.fitness = cast(np.ndarray, self.problem.eval(self.positions))
-            self.light_intensity = self._compute_light_intensity(self.fitness)
+                        # Re-evaluate immediately (sequential update)
+                        self.fitness[i] = cast(
+                            float, self.problem.eval(self.positions[i]))
+                        self.light_intensity[i] = float(
+                            self._compute_light_intensity(
+                                np.array([self.fitness[i]]))[0])
         else:
             for i in range(n):
-                moved = False
                 for j in range(n):
+                    # For discrete: use intrinsic brightness comparison
+                    # (no meaningful Euclidean distance)
                     if self.light_intensity[j] > self.light_intensity[i]:
                         discrete_problem = cast(DiscreteProblem, self.problem)
-                        nbrs = discrete_problem.random_neighbor(self.positions[i])
-                        self.positions[i] = nbrs
+                        self.positions[i] = discrete_problem.random_neighbor(
+                            self.positions[i])
 
                         self.fitness[i] = cast(
                             float, self.problem.eval(self.positions[i]))
                         self.light_intensity[i] = float(
                             self._compute_light_intensity(
                                 np.array([self.fitness[i]]))[0])
-                        moved = True
-
-                if not moved:
-                    discrete_problem = cast(DiscreteProblem, self.problem)
-                    nbrs = discrete_problem.random_neighbor(self.positions[i])
-                    self.positions[i] = nbrs
-                    self.fitness[i] = cast(
-                        float, self.problem.eval(self.positions[i]))
-                    self.light_intensity[i] = float(
-                        self._compute_light_intensity(
-                            np.array([self.fitness[i]]))[0])
 
     # ------------------------------------------------------------------
     # Main loop
