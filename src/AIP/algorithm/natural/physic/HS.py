@@ -2,6 +2,7 @@
 
 import numpy as np
 from AIP.problems.base_problem import Problem, DiscreteProblem
+from AIP.problems.continuous.continuous import ContinuousProblem
 from AIP.algorithm.base_model import Model
 
 
@@ -110,6 +111,10 @@ class HarmonySearch(Model[Problem, np.ndarray, float | None, dict]):
                         new_harmony[i] = tmp[i]
                     else:
                         new_harmony[i] += self.bw * (np.random.rand() - 0.5) * 2
+                        if isinstance(self.problem, ContinuousProblem):
+                            lb = self.problem._bounds[i, 0]
+                            ub = self.problem._bounds[i, 1]
+                            new_harmony[i] = np.clip(new_harmony[i], lb, ub)
             else:
                 # Randomization: generate random value
                 sample = self.problem.sample(1).flatten()
