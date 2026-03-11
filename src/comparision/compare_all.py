@@ -191,14 +191,16 @@ def main() -> None:
         _plot_row(axes, res, prob_name, all_algo_names, colors)
 
         handles, labels = axes[0].get_legend_handles_labels()
-        fig.legend(handles, labels, loc="lower center", ncol=min(n_algos, 6),
-                   fontsize=9, frameon=True, borderpad=0.8)
+        fig.legend(handles, labels, loc="lower center",
+                   ncol=min(n_algos, 10), fontsize=8, frameon=True,
+                   borderpad=0.6, columnspacing=1.0, handletextpad=0.4,
+                   edgecolor="#cccccc", fancybox=True, shadow=False)
 
         fig.suptitle(
             f"{prob_name} — Algorithm Comparison (dim = {n_dim})",
             fontsize=14, fontweight="bold", y=1.0,
         )
-        plt.subplots_adjust(bottom=0.14)
+        plt.subplots_adjust(bottom=0.18)
         figures.append((prob_name, fig))
 
     if args.save:

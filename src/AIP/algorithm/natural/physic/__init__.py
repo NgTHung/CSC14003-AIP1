@@ -1,3 +1,3 @@
 from .SA import SimulatedAnnealing
-# from .GSA import GravitationalSearchAlgorithm  # TODO: implement GSA
+from .GSA import GravitationalSearchAlgorithm, GravitationalSearchParameter
 from .HS import HarmonySearch

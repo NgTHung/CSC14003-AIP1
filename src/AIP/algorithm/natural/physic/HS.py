@@ -160,6 +160,7 @@ class HarmonySearch(Model[Problem, np.ndarray, float | None, dict]):
         best_fitness = fitness[best_idx]
 
         self.history = []
+        self.harmony_memory_history = [harmony_memory.copy()]
 
         # Main loop
         for iteration in range(self.max_iterations):
@@ -180,7 +181,8 @@ class HarmonySearch(Model[Problem, np.ndarray, float | None, dict]):
 
             # Track history
             self.history.append(best_solution)
- 
+            self.harmony_memory_history.append(harmony_memory.copy())
+
         self.best_solution = best_solution
         self.best_fitness = float(best_fitness)
         return best_solution
