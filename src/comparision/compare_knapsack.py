@@ -32,7 +32,8 @@ if _SRC not in sys.path:
 
 from AIP.problems.discrete.knapsack import Knapsack
 from comparision.comparison_utils_discrete import (
-    run_comparison, plot_comparison, plot_convergence, print_summary_table,
+    run_comparison, plot_comparison, plot_convergence, plot_robustness,
+    print_summary_table,
     tune_all_algorithms, load_tuned_config, _CLASSICAL_ALGOS,
 )
 
@@ -54,6 +55,8 @@ def main() -> None:
                         help="Problem instance size (default: medium)")
     parser.add_argument("--cycle", type=int, default=500,
                         help="Iterations per run (default: 500)")
+    parser.add_argument("--runs", type=int, default=5,
+                        help="Independent runs per stochastic algorithm (default: 5)")
     parser.add_argument("--seed", type=int, default=42,
                         help="Base random seed")
     parser.add_argument("--save", action="store_true",
@@ -110,6 +113,7 @@ def main() -> None:
     results = run_comparison(
         problem=problem,
         cycle=args.cycle,
+        n_runs=args.runs,
         seed=args.seed,
         tuned_params=tuned_params,
         skip_algos=skip_algos,
@@ -151,6 +155,20 @@ def main() -> None:
         problem_name="0/1 Knapsack",
         problem_desc=f"{args.size}, {problem.n_items} items, cap={problem.capacity:.0f}",
         save_path=conv_save_path,
+        negate_fitness=True,
+        fitness_label="Profit",
+    )
+
+    robust_save_path = os.path.join(
+        os.path.dirname(__file__), "figures",
+        f"robustness_knapsack_{args.size}.png",
+    ) if args.save else None
+
+    plot_robustness(
+        results,
+        problem_name="0/1 Knapsack",
+        problem_desc=f"{args.size}, {problem.n_items} items, cap={problem.capacity:.0f}",
+        save_path=robust_save_path,
         negate_fitness=True,
         fitness_label="Profit",
     )

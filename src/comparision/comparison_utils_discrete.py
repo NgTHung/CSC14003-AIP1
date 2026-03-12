@@ -545,13 +545,18 @@ def _extract_fitness_curve(
 def run_comparison(
     problem: DiscreteProblem,
     cycle: int = 500,
+    n_runs: int = 1,
     seed: int = 42,
     algo_names: list[str] | None = None,
     tuned_params: dict[str, dict] | None = None,
     skip_algos: set[str] | None = None,
     timeout: float = 60.0,
 ) -> list[RunResult]:
-    """Run each algorithm once and collect results.
+    """Run each algorithm and collect results.
+
+    Classical (deterministic) algorithms are always executed once.
+    Stochastic algorithms are executed *n_runs* times with different
+    random seeds so that robustness statistics can be computed.
 
     Parameters
     ----------
@@ -559,8 +564,11 @@ def run_comparison(
         The benchmark problem.
     cycle : int
         Number of iterations per run.
+    n_runs : int
+        Independent runs per stochastic algorithm (default: 1).
+        Classical algorithms always run once.
     seed : int
-        Random seed for reproducibility.
+        Base random seed for reproducibility.
     algo_names : list[str] or None
         Subset of algorithm names to run. ``None`` → run all.
     tuned_params : dict[str, dict] or None
@@ -591,8 +599,9 @@ def run_comparison(
             print(f"  [SKIP] {name} not in registry for {ptype}")
             continue
         builder = registry[name]
-        print(f"\n-- {name} (1 run, timeout={timeout:.0f}s) --")
-        for rid in range(1, 2):
+        actual_runs = 1 if name in _CLASSICAL_ALGOS else n_runs
+        print(f"\n-- {name} ({actual_runs} run{'s' if actual_runs > 1 else ''}, timeout={timeout:.0f}s) --")
+        for rid in range(1, actual_runs + 1):
             np.random.seed(seed + rid)
             random.seed(seed + rid)
 
@@ -647,8 +656,8 @@ def run_comparison(
                 fitness_curve=curve,
                 best_solution=sol,
             ))
-            if bf_raw is not None:
-                print(f"  Fitness={bf:.8e}  Time={results[-1].time_ms:.1f} ms")
+            print(f"  Run {rid:>{len(str(actual_runs))}}/{actual_runs}  "
+                  f"Fitness={bf:.8e}  Time={results[-1].time_ms:.1f} ms")
 
     return results
 
@@ -857,6 +866,126 @@ def plot_convergence(
         plt.show()
 
 
+def plot_robustness(
+    results: list[RunResult],
+    problem_name: str,
+    problem_desc: str = "",
+    save_path: str | None = None,
+    negate_fitness: bool = False,
+    fitness_label: str = "Best Fitness",
+) -> None:
+    """Plot robustness metrics (std dev + coefficient of variation).
+
+    Requires multiple runs per algorithm to be meaningful. Algorithms
+    with only one run (e.g. classical) are included with std = 0.
+
+    Sub-plots
+    ---------
+    1. **Solution Quality** — box-plot of fitness across runs.
+    2. **Robustness** — bar chart of std dev with CV overlay.
+
+    Parameters
+    ----------
+    results : list[RunResult]
+        Run results from ``run_comparison`` (ideally with ``n_runs > 1``).
+    problem_name : str
+        Display name for the problem.
+    problem_desc : str
+        Extra description (size, dimensions, …).
+    save_path : str or None
+        If given, derive ``_quality`` and ``_robustness`` suffixed paths
+        and save the figures instead of showing.
+    negate_fitness : bool
+        If ``True``, negate fitness values for display.
+    fitness_label : str
+        Y-axis label.
+    """
+    if not results:
+        print("  [INFO] No algorithm results to plot robustness.")
+        return
+
+    grouped = _group_by_algo(results)
+    algo_names = list(grouped.keys())
+    n_algos = len(algo_names)
+    colors = (_COLORS * ((n_algos // len(_COLORS)) + 1))[:n_algos]
+    sign = -1.0 if negate_fitness else 1.0
+    title_suffix = f"  ({problem_desc})" if problem_desc else ""
+
+    if save_path:
+        base, ext = os.path.splitext(save_path)
+        save_quality = f"{base}_quality{ext}"
+        save_robust = f"{base}_robustness{ext}"
+    else:
+        save_quality = save_robust = None
+
+    # ── 1. Solution Quality — box-plot ───────────────────────────────
+    fig1, ax1 = plt.subplots(figsize=(10, 7))
+    fig1.suptitle(
+        f"Solution Quality — {problem_name}{title_suffix}",
+        fontsize=16, fontweight="bold", y=0.98,
+    )
+    box_data = [
+        [sign * r.best_fitness for r in grouped[name]]
+        for name in algo_names
+    ]
+    bp = ax1.boxplot(
+        box_data, tick_labels=algo_names, patch_artist=True, widths=0.6,
+    )
+    for patch, c in zip(bp["boxes"], colors):
+        patch.set_facecolor(c)
+        patch.set_alpha(0.55)
+    ax1.set_ylabel(fitness_label, fontsize=11)
+    ax1.set_title("Solution Quality (box-plot over runs)", fontsize=13,
+                  fontweight="bold")
+    ax1.tick_params(axis="x", rotation=45)
+    ax1.grid(True, alpha=0.3, axis="y", linestyle="--")
+    fig1.tight_layout(rect=(0, 0, 1, 0.95))
+
+    if save_quality:
+        os.makedirs(os.path.dirname(save_quality) or ".", exist_ok=True)
+        fig1.savefig(save_quality, dpi=150, bbox_inches="tight")
+        print(f"\nQuality figure saved to: {save_quality}")
+
+    # ── 2. Robustness — std dev + CV ─────────────────────────────────
+    fig2, ax2 = plt.subplots(figsize=(10, 7))
+    fig2.suptitle(
+        f"Robustness — {problem_name}{title_suffix}",
+        fontsize=16, fontweight="bold", y=0.98,
+    )
+    stds_f = [np.std([r.best_fitness for r in grouped[n]]) for n in algo_names]
+    x_pos = np.arange(n_algos)
+    width = 0.4
+    ax2.bar(x_pos - width / 2, stds_f, width, label="Std Dev (fitness)",
+            color=colors, alpha=0.6, edgecolor="black", linewidth=0.5)
+    ax2.set_ylabel("Std Dev of " + fitness_label, fontsize=11)
+    ax2.set_title("Robustness", fontsize=13, fontweight="bold")
+    ax2.set_xticks(x_pos)
+    ax2.set_xticklabels(algo_names, rotation=45, fontsize=9)
+    ax2.grid(True, alpha=0.3, axis="y", linestyle="--")
+
+    ax2r = ax2.twinx()
+    means_f = [np.mean([r.best_fitness for r in grouped[n]]) for n in algo_names]
+    cv = np.array([s / abs(m) if abs(m) > 1e-30 else 0.0
+                   for s, m in zip(stds_f, means_f)])
+    ax2r.plot(x_pos, cv, "D-", color="red", markersize=5, linewidth=1.2,
+              label="CV (Std/Mean)")
+    ax2r.set_ylabel("Coefficient of Variation", fontsize=10, color="red")
+    ax2r.tick_params(axis="y", labelcolor="red")
+
+    lines1, labels1 = ax2.get_legend_handles_labels()
+    lines2, labels2 = ax2r.get_legend_handles_labels()
+    ax2.legend(lines1 + lines2, labels1 + labels2, fontsize=8, loc="upper left")
+    fig2.tight_layout(rect=(0, 0, 1, 0.95))
+
+    if save_robust:
+        os.makedirs(os.path.dirname(save_robust) or ".", exist_ok=True)
+        fig2.savefig(save_robust, dpi=150, bbox_inches="tight")
+        print(f"\nRobustness figure saved to: {save_robust}")
+
+    if not save_path:
+        plt.show()
+
+
 def print_summary_table(
     results: list[RunResult],
     negate_fitness: bool = False,
@@ -864,6 +993,10 @@ def print_summary_table(
     format_solution: Callable[[object], str] | None = None,
 ) -> None:
     """Print a summary table to the terminal.
+
+    When multiple runs exist per algorithm the table shows mean, std,
+    best and worst fitness.  For single-run results the original
+    compact format is used.
 
     Parameters
     ----------
@@ -873,16 +1006,22 @@ def print_summary_table(
         Column header for the fitness value.
     format_solution : callable or None
         A function that takes a best_solution object and returns a
-        human-readable string (e.g. path for TSP, colors for Graph
-        Coloring, selected items for Knapsack).  If ``None``, the
-        solution column is omitted.
+        human-readable string.  If ``None``, the solution column is
+        omitted.
     """
     grouped = _group_by_algo(results)
     algo_names = list(grouped.keys())
     sign = -1.0 if negate_fitness else 1.0
 
-    header = (f"  {'Algorithm':<8s} | {fitness_label:>14s} "
-              f"| {'Time(ms)':>14s}")
+    multi = any(len(runs) > 1 for runs in grouped.values())
+
+    if multi:
+        header = (f"  {'Algorithm':<8s} | {'Mean ' + fitness_label:>14s} "
+                  f"| {'Std':>14s} | {'Best':>14s} | {'Worst':>14s} "
+                  f"| {'Mean Time(ms)':>14s}")
+    else:
+        header = (f"  {'Algorithm':<8s} | {fitness_label:>14s} "
+                  f"| {'Time(ms)':>14s}")
     sep = "  " + "-" * len(header.strip())
 
     print(f"\n{'=' * len(header.strip())}")
@@ -891,12 +1030,23 @@ def print_summary_table(
 
     for name in algo_names:
         fits = [r.best_fitness for r in grouped[name]]
-        display_fit = sign * fits[0]
         times = [r.time_ms for r in grouped[name]]
-        print(
-            f"  {name:<8s} | {display_fit:>14.6e} "
-            f"| {times[0]:>14.1f}"
-        )
+        if multi:
+            mean_f = sign * float(np.mean(fits))
+            std_f = float(np.std(fits))
+            best_f = sign * float(np.min(fits)) if sign > 0 else sign * float(np.max(fits))
+            worst_f = sign * float(np.max(fits)) if sign > 0 else sign * float(np.min(fits))
+            print(
+                f"  {name:<8s} | {mean_f:>14.6e} | {std_f:>14.6e} "
+                f"| {best_f:>14.6e} | {worst_f:>14.6e} "
+                f"| {np.mean(times):>14.1f}"
+            )
+        else:
+            display_fit = sign * fits[0]
+            print(
+                f"  {name:<8s} | {display_fit:>14.6e} "
+                f"| {times[0]:>14.1f}"
+            )
         if format_solution is not None:
             sol = grouped[name][0].best_solution
             if sol is not None:
