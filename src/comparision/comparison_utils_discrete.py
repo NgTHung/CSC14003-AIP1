@@ -119,13 +119,9 @@ def load_tuned_config(
 
 # --- Common grids (work for all discrete problems) ---
 PARAM_GRIDS_COMMON: dict[str, dict[str, list]] = {
-    "HC": {
-        "iteration": [500, 1000, 2000],
-    },
     "SA": {
         "initial_temperature": [100.0, 500.0, 1000.0],
         "cooling_rate": [0.99, 0.995, 0.999],
-        "max_iterations": [3000, 5000],
     },
     "HS": {
         "hms": [20, 50],
@@ -243,7 +239,7 @@ def build_algo(
                 initial_temperature=params.get("initial_temperature", 500.0),
                 cooling_rate=params.get("cooling_rate", 0.995),
                 min_temperature=params.get("min_temperature", 0.01),
-                max_iterations=params.get("max_iterations", cycle),
+                max_iterations=cycle,
                 n_flips=params.get("n_flips", 1),
             )
             return SimulatedAnnealing(cfg, problem)
@@ -370,7 +366,7 @@ def tune_algorithm(
             model = build_algo(algo_name, params, problem, cycle)
             if algo_name in _NEEDS_INITIAL_STATE:
                 initial = problem.sample(1).flatten()
-                model.run(initial_state=initial)
+                model.run(initial_state=initial)  # type: ignore[call-arg]
             else:
                 model.run()
             assert model.best_fitness is not None
@@ -609,7 +605,7 @@ def run_comparison(
                 try:
                     if name in _NEEDS_INITIAL_STATE:
                         initial = problem.sample(1).flatten()
-                        model.run(initial_state=initial)
+                        model.run(initial_state=initial)  # type: ignore[call-arg]
                     else:
                         model.run()
                 except Exception as e:

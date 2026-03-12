@@ -268,9 +268,6 @@ PARAM_GRIDS: dict[str, dict[str, list]] = {
         "G0": [50.0, 100.0],
         "alpha": [10.0, 20.0],
     },
-    "HC": {
-        "iteration": [500, 1000, 2000],
-    },
 }
 
 
@@ -926,8 +923,8 @@ def plot_comparison(
 
     ax4r = ax4.twinx()
     means_f = [np.mean([r.best_fitness for r in grouped[n]]) for n in algo_names]
-    cv = [s / abs(m) if abs(m) > 1e-30 else 0.0
-          for s, m in zip(stds_f, means_f)]
+    cv = np.array([s / abs(m) if abs(m) > 1e-30 else 0.0
+                    for s, m in zip(stds_f, means_f)])
     ax4r.plot(x_pos, cv, "D-", color="red", markersize=5, linewidth=1.2,
               label="CV (Std/Mean)")
     ax4r.set_ylabel("Coefficient of Variation", fontsize=10, color="red")

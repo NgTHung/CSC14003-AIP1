@@ -1,4 +1,4 @@
-"""Compare optimization algorithms on the **Ackley** function (2-D).
+"""Compare optimization algorithms on the **Ackley** function (30-D).
 
 Metrics: Convergence Speed · Solution Quality · Computational Time · Robustness
 Generates a 2×2 comparison plot.

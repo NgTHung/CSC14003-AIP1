@@ -24,6 +24,8 @@ _SRC = os.path.join(os.path.dirname(__file__), os.pardir)
 if _SRC not in sys.path:
     sys.path.insert(0, os.path.abspath(_SRC))
 
+import matplotlib
+import matplotlib.figure
 import matplotlib.pyplot as plt
 
 from AIP.problems.continuous.ackley import Ackley
@@ -82,8 +84,7 @@ def _plot_row(
                         color=colors[idx], alpha=0.10)
     ax.set_yscale("log")
     ax.set_ylabel(problem_name, fontsize=11, fontweight="bold")
-    if axes is axes:  # always label x
-        ax.set_xlabel("Iteration", fontsize=9)
+    ax.set_xlabel("Iteration", fontsize=9)
     ax.grid(True, alpha=0.25, which="both", linestyle="--")
     ax.tick_params(labelsize=7)
 
@@ -181,7 +182,7 @@ def main() -> None:
     col_titles = ["Convergence Speed", "Solution Quality",
                   "Computational Time (ms)", "Robustness (Std Dev)"]
 
-    figures: list[tuple[str, plt.Figure]] = []
+    figures: list[tuple[str, matplotlib.figure.Figure]] = []
 
     for prob_name, res in all_results.items():
         fig, axes = plt.subplots(1, 4, figsize=(24, 5))
