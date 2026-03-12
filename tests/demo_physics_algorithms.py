@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 from AIP.problems.continuous.sphere import Sphere
 from AIP.problems.continuous.rastrigin import Rastrigin
 from AIP.problems.continuous.ackley import Ackley
-from AIP.algorithm.physics.SA import SimulatedAnnealing
+from AIP.algorithm.physics.SA import SimulatedAnnealing, SimulatedAnnealingParameter
 from AIP.algorithm.physics.GSA import GravitationalSearchAlgorithm
 from AIP.algorithm.physics.HS import HarmonySearch
 
@@ -153,13 +153,13 @@ def run_all_on_problem(problem, problem_name: str, tag: str):
     print("=" * 60)
 
     # --- Configurations ---
-    sa_config = {
-        'initial_temperature': 100.0,
-        'cooling_rate': 0.95,
-        'min_temperature': 0.01,
-        'max_iterations': 1000,
-        'step_size': 0.5,
-    }
+    sa_config = SimulatedAnnealingParameter(
+        initial_temperature=100.0,
+        cooling_rate=0.95,
+        min_temperature=0.01,
+        max_iterations=1000,
+        step_size=0.5,
+    )
     gsa_config = {
         'pop_size': 30,
         'max_iterations': 200,

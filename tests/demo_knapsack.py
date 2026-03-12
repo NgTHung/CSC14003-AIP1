@@ -19,7 +19,7 @@ from AIP.algorithm.classical.UCS import UniformCostSearch
 from AIP.algorithm.classical.GreedyBestFirst import GreedyBestFirstSearch
 from AIP.algorithm.classical.AStar import AStarSearch
 from AIP.algorithm.local.HillClimbing import HillClimbing, HillClimbingParameter
-from AIP.algorithm.natural.physic.SA import SimulatedAnnealing
+from AIP.algorithm.natural.physic.SA import SimulatedAnnealing, SimulatedAnnealingParameter
 from AIP.algorithm.natural.physic.HS import HarmonySearch
 from AIP.algorithm.natural.biology.abc import ArtificialBeeColony, ABCParameter
 from AIP.algorithm.natural.biology.cs import CuckooSearch, CuckooSearchParameter
@@ -128,13 +128,13 @@ def demo_knapsack_sa():
     print(f"  Capacity: {problem.capacity}")
     print("=" * 65)
 
-    config = {
-        "initial_temperature": 500.0,
-        "cooling_rate": 0.995,
-        "min_temperature": 0.01,
-        "max_iterations": 5000,
-        "n_flips": 1,
-    }
+    config = SimulatedAnnealingParameter(
+        initial_temperature=500.0,
+        cooling_rate=0.995,
+        min_temperature=0.01,
+        max_iterations=5000,
+        n_flips=1,
+    )
     algo = SimulatedAnnealing(config, problem)
     t0 = time.perf_counter()
     best = algo.run()

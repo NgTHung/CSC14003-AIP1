@@ -113,9 +113,8 @@ class HillClimbing(Model[Problem, Any, float, HillClimbingParameter]):
                     self.current_state = neighbor
                     self.current_value = neighbor_value
                     found_better = True
-                    break
 
-            # Track current best value once per iteration
+            # Track current state once per iteration
             self.history.append(self.current_value)
 
             # Local optimum reached

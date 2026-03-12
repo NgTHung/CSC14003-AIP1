@@ -42,7 +42,7 @@ from AIP.algorithm.natural.biology.pso import ParticleSwarmOptimization, PSOPara
 from AIP.algorithm.natural.biology.abc import ArtificialBeeColony, ABCParameter
 from AIP.algorithm.natural.biology.cs import CuckooSearch, CuckooSearchParameter
 from AIP.algorithm.natural.biology.fa import FireflyAlgorithm, FireflyParameter
-from AIP.algorithm.natural.physic.SA import SimulatedAnnealing
+from AIP.algorithm.natural.physic.SA import SimulatedAnnealing, SimulatedAnnealingParameter
 from AIP.algorithm.natural.physic.HS import HarmonySearch
 from AIP.algorithm.natural.physic.GSA import GravitationalSearchAlgorithm, GravitationalSearchParameter
 from AIP.algorithm.natural.human.ca import CA, CAConfig
@@ -268,9 +268,6 @@ PARAM_GRIDS: dict[str, dict[str, list]] = {
         "G0": [50.0, 100.0],
         "alpha": [10.0, 20.0],
     },
-    "HC": {
-        "iteration": [500, 1000, 2000],
-    },
 }
 
 
@@ -363,16 +360,14 @@ def build_algo(
             )
             return FireflyAlgorithm(cfg, problem)
         case "SA":
-            return SimulatedAnnealing(
-                {
-                    "initial_temperature": params.get("initial_temperature", 100.0),
-                    "cooling_rate": params.get("cooling_rate", 0.95),
-                    "min_temperature": params.get("min_temperature", 1e-8),
-                    "max_iterations": cycle,
-                    "step_size": params.get("step_size", 0.1),
-                },
-                problem,
+            cfg = SimulatedAnnealingParameter(
+                initial_temperature=params.get("initial_temperature", 100.0),
+                cooling_rate=params.get("cooling_rate", 0.95),
+                min_temperature=params.get("min_temperature", 1e-8),
+                max_iterations=cycle,
+                step_size=params.get("step_size", 0.1),
             )
+            return SimulatedAnnealing(cfg, problem)
         case "HS":
             return HarmonySearch(
                 {
@@ -951,8 +946,8 @@ def plot_comparison(
 
     ax4r = ax4.twinx()
     means_f = [np.mean([r.best_fitness for r in grouped[n]]) for n in algo_names]
-    cv = [s / abs(m) if abs(m) > 1e-30 else 0.0
-          for s, m in zip(stds_f, means_f)]
+    cv = np.array([s / abs(m) if abs(m) > 1e-30 else 0.0
+                    for s, m in zip(stds_f, means_f)])
     ax4r.plot(x_pos, cv, "D-", color="red", markersize=5, linewidth=1.2,
               label="CV (Std/Mean)")
     ax4r.set_ylabel("Coefficient of Variation", fontsize=10, color="red")

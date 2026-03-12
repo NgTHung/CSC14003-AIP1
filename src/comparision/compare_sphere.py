@@ -15,14 +15,15 @@ import argparse
 import os
 import sys
 
+_SRC = os.path.join(os.path.dirname(__file__), os.pardir)
+if _SRC not in sys.path:
+    sys.path.insert(0, os.path.abspath(_SRC))
+
 from AIP.problems.continuous.sphere import Sphere
 from comparision.comparison_utils import (
     run_comparison, plot_comparison, print_summary_table,
     tune_all_algorithms, load_tuned_config,
 )
-_SRC = os.path.join(os.path.dirname(__file__), os.pardir)
-if _SRC not in sys.path:
-    sys.path.insert(0, os.path.abspath(_SRC))
 
 
 

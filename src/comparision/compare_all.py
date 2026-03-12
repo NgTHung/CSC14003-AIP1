@@ -24,6 +24,8 @@ _SRC = os.path.join(os.path.dirname(__file__), os.pardir)
 if _SRC not in sys.path:
     sys.path.insert(0, os.path.abspath(_SRC))
 
+import matplotlib
+import matplotlib.figure
 import matplotlib.pyplot as plt
 
 from AIP.problems.continuous.ackley import Ackley
@@ -52,6 +54,76 @@ PROBLEMS = {
     "Rosenbrock": lambda d: Rosenbrock(n_dim=d),
     "Sphere":     lambda d: Sphere(n_dim=d),
 }
+
+
+def _plot_row(
+    axes,
+    results: list[RunResult],
+    problem_name: str,
+    algo_names: list[str],
+    colors: list[str],
+) -> None:
+    """Draw one row (4 sub-plots) for a single problem."""
+
+    grouped = _group_by_algo(results)
+
+    # 1. Convergence Speed
+    ax = axes[0]
+    for idx, name in enumerate(algo_names):
+        if name not in grouped:
+            continue
+        curves = [r.fitness_curve for r in grouped[name]]
+        max_len = max(len(c) for c in curves)
+        arr = np.full((len(curves), max_len), np.nan)
+        for i, c in enumerate(curves):
+            arr[i, :len(c)] = c
+        mean_c = np.nanmean(arr, axis=0)
+        std_c = np.nanstd(arr, axis=0)
+        x = np.arange(1, max_len + 1)
+        ax.plot(x, mean_c, label=name, color=colors[idx], linewidth=1.2)
+        ax.fill_between(x, mean_c - std_c, mean_c + std_c,
+                        color=colors[idx], alpha=0.10)
+    ax.set_yscale("log")
+    ax.set_ylabel(problem_name, fontsize=11, fontweight="bold")
+    ax.set_xlabel("Iteration", fontsize=9)
+    ax.grid(True, alpha=0.25, which="both", linestyle="--")
+    ax.tick_params(labelsize=7)
+
+    # 2. Solution Quality
+    ax = axes[1]
+    box_data = [
+        [r.best_fitness for r in grouped.get(n, [])] or [np.nan]
+        for n in algo_names
+    ]
+    bp = ax.boxplot(box_data, tick_labels=algo_names, patch_artist=True, widths=0.6)
+    for patch, c in zip(bp["boxes"], colors):
+        patch.set_facecolor(c)
+        patch.set_alpha(0.55)
+    ax.tick_params(axis="x", rotation=60, labelsize=6)
+    ax.tick_params(axis="y", labelsize=7)
+    ax.grid(True, alpha=0.25, axis="y", linestyle="--")
+
+    # 3. Computational Time
+    ax = axes[2]
+    means_t = [np.mean([r.time_ms for r in grouped.get(n, [])]) if n in grouped else 0
+               for n in algo_names]
+    stds_t = [np.std([r.time_ms for r in grouped.get(n, [])]) if n in grouped else 0
+              for n in algo_names]
+    ax.bar(algo_names, means_t, yerr=stds_t, capsize=3,
+           color=colors, alpha=0.65, edgecolor="black", linewidth=0.4)
+    ax.tick_params(axis="x", rotation=60, labelsize=6)
+    ax.tick_params(axis="y", labelsize=7)
+    ax.grid(True, alpha=0.25, axis="y", linestyle="--")
+
+    # 4. Robustness (std dev)
+    ax = axes[3]
+    stds_f = [np.std([r.best_fitness for r in grouped.get(n, [])]) if n in grouped else 0
+              for n in algo_names]
+    ax.bar(algo_names, stds_f, color=colors, alpha=0.65,
+           edgecolor="black", linewidth=0.4)
+    ax.tick_params(axis="x", rotation=60, labelsize=6)
+    ax.tick_params(axis="y", labelsize=7)
+    ax.grid(True, alpha=0.25, axis="y", linestyle="--")
 
 
 def main() -> None:
@@ -105,7 +177,15 @@ def main() -> None:
         if not all_algo_names:
             all_algo_names = list(dict.fromkeys(r.algo_name for r in res))
 
-    # ── Plot 4 separate figures per problem ────────────────────────
+    # ── Build one figure per problem: 1 row × 4 columns each ──────────
+    n_algos = len(all_algo_names)
+    colors = (_COLORS * ((n_algos // len(_COLORS)) + 1))[:n_algos]
+
+    col_titles = ["Convergence Speed", "Solution Quality",
+                  "Computational Time (ms)", "Robustness (Std Dev)"]
+
+    figures: list[tuple[str, matplotlib.figure.Figure]] = []
+
     for prob_name, res in all_results.items():
         save_path = None
         if args.save:

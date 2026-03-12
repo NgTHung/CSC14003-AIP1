@@ -1,12 +1,39 @@
 """Simulated Annealing (SA) algorithm - physics-inspired optimization."""
 
 import numpy as np
+from dataclasses import dataclass
 from AIP.problems.base_problem import Problem, DiscreteProblem
 from AIP.problems.continuous.continuous import ContinuousProblem
 from AIP.algorithm.base_model import Model
 
 
-class SimulatedAnnealing(Model[Problem, np.ndarray, float | None, dict]):
+@dataclass
+class SimulatedAnnealingParameter:
+    """
+    Configuration parameters for Simulated Annealing.
+
+    initial_temperature : float
+        Starting temperature for the annealing process.
+    cooling_rate : float
+        Rate at which temperature decreases (typically 0.85-0.99).
+    min_temperature : float
+        Minimum temperature (stopping criterion).
+    max_iterations : int
+        Maximum number of iterations.
+    step_size : float
+        Perturbation step size for continuous problems.
+    n_flips : int
+        Number of bits to flip per step for discrete problems.
+    """
+    initial_temperature: float = 100.0
+    cooling_rate: float = 0.95
+    min_temperature: float = 0.01
+    max_iterations: int = 1000
+    step_size: float = 0.1
+    n_flips: int = 1
+
+
+class SimulatedAnnealing(Model[Problem, np.ndarray, float | None, SimulatedAnnealingParameter]):
     """
     Simulated Annealing algorithm.
 
@@ -34,31 +61,24 @@ class SimulatedAnnealing(Model[Problem, np.ndarray, float | None, dict]):
 
     name = "Simulated Annealing"
 
-    def __init__(self, configuration: dict, problem: Problem):
+    def __init__(self, configuration: SimulatedAnnealingParameter, problem: Problem):
         """
         Initialize Simulated Annealing algorithm.
 
         Parameters
         ----------
-        configuration : dict
-            Configuration with keys:
-            - 'initial_temperature': Starting temperature (default: 100.0)
-            - 'cooling_rate': Temperature reduction rate (default: 0.95)
-            - 'min_temperature': Stopping temperature (default: 0.01)
-            - 'max_iterations': Max iterations (default: 1000)
-            - 'step_size': Perturbation step size (default: 0.1)
-            - 'n_flips': Number of bits to flip per step for discrete
-              problems (default: 1)
+        configuration : SimulatedAnnealingParameter
+            Dataclass with SA hyperparameters.
         problem : Problem
             The optimization problem instance.
         """
         super().__init__(configuration, problem)
-        self.initial_temperature = configuration.get('initial_temperature', 100.0)
-        self.cooling_rate = configuration.get('cooling_rate', 0.95)
-        self.min_temperature = configuration.get('min_temperature', 0.01)
-        self.max_iterations = configuration.get('max_iterations', 1000)
-        self.step_size = configuration.get('step_size', 0.1)
-        self.n_flips = configuration.get('n_flips', 1)
+        self.initial_temperature = configuration.initial_temperature
+        self.cooling_rate = configuration.cooling_rate
+        self.min_temperature = configuration.min_temperature
+        self.max_iterations = configuration.max_iterations
+        self.step_size = configuration.step_size
+        self.n_flips = configuration.n_flips
         self._is_discrete = isinstance(problem, DiscreteProblem)
 
     def _perturb(self, state: np.ndarray) -> np.ndarray:
