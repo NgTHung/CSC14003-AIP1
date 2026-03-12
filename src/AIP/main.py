@@ -51,7 +51,7 @@ from AIP.algorithm import (
     FireflyAlgorithm,
     FireflyParameter,
 )
-from AIP.algorithm.natural.physic.SA import SimulatedAnnealing
+from AIP.algorithm.natural.physic.SA import SimulatedAnnealing, SimulatedAnnealingParameter
 from AIP.algorithm.natural.physic.HS import HarmonySearch
 from AIP.algorithm.natural.human.ca import CA, CAConfig
 from AIP.algorithm.natural.human.sfo import SFO, SFOConfig
@@ -210,16 +210,14 @@ def _build_algo_from_params(
             )
             return FireflyAlgorithm(cfg, problem)
         case "SA":
-            return SimulatedAnnealing(
-                {
-                    "initial_temperature": params.get("initial_temperature", 100.0),
-                    "cooling_rate": params.get("cooling_rate", 0.95),
-                    "min_temperature": params.get("min_temperature", 1e-8),
-                    "max_iterations": cycle,
-                    "step_size": params.get("step_size", 0.1),
-                },
-                problem,
+            cfg = SimulatedAnnealingParameter(
+                initial_temperature=params.get("initial_temperature", 100.0),
+                cooling_rate=params.get("cooling_rate", 0.95),
+                min_temperature=params.get("min_temperature", 1e-8),
+                max_iterations=cycle,
+                step_size=params.get("step_size", 0.1),
             )
+            return SimulatedAnnealing(cfg, problem)
         case "HS":
             return HarmonySearch(
                 {

@@ -43,7 +43,7 @@ from AIP.algorithm.classical.AStar import AStarSearch
 # Local search
 from AIP.algorithm.local.HillClimbing import HillClimbing, HillClimbingParameter
 # Natural-inspired
-from AIP.algorithm.natural.physic.SA import SimulatedAnnealing
+from AIP.algorithm.natural.physic.SA import SimulatedAnnealing, SimulatedAnnealingParameter
 from AIP.algorithm.natural.physic.HS import HarmonySearch
 from AIP.algorithm.natural.physic.GSA import GravitationalSearchAlgorithm, GravitationalSearchParameter
 from AIP.algorithm.natural.biology.abc import ArtificialBeeColony, ABCParameter
@@ -239,16 +239,14 @@ def build_algo(
             )
             return HillClimbing(cfg, problem)
         case "SA":
-            return SimulatedAnnealing(
-                {
-                    "initial_temperature": params.get("initial_temperature", 500.0),
-                    "cooling_rate": params.get("cooling_rate", 0.995),
-                    "min_temperature": params.get("min_temperature", 0.01),
-                    "max_iterations": params.get("max_iterations", cycle),
-                    "n_flips": params.get("n_flips", 1),
-                },
-                problem,
+            cfg = SimulatedAnnealingParameter(
+                initial_temperature=params.get("initial_temperature", 500.0),
+                cooling_rate=params.get("cooling_rate", 0.995),
+                min_temperature=params.get("min_temperature", 0.01),
+                max_iterations=params.get("max_iterations", cycle),
+                n_flips=params.get("n_flips", 1),
             )
+            return SimulatedAnnealing(cfg, problem)
         case "HS":
             return HarmonySearch(
                 {
@@ -475,7 +473,9 @@ def get_default_registry(
     problem_type: Literal["TSP", "Knapsack", "GraphColoring"],
 ) -> dict[str, Callable]:
     """Return the default algorithm registry for a problem type."""
-    return dict(ALGO_REGISTRY_TSP)
+    if problem_type == "TSP":
+        return dict(ALGO_REGISTRY_TSP)
+    return dict(ALGO_REGISTRY_COMMON)
 
 
 def build_algo_registry(

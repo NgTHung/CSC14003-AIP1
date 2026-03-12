@@ -42,7 +42,7 @@ from AIP.algorithm.natural.biology.pso import ParticleSwarmOptimization, PSOPara
 from AIP.algorithm.natural.biology.abc import ArtificialBeeColony, ABCParameter
 from AIP.algorithm.natural.biology.cs import CuckooSearch, CuckooSearchParameter
 from AIP.algorithm.natural.biology.fa import FireflyAlgorithm, FireflyParameter
-from AIP.algorithm.natural.physic.SA import SimulatedAnnealing
+from AIP.algorithm.natural.physic.SA import SimulatedAnnealing, SimulatedAnnealingParameter
 from AIP.algorithm.natural.physic.HS import HarmonySearch
 from AIP.algorithm.natural.physic.GSA import GravitationalSearchAlgorithm, GravitationalSearchParameter
 from AIP.algorithm.natural.human.ca import CA, CAConfig
@@ -363,16 +363,14 @@ def build_algo(
             )
             return FireflyAlgorithm(cfg, problem)
         case "SA":
-            return SimulatedAnnealing(
-                {
-                    "initial_temperature": params.get("initial_temperature", 100.0),
-                    "cooling_rate": params.get("cooling_rate", 0.95),
-                    "min_temperature": params.get("min_temperature", 1e-8),
-                    "max_iterations": cycle,
-                    "step_size": params.get("step_size", 0.1),
-                },
-                problem,
+            cfg = SimulatedAnnealingParameter(
+                initial_temperature=params.get("initial_temperature", 100.0),
+                cooling_rate=params.get("cooling_rate", 0.95),
+                min_temperature=params.get("min_temperature", 1e-8),
+                max_iterations=cycle,
+                step_size=params.get("step_size", 0.1),
             )
+            return SimulatedAnnealing(cfg, problem)
         case "HS":
             return HarmonySearch(
                 {
