@@ -767,10 +767,28 @@ def run_comparison(
 # =====================================================================
 
 _COLORS = [
-    "#4C72B0", "#DD8452", "#55A868", "#C44E52", "#8172B3",
-    "#937860", "#DA8BC3", "#8C8C8C", "#CCB974", "#64B5CD",
-    "#E377C2",
+    "#D32F2F",  # dark red
+    "#1976D2",  # dark blue
+    "#388E3C",  # dark green
+    "#F57C00",  # dark orange
+    "#7B1FA2",  # dark purple
+    "#00838F",  # dark cyan
+    "#C2185B",  # dark pink / rose
+    "#5D4037",  # brown
+    "#455A64",  # blue-grey
+    "#AFB42B",  # dark lime / olive-yellow
+    "#0097A7",  # teal
+    "#E64A19",  # deep orange
+    "#512DA8",  # deep purple
+    "#00695C",  # dark teal
+    "#AD1457",  # dark magenta
+    "#283593",  # indigo
+    "#827717",  # dark olive
 ]
+
+# Markers placed sparsely on convergence curves for extra distinction
+_MARKERS = ["o", "s", "^", "D", "v", "P", "X", "*", "p", "h",
+            "<", ">", "d", "H", "8", "+", "x"]
 
 
 def _group_by_algo(results: list[RunResult]) -> dict[str, list[RunResult]]:
@@ -838,9 +856,14 @@ def plot_comparison(
         mean_c = np.nanmean(arr, axis=0)
         std_c = np.nanstd(arr, axis=0)
         x = np.arange(1, max_len + 1)
-        ax1.plot(x, mean_c, label=name, color=colors[idx], linewidth=1.4)
+        marker = _MARKERS[idx % len(_MARKERS)]
+        # Place markers sparsely (every ~10% of iterations)
+        mark_every = max(1, max_len // 10)
+        ax1.plot(x, mean_c, label=name, color=colors[idx],
+                 linewidth=1.6,
+                 marker=marker, markersize=4, markevery=mark_every)
         ax1.fill_between(x, mean_c - std_c, mean_c + std_c,
-                         color=colors[idx], alpha=0.12)
+                         color=colors[idx], alpha=0.08)
     ax1.set_yscale("log")
     ax1.set_xlabel("Iteration", fontsize=11)
     ax1.set_ylabel("Best Fitness (log)", fontsize=11)

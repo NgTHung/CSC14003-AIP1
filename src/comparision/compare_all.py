@@ -36,6 +36,7 @@ from AIP.problems.continuous.sphere import Sphere
 
 from comparision.comparison_utils import (
     run_comparison,
+    plot_comparison,
     print_summary_table,
     tune_all_algorithms,
     load_tuned_config,
@@ -127,7 +128,8 @@ def _plot_row(
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Combined comparison across all continuous problems (2-D)")
+        description="Combined comparison across all continuous problems")
+    parser.add_argument("--dim", type=int, default=2, help="Problem dimensionality")
     parser.add_argument("--cycle", type=int, default=200, help="Iterations per run")
     parser.add_argument("--runs", type=int, default=10, help="Independent runs")
     parser.add_argument("--seed", type=int, default=42, help="Base random seed")
@@ -138,7 +140,7 @@ def main() -> None:
                         help="Independent runs per config during tuning (default: 5)")
     args = parser.parse_args()
 
-    n_dim = 2
+    n_dim = args.dim
     all_results: dict[str, list[RunResult]] = {}
     all_algo_names: list[str] = []
 
@@ -185,34 +187,19 @@ def main() -> None:
     figures: list[tuple[str, matplotlib.figure.Figure]] = []
 
     for prob_name, res in all_results.items():
-        fig, axes = plt.subplots(1, 4, figsize=(24, 5))
-        for j, title in enumerate(col_titles):
-            axes[j].set_title(title, fontsize=12, fontweight="bold")
-
-        _plot_row(axes, res, prob_name, all_algo_names, colors)
-
-        handles, labels = axes[0].get_legend_handles_labels()
-        fig.legend(handles, labels, loc="lower center",
-                   ncol=min(n_algos, 10), fontsize=8, frameon=True,
-                   borderpad=0.6, columnspacing=1.0, handletextpad=0.4,
-                   edgecolor="#cccccc", fancybox=True, shadow=False)
-
-        fig.suptitle(
-            f"{prob_name} — Algorithm Comparison (dim = {n_dim})",
-            fontsize=14, fontweight="bold", y=1.0,
+        save_path = None
+        if args.save:
+            fig_dir = os.path.join(os.path.dirname(__file__), "figures")
+            os.makedirs(fig_dir, exist_ok=True)
+            save_path = os.path.join(
+                fig_dir, f"compare_{prob_name.lower()}_dim_{n_dim}.png"
+            )
+        plot_comparison(
+            results=res,
+            problem_name=prob_name,
+            n_dim=n_dim,
+            save_path=save_path,
         )
-        plt.subplots_adjust(bottom=0.18)
-        figures.append((prob_name, fig))
-
-    if args.save:
-        fig_dir = os.path.join(os.path.dirname(__file__), "figures")
-        os.makedirs(fig_dir, exist_ok=True)
-        for prob_name, fig in figures:
-            save_path = os.path.join(fig_dir, f"compare_{prob_name.lower()}_dim_{n_dim}.png")
-            fig.savefig(save_path, dpi=150, bbox_inches="tight")
-            print(f"Figure saved to: {save_path}")
-    else:
-        plt.show()
 
     # ── Final ranking table across all problems ──────────────────────
     print(f"\n{'='*80}")
