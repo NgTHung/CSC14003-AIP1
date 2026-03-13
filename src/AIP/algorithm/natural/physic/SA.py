@@ -4,7 +4,7 @@ import numpy as np
 from dataclasses import dataclass
 from AIP.problems.base_problem import Problem, DiscreteProblem
 from AIP.problems.continuous.continuous import ContinuousProblem
-from AIP.algorithm.base_model import Model
+from AIP.algorithm.base_algorithm import Algorithm
 
 
 @dataclass
@@ -33,7 +33,7 @@ class SimulatedAnnealingParameter:
     n_flips: int = 1
 
 
-class SimulatedAnnealing(Model[Problem, np.ndarray, float | None, SimulatedAnnealingParameter]):
+class SimulatedAnnealing(Algorithm[Problem, np.ndarray, float | None, SimulatedAnnealingParameter]):
     """
     Simulated Annealing algorithm.
 

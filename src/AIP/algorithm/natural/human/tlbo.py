@@ -3,7 +3,7 @@ Teaching-Learning-Based Optimization implementation.
 """
 from dataclasses import dataclass
 import numpy as np
-from AIP.algorithm.base_model import Model
+from AIP.algorithm.base_algorithm import Algorithm
 from AIP.problems.continuous.continuous import ContinuousProblem
 
 @dataclass
@@ -14,7 +14,7 @@ class TLBOConfig:
     # True if the problem is minimization (default for loss functions), False if maximization
     minimization: bool = True 
 
-class TLBO(Model[ContinuousProblem, np.ndarray, float, TLBOConfig]):
+class TLBO(Algorithm[ContinuousProblem, np.ndarray, float, TLBOConfig]):
     """
     Teaching-Learning-Based Optimization (TLBO) algorithm.
     """

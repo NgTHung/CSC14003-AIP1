@@ -1,10 +1,10 @@
 """Depth-First Search (DFS) algorithm for graph search problems."""
 
 from AIP.problems.base_problem import DiscreteProblem
-from AIP.algorithm.base_model import Model
+from AIP.algorithm.base_algorithm import Algorithm
 
 
-class DepthFirstSearch(Model[DiscreteProblem, list, float | None, dict]):
+class DepthFirstSearch(Algorithm[DiscreteProblem, list, float | None, dict]):
     """
     Depth-First Search algorithm.
 

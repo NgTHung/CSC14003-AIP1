@@ -2,10 +2,10 @@
 
 import heapq
 from AIP.problems.base_problem import DiscreteProblem
-from AIP.algorithm.base_model import Model
+from AIP.algorithm.base_algorithm import Algorithm
 
 
-class GreedyBestFirstSearch(Model[DiscreteProblem, list, float | None, dict]):
+class GreedyBestFirstSearch(Algorithm[DiscreteProblem, list, float | None, dict]):
     """
     Greedy Best-First Search algorithm.
 

@@ -21,7 +21,7 @@ from math import gamma, sin, pi
 
 import numpy as np
 from AIP.problems import ContinuousProblem, DiscreteProblem, Problem
-from AIP.algorithm import Model
+from AIP.algorithm import Algorithm
 
 
 @dataclass
@@ -51,7 +51,7 @@ class CuckooSearchParameter:
 
 
 class CuckooSearch(
-    Model[Problem, np.ndarray | None, float, CuckooSearchParameter]
+    Algorithm[Problem, np.ndarray | None, float, CuckooSearchParameter]
 ):
     """Cuckoo Search for continuous and discrete optimization.
 

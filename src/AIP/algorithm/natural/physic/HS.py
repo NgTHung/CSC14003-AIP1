@@ -3,10 +3,10 @@
 import numpy as np
 from AIP.problems.base_problem import Problem, DiscreteProblem
 from AIP.problems.continuous.continuous import ContinuousProblem
-from AIP.algorithm.base_model import Model
+from AIP.algorithm.base_algorithm import Algorithm
 
 
-class HarmonySearch(Model[Problem, np.ndarray, float | None, dict]):
+class HarmonySearch(Algorithm[Problem, np.ndarray, float | None, dict]):
     """
     Harmony Search algorithm.
 

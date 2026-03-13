@@ -23,7 +23,7 @@ from typing import cast, override
 
 import numpy as np
 from AIP.problems import ContinuousProblem
-from AIP.algorithm import Model
+from AIP.algorithm import Algorithm
 
 
 # ======================================================================
@@ -88,7 +88,7 @@ class GAParameter:
 
 
 class GeneticAlgorithm(
-    Model[ContinuousProblem, np.ndarray | None, float, GAParameter]
+    Algorithm[ContinuousProblem, np.ndarray | None, float, GAParameter]
 ):
     """Canonical Genetic Algorithm for continuous optimization.
 

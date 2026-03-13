@@ -32,7 +32,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from AIP.algorithm.base_model import Model
+from AIP.algorithm.base_algorithm import Algorithm
 from AIP.problems.continuous.continuous import ContinuousProblem
 
 
@@ -82,7 +82,7 @@ class SFOConfig:
 # Algorithm class
 # ---------------------------------------------------------------------------
 
-class SFO(Model[ContinuousProblem, np.ndarray, float, SFOConfig]):
+class SFO(Algorithm[ContinuousProblem, np.ndarray, float, SFOConfig]):
     """Social Force Optimization (SFO) algorithm.
 
     Each iteration, the entire population is updated simultaneously using

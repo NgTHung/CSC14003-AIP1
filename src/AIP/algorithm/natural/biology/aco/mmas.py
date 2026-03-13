@@ -19,7 +19,7 @@ from typing import cast, override
 
 import numpy as np
 from AIP.problems import DiscreteProblem
-from AIP.algorithm import Model
+from AIP.algorithm import Algorithm
 
 
 @dataclass
@@ -56,7 +56,7 @@ class MMASParameter:
     use_iteration_best: bool = True
 
 
-class MMAS(Model[DiscreteProblem, np.ndarray | None, float, MMASParameter]):
+class MMAS(Algorithm[DiscreteProblem, np.ndarray | None, float, MMASParameter]):
     """MAX-MIN Ant System for discrete optimization.
 
     Key differences from Ant System:

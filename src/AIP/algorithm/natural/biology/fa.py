@@ -19,7 +19,7 @@ from typing import cast, override
 
 import numpy as np
 from AIP.problems import ContinuousProblem, DiscreteProblem, Problem
-from AIP.algorithm import Model
+from AIP.algorithm import Algorithm
 
 
 @dataclass
@@ -55,7 +55,7 @@ class FireflyParameter:
     cycle: int
 
 
-class FireflyAlgorithm(Model[Problem, np.ndarray | None, float, FireflyParameter]):
+class FireflyAlgorithm(Algorithm[Problem, np.ndarray | None, float, FireflyParameter]):
     """Firefly Algorithm for continuous and discrete optimization.
 
     Algorithm outline per iteration (following Yang 2008):

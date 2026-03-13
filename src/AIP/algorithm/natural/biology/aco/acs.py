@@ -19,7 +19,7 @@ from typing import cast, override
 
 import numpy as np
 from AIP.problems import DiscreteProblem
-from AIP.algorithm import Model
+from AIP.algorithm import Algorithm
 
 
 @dataclass
@@ -53,7 +53,7 @@ class ACSParameter:
     cycle: int
 
 
-class ACS(Model[DiscreteProblem, np.ndarray | None, float, ACSParameter]):
+class ACS(Algorithm[DiscreteProblem, np.ndarray | None, float, ACSParameter]):
     """Ant Colony System for discrete optimization.
 
     Key differences from Ant System:

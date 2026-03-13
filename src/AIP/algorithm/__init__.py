@@ -1,4 +1,4 @@
-from .base_model import Model  # type: ignore
+from .base_algorithm import Algorithm  # type: ignore
 from .natural import *
 from .classical import *
 from .local import *

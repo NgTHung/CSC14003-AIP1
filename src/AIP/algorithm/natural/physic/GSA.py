@@ -4,7 +4,7 @@ import numpy as np
 from dataclasses import dataclass
 from AIP.problems.base_problem import Problem, DiscreteProblem
 from AIP.problems.continuous.continuous import ContinuousProblem
-from AIP.algorithm.base_model import Model
+from AIP.algorithm.base_algorithm import Algorithm
 
 @dataclass
 class GravitationalSearchParameter:
@@ -24,7 +24,7 @@ class GravitationalSearchParameter:
     alpha: float
     pop_size: int
 
-class GravitationalSearchAlgorithm(Model[Problem, np.ndarray, float | None, GravitationalSearchParameter]):
+class GravitationalSearchAlgorithm(Algorithm[Problem, np.ndarray, float | None, GravitationalSearchParameter]):
     """
     Gravitational Search Algorithm (GSA).
 
