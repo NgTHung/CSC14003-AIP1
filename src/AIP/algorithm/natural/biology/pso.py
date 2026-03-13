@@ -14,7 +14,7 @@ from typing import cast, override
 
 import numpy as np
 from AIP.problems import ContinuousProblem
-from AIP.algorithm import Model
+from AIP.algorithm import Algorithm
 
 
 @dataclass
@@ -51,7 +51,7 @@ class PSOParameter:
 
 
 class ParticleSwarmOptimization(
-    Model[ContinuousProblem, np.ndarray | None, float, PSOParameter]
+    Algorithm[ContinuousProblem, np.ndarray | None, float, PSOParameter]
 ):
     """Particle Swarm Optimization for continuous optimization.
 

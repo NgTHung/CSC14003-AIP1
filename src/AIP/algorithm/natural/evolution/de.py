@@ -33,7 +33,7 @@ from typing import cast, override
 
 import numpy as np
 from AIP.problems import ContinuousProblem
-from AIP.algorithm import Model
+from AIP.algorithm import Algorithm
 
 
 # ======================================================================
@@ -112,7 +112,7 @@ class DEParameter:
 
 
 class DifferentialEvolution(
-    Model[ContinuousProblem, np.ndarray | None, float, DEParameter]
+    Algorithm[ContinuousProblem, np.ndarray | None, float, DEParameter]
 ):
     """Differential Evolution for continuous (or discretised) optimization.
 

@@ -17,7 +17,7 @@ from typing import cast, override
 
 import numpy as np
 from AIP.problems import DiscreteProblem
-from AIP.algorithm import Model
+from AIP.algorithm import Algorithm
 
 
 @dataclass
@@ -47,7 +47,7 @@ class AntSystemParameter:
     cycle: int      # running cycle
 
 
-class AntSystem(Model[DiscreteProblem, np.ndarray | None, float, AntSystemParameter]):
+class AntSystem(Algorithm[DiscreteProblem, np.ndarray | None, float, AntSystemParameter]):
     """Ant System algorithm for discrete optimization.
 
     Constructs solutions probabilistically using pheromone trails and

@@ -13,7 +13,7 @@ Proceedings of the Third Annual Conference on Evolutionary Programming.
 from dataclasses import dataclass, field
 import numpy as np
 
-from AIP.algorithm.base_model import Model
+from AIP.algorithm.base_algorithm import Algorithm
 from AIP.problems.continuous.continuous import ContinuousProblem
 
 
@@ -58,7 +58,7 @@ class CAConfig:
 # Cultural Algorithm
 # ---------------------------------------------------------------------------
 
-class CA(Model[ContinuousProblem, np.ndarray, float, CAConfig]):
+class CA(Algorithm[ContinuousProblem, np.ndarray, float, CAConfig]):
     """Cultural Algorithm (CA) optimizer.
 
     Implements the dual-inheritance framework of Cultural Algorithms:
@@ -163,7 +163,7 @@ class CA(Model[ContinuousProblem, np.ndarray, float, CAConfig]):
         self.normative_U = ub.copy()             # (n_dim,)
 
         # Record history
-        self.history: list[float] = []
+        self.history= = []
         if self.stat:
             self.population_history: list = []
 

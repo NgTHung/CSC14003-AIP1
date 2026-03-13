@@ -25,7 +25,7 @@ from typing import cast, override
 
 import numpy as np
 from AIP.problems import ContinuousProblem
-from AIP.algorithm import Model
+from AIP.algorithm import Algorithm
 
 from .one_plus_one_es import OnePlusOneES, OnePlusOneESParameter
 from .self_adaptive_es import SelfAdaptiveES, SelfAdaptiveESParameter
@@ -60,7 +60,7 @@ ESParameter = (
 
 
 class EvolutionStrategy(
-    Model[ContinuousProblem, np.ndarray | None, float, ESParameter]
+    Algorithm[ContinuousProblem, np.ndarray | None, float, ESParameter]
 ):
     """Façade that delegates to the chosen ES variant.
 

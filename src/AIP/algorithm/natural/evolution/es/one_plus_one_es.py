@@ -15,7 +15,7 @@ from typing import cast, override
 
 import numpy as np
 from AIP.problems import ContinuousProblem
-from AIP.algorithm import Model
+from AIP.algorithm import Algorithm
 
 
 @dataclass
@@ -45,7 +45,7 @@ class OnePlusOneESParameter:
 
 
 class OnePlusOneES(
-    Model[ContinuousProblem, np.ndarray | None, float, OnePlusOneESParameter]
+    Algorithm[ContinuousProblem, np.ndarray | None, float, OnePlusOneESParameter]
 ):
     """(1+1)-ES with the 1/5th success rule.
 

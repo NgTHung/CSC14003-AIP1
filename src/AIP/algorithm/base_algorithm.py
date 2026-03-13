@@ -7,7 +7,7 @@ instances, and solution history for algorithm implementations.
 from AIP.problems import Problem, DiscreteProblem
 
 
-class Model[Prob: Problem, T, Tr, Opt]:
+class Algorithm[Prob: Problem, T, Tr, Opt]:
     """Generic optimization model interface.
 
     Type parameters
@@ -86,7 +86,7 @@ class Model[Prob: Problem, T, Tr, Opt]:
         self.conf = config
 
 
-class SearchGraphAlgorithm[T, Tr, Opt](Model[DiscreteProblem, T, Tr, Opt]):
+class SearchGraphAlgorithm[T, Tr, Opt](Algorithm[DiscreteProblem, T, Tr, Opt]):
     """Generic graph search algorithm interface.
 
     Type parameters

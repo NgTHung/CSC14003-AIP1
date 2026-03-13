@@ -2,10 +2,10 @@
 
 import heapq
 from AIP.problems.base_problem import DiscreteProblem
-from AIP.algorithm.base_model import Model
+from AIP.algorithm.base_algorithm import Algorithm
 
 
-class AStarSearch(Model[DiscreteProblem, list, float | None, dict]):
+class AStarSearch(Algorithm[DiscreteProblem, list, float | None, dict]):
     """
     A* (A-star) Search algorithm.
 
