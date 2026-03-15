@@ -12,8 +12,6 @@ The framework is designed for two domains:
 - Continuous optimization (benchmark functions such as Sphere, Rastrigin, Ackley, Rosenbrock, Griewank)
 - Discrete optimization and state-space search (TSP, Knapsack, Graph Coloring)
 
-It also provides a unified statistical tracking interface (`stat=True`) so algorithm trajectories can be recorded for post-analysis and visualization.
-
 ## 2. Features & Supported Algorithms
 
 ### Core Features
@@ -22,7 +20,7 @@ It also provides a unified statistical tracking interface (`stat=True`) so algor
 - Unified abstractions (`Problem`, `ContinuousProblem`, `DiscreteProblem`, `Algorithm`)
 - Dual-domain support: continuous vector optimization and discrete combinatorial/search problems
 - Configurable algorithms via typed dataclasses (for reproducible experiments)
-- Built-in history/statistics tracking (`history`, `best_solution`, `best_fitness`, and optional per-population snapshots with `stat=True`)
+- Built-in history tracking (`history`, `best_solution`, `best_fitness`)
 - Ready-to-run demos and comparison scripts in `tests/` and `src/comparision/`
 
 ### Implemented Algorithm Families
