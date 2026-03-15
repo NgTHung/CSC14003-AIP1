@@ -84,6 +84,7 @@ class ACS(Algorithm[DiscreteProblem, np.ndarray | None, float, ACSParameter]):
             Discrete optimization problem to solve.
         """
         super().__init__(configuration, problem)
+        self.reset()
 
     def _select_next_permutation(self, current: int, visited: np.ndarray) -> int:
         """Pseudorandom-proportional rule for permutation problems.

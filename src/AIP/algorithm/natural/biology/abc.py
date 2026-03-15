@@ -110,6 +110,7 @@ class ArtificialBeeColony(Algorithm[Problem, np.ndarray | None, float, ABCParame
         self.stat = stat
         self.conf = configuration
         super().__init__(configuration, problem)
+        self.reset()
 
     @staticmethod
     def _calculate_fit(objective_values: np.ndarray) -> np.ndarray:

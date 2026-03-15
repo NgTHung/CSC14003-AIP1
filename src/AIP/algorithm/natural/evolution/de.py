@@ -147,6 +147,7 @@ class DifferentialEvolution(
 
         super().__init__(configuration, problem)
         self.name = "Differential Evolution"
+        self.reset()
 
     def _initialize_population(self) -> np.ndarray:
         """Generate random individuals uniformly within the problem bounds.

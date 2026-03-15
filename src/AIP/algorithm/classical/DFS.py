@@ -34,6 +34,7 @@ class DepthFirstSearch(Algorithm[DiscreteProblem, list, float | None, dict]):
             The problem instance (must expose graph-search interface).
         """
         super().__init__(configuration, problem)
+        self.reset()
 
     def _get_path(self, parent: dict, state) -> list:
         """

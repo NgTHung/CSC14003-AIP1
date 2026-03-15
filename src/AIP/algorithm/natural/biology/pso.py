@@ -98,6 +98,7 @@ class ParticleSwarmOptimization(
         self.name = "Particle Swarm Optimization"
         self.n_dim = problem.n_dim
         self.stat = stat
+        self.reset()
 
     def _clamp_position(self, position: np.ndarray) -> np.ndarray:
         """Clamp a position to the problem bounds.

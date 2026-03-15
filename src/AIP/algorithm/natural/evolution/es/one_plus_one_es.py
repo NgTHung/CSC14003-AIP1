@@ -67,6 +67,7 @@ class OnePlusOneES(
     ):
         super().__init__(configuration, problem)
         self.name = "(1+1)-ES"
+        self.reset()
 
     def _clamp(self, x: np.ndarray) -> np.ndarray:
         lower = self.problem.bounds[:, 0]

@@ -64,6 +64,7 @@ class GravitationalSearchAlgorithm(
             The optimization problem instance.
         """
         super().__init__(configuration, problem)
+        self.reset()
 
     @staticmethod
     def _sigmoid(x: np.ndarray) -> np.ndarray:

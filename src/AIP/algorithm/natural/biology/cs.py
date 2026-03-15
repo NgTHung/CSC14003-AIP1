@@ -89,6 +89,7 @@ class CuckooSearch(Algorithm[Problem, np.ndarray | None, float, CuckooSearchPara
         """
         self.stat = stat
         super().__init__(configuration, problem)
+        self.reset()
 
     def _levy_flight(self, shape: tuple[int, ...] | int) -> np.ndarray:
         """Generate Lévy flight steps using Mantegna's algorithm.
