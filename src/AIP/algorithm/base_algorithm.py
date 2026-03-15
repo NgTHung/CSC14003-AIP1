@@ -84,3 +84,6 @@ class Algorithm[Prob: Problem, T, Tr, Opt]:
             New configuration object with algorithm parameters.
         """
         self.conf = config
+
+    def reset(self):
+        raise NotImplementedError

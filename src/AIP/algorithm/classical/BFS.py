@@ -20,6 +20,7 @@ class BreadthFirstSearch(Algorithm[DiscreteProblem, list, float | None, dict]):
     """
 
     name = "Breadth First Search"
+    explored_count: int
 
     def __init__(self, configuration: dict, problem: DiscreteProblem):
         """

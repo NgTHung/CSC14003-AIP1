@@ -21,7 +21,7 @@ from __future__ import annotations
 
 import argparse
 
-from AIP.problems.continuous.Rosenbrock import Rosenbrock
+from AIP.problems.continuous.rosenbrock import Rosenbrock
 from comparision.comparison_utils import (
     run_comparison,
     plot_comparison,

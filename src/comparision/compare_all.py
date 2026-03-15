@@ -29,7 +29,7 @@ import numpy as np
 from AIP.problems.continuous.ackley import Ackley
 from AIP.problems.continuous.griewank import Griewank
 from AIP.problems.continuous.rastrigin import Rastrigin
-from AIP.problems.continuous.Rosenbrock import Rosenbrock
+from AIP.problems.continuous.rosenbrock import Rosenbrock
 from AIP.problems.continuous.sphere import Sphere
 
 from comparision.comparison_utils import (

@@ -18,6 +18,7 @@ class DepthFirstSearch(Algorithm[DiscreteProblem, list, float | None, dict]):
     """
 
     name = "Depth First Search"
+    explored_count: int
 
     def __init__(self, configuration: dict, problem: DiscreteProblem):
         """

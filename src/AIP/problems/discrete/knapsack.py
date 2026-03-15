@@ -86,15 +86,16 @@ class Knapsack(DiscreteProblem):
         self.n_items = len(self.weights)
 
         # minimize=True because eval returns -value + penalty
-        super().__init__(n_dims=self.n_items, minimize=True, name="0/1 Knapsack",
-                         solution_type="assignment", domain_size=2)
+        super().__init__(
+            n_dims=self.n_items,
+            minimize=True,
+            name="0/1 Knapsack",
+            solution_type="assignment",
+            domain_size=2,
+        )
 
         # Pre-compute for graph search
         self._initial_state = (0, self.capacity)
-
-    # ==================================================================
-    # Problem interface  (population-based / physics-inspired)
-    # ==================================================================
 
     @override
     def sample(self, pop_size: int = 1) -> np.ndarray:
@@ -146,20 +147,16 @@ class Knapsack(DiscreteProblem):
         """
         eta = np.ones((self.n_items, 2))
         with np.errstate(divide="ignore", invalid="ignore"):
-            ratios = np.where(self.weights > 0,
-                              self.values / self.weights,
-                              self.values)  # weight=0 → free item
+            ratios = np.where(
+                self.weights > 0, self.values / self.weights, self.values
+            )  # weight=0 → free item
         # Normalize to [0.1, 1] range so it blends well with pheromone
         r_max = ratios.max()
         if r_max > 0:
             ratios = 0.1 + 0.9 * (ratios / r_max)
-        eta[:, 0] = 0.1   # small baseline for "don't take"
+        eta[:, 0] = 0.1  # small baseline for "don't take"
         eta[:, 1] = ratios
         return eta
-
-    # ==================================================================
-    # Local-search interface
-    # ==================================================================
 
     @override
     def random_neighbor(self, state: np.ndarray) -> np.ndarray:
@@ -196,11 +193,7 @@ class Knapsack(DiscreteProblem):
             nbrs.append(nbr)
         return nbrs
 
-    # ==================================================================
-    # Graph-search interface  (classical algorithms)
-    # ==================================================================
-
-    @property  # type: ignore[override]
+    @property
     @override
     def initial_state(self):
         """Starting state ``(0, capacity)``."""
@@ -281,10 +274,6 @@ class Knapsack(DiscreteProblem):
                 break
         return -bound
 
-    # ==================================================================
-    # Utility helpers
-    # ==================================================================
-
     def decode_path(self, path: list) -> dict:
         """Extract selection from a graph-search path.
 
@@ -334,10 +323,6 @@ class Knapsack(DiscreteProblem):
             "total_weight": total_weight,
         }
 
-    # ==================================================================
-    # Factory methods
-    # ==================================================================
-
     @staticmethod
     def from_file(filepath: str | Path) -> Knapsack:
         """Load a Knapsack instance from a text file.
@@ -358,10 +343,13 @@ class Knapsack(DiscreteProblem):
         Knapsack
             A new Knapsack instance built from the file data.
         """
-        lines = [l.strip() for l in Path(filepath).read_text().splitlines()
-                 if l.strip() and not l.strip().startswith("#")]
+        lines = [
+            l.strip()
+            for l in Path(filepath).read_text().splitlines()
+            if l.strip() and not l.strip().startswith("#")
+        ]
         parts = lines[0].split()
-        n_items, capacity = int(parts[0]), float(parts[1])
+        _, capacity = int(parts[0]), float(parts[1])
         weights = [float(x) for x in lines[1].split()]
         values = [float(x) for x in lines[2].split()]
         return Knapsack(weights=weights, values=values, capacity=capacity)

@@ -119,10 +119,6 @@ class FireflyAlgorithm(Algorithm[Problem, np.ndarray | None, float, FireflyParam
         if stat:
             self.firefly_pos_history = []
 
-    # ------------------------------------------------------------------
-    # Helpers
-    # ------------------------------------------------------------------
-
     def _clamp(self, position: np.ndarray) -> np.ndarray:
         """Clamp a position to the problem bounds (continuous only).
 
@@ -191,10 +187,6 @@ class FireflyAlgorithm(Algorithm[Problem, np.ndarray | None, float, FireflyParam
             self.best_fitness = float(self.fitness[best_idx])
             self.best_solution = self.positions[best_idx].copy()
 
-    # ------------------------------------------------------------------
-    # Core update
-    # ------------------------------------------------------------------
-
     def move_fireflies(self, alpha: float):
         """Perform one iteration of the Firefly Algorithm movement step.
 
@@ -248,8 +240,6 @@ class FireflyAlgorithm(Algorithm[Problem, np.ndarray | None, float, FireflyParam
         else:
             for i in range(n):
                 for j in range(n):
-                    # For discrete: use intrinsic brightness comparison
-                    # (no meaningful Euclidean distance)
                     if self.light_intensity[j] > self.light_intensity[i]:
                         discrete_problem = cast(DiscreteProblem, self.problem)
                         self.positions[i] = discrete_problem.random_neighbor(
@@ -260,10 +250,6 @@ class FireflyAlgorithm(Algorithm[Problem, np.ndarray | None, float, FireflyParam
                         self.light_intensity[i] = float(
                             self._compute_light_intensity(
                                 np.array([self.fitness[i]]))[0])
-
-    # ------------------------------------------------------------------
-    # Main loop
-    # ------------------------------------------------------------------
 
     @override
     def run(self) -> np.ndarray:
