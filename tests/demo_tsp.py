@@ -240,7 +240,9 @@ def demo_tsp_ant_system():
     print(f"  Cities: {problem.city_names}")
     print("=" * 65)
 
-    config = AntSystemParameter(rho=0.5, m=20, q=100.0, alpha=1.0, beta=2.0, cycle=200)
+    config = AntSystemParameter(
+        rho=0.5, m=20, q=100.0, alpha=1.0, beta=2.0, cycle=200
+    )
     algo = AntSystem(config, problem)
     t0 = time.perf_counter()
     best = algo.run()
@@ -261,7 +263,9 @@ def demo_tsp_acs():
     print(f"  Cities: {problem.city_names}")
     print("=" * 65)
 
-    config = ACSParameter(rho=0.1, xi=0.1, m=20, q0=0.9, alpha=1.0, beta=2.0, cycle=200)
+    config = ACSParameter(
+        rho=0.1, xi=0.1, m=20, q0=0.9, alpha=1.0, beta=2.0, cycle=200
+    )
     algo = ACS(config, problem)
     t0 = time.perf_counter()
     best = algo.run()

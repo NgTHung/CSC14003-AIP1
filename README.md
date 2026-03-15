@@ -1,206 +1,225 @@
-# CSC14003-AIP1 — Metaheuristic Optimization Framework
+# Team Project 01 - Search & Nature-Inspired Algorithms
 
-> **CSC14003 — Artificial Intelligence Principles** | Team Project 1
+> CSC14003 - Artificial Intelligence Principles
 
-An extensible Python framework for implementing and evaluating metaheuristic optimization algorithms on continuous benchmark problems.
+## 1. Project Title & Overview
 
----
+This repository contains a modular, object-oriented optimization framework developed for a university team project.
+The core objective is to implement a taxonomy of search and nature-inspired algorithms from scratch using only Python and NumPy for algorithmic computation.
 
-## Table of Contents
+The framework is designed for two domains:
 
-- [Overview](#overview)
-- [Project Structure](#project-structure)
-- [System Requirements](#system-requirements)
-- [Installation](#installation)
-- [Usage](#usage)
-- [Algorithms](#algorithms)
-- [Benchmark Functions](#benchmark-functions)
-- [Architecture](#architecture)
+- Continuous optimization (benchmark functions such as Sphere, Rastrigin, Ackley, Rosenbrock, Griewank)
+- Discrete optimization and state-space search (TSP, Knapsack, Graph Coloring)
 
----
+It also provides a unified statistical tracking interface (`stat=True`) so algorithm trajectories can be recorded for post-analysis and visualization.
 
-## Overview
+## 2. Features & Supported Algorithms
 
-This project provides an extensible framework to:
+### Core Features
 
-- Implement metaheuristic optimization algorithms (nature-inspired, classical, …)
-- Evaluate performance on standard benchmark functions (Sphere, Rastrigin, Ackley, …)
-- Visualize the algorithm’s convergence process
+- NumPy-first implementation with no SciPy/scikit-learn dependency in algorithm logic
+- Unified abstractions (`Problem`, `ContinuousProblem`, `DiscreteProblem`, `Algorithm`)
+- Dual-domain support: continuous vector optimization and discrete combinatorial/search problems
+- Configurable algorithms via typed dataclasses (for reproducible experiments)
+- Built-in history/statistics tracking (`history`, `best_solution`, `best_fitness`, and optional per-population snapshots with `stat=True`)
+- Ready-to-run demos and comparison scripts in `tests/` and `src/comparision/`
 
-## Project Structure
+### Implemented Algorithm Families
 
-```
+- Classical graph search:
+    - BFS (Breadth-First Search)
+    - DFS (Depth-First Search)
+    - UCS (Uniform-Cost Search)
+    - Greedy Best-First Search
+    - A* Search
+- Local search:
+    - Hill Climbing
+- Nature-inspired (Biology):
+    - GA (Genetic Algorithm)
+    - PSO (Particle Swarm Optimization)
+    - ABC (Artificial Bee Colony)
+    - FA (Firefly Algorithm)
+    - CS (Cuckoo Search)
+    - ACO variants: Ant System, ACS, MMAS
+- Nature-inspired (Evolution):
+    - Differential Evolution (DE)
+    - Evolution Strategies (ES variants including 1+1 ES, Self-Adaptive ES, CMA-ES, mu/rho + lambda ES)
+- Nature-inspired (Physics/Harmony/Annealing style):
+    - Simulated Annealing (SA)
+    - Harmony Search (HS)
+    - Gravitational Search Algorithm (GSA)
+- Human-inspired:
+    - TLBO
+    - SFO
+    - CA
+
+### Implemented Problem Domains
+
+- Continuous:
+    - Sphere
+    - Rastrigin
+    - Ackley
+    - Rosenbrock
+    - Griewank
+- Discrete:
+    - TSP
+    - 0/1 Knapsack
+    - Graph Coloring
+
+## 3. Project Structure
+
+```text
 CSC14003-AIP1/
-├── pyproject.toml              # Project configuration & dependencies (uv/pip)
-├── README.md
-├── src/
-│   ├── main.py                 # Entry point — run algorithms & plot convergence curves
-│   ├── benchmark.py            # Benchmark runner (under development)
-│   ├── algorithm/
-│   │   ├── base_model.py       # Abstract Model[Prob, T, Tr, Opt] class
-│   │   ├── classical/          # Classical algorithms (under development)
-│   │   └── natural/            # Nature-inspired algorithms
-│   │       ├── biology/        #   Biology-inspired (under development)
-│   │       ├── evolution/      #   Evolutionary (under development)
-│   │       ├── human/
-│   │       │   └── tlbo.py     #   Teaching-Learning-Based Optimization (TLBO)
-│   │       └── physic/         #   Physics-inspired (under development)
-│   ├── problems/
-│   │   ├── base_problem.py     # Abstract Problem base class (ABC)
-│   │   ├── continuous/
-│   │   │   ├── continuous.py   # Abstract ContinuousProblem class
-│   │   │   ├── sphere.py       # Sphere function
-│   │   │   ├── rastrigin.py    # Rastrigin function
-│   │   │   └── ackley.py       # Ackley function
-│   │   └── discrete/           # Discrete problems (under development)
-│   └── utils/                  # Shared utilities
-└── tests/                      # Unit tests
+|- README.md
+|- pyproject.toml
+|- docs/                          # Report, equations, and visualization notebooks
+|- src/
+|  |- AIP/
+|  |  |- __init__.py
+|  |  |- main.py
+|  |  |- benchmark.py
+|  |  |- algorithm/
+|  |  |  |- base_algorithm.py     # Generic Algorithm base class
+|  |  |  |- classical/            # BFS, DFS, UCS, Greedy, A*
+|  |  |  |- local/                # Hill Climbing
+|  |  |  |- natural/
+|  |  |  |  |- biology/           # GA, PSO, ABC, FA, CS, ACO variants
+|  |  |  |  |- evolution/         # DE, ES variants, CMA-ES
+|  |  |  |  |- human/             # TLBO, SFO, CA
+|  |  |  |  |- physic/            # SA, HS, GSA
+|  |  |- problems/
+|  |  |  |- base_problem.py       # Problem + DiscreteProblem abstractions
+|  |  |  |- continuous/           # Sphere, Rastrigin, Ackley, Rosenbrock, Griewank
+|  |  |  |- discrete/             # TSP, Knapsack, Graph Coloring
+|  |- comparision/                # Benchmarking/comparison scripts and figures
+|- tests/                         # Demo scripts by algorithm/problem family
 ```
 
-## System Requirements
+## 4. Installation & Setup
 
-- **Python** ≥ 3.14
-- **Package manager**: [uv](https://docs.astral.sh/uv/) (recommended) or pip
+### Prerequisites
 
-## Installation
+- Python 3.11+
+- pip (or uv)
 
-### Using uv (recommended)
-
-```bash
-# Clone the repository
-git clone https://github.com/NgTHung/CSC14003-AIP1.git
-cd CSC14003-AIP1
-
-# Install dependencies
-uv sync
-```
-
-### Using pip
+### Method A: Clone + Local Install
 
 ```bash
 git clone https://github.com/NgTHung/CSC14003-AIP1.git
 cd CSC14003-AIP1
 
+# Create virtual environment
+python -m venv .venv
+
+# Activate
+# Windows (PowerShell)
+.venv\Scripts\Activate.ps1
+# Linux/macOS
+# source .venv/bin/activate
+
+# Install package and dependencies from pyproject.toml
 pip install -e .
 ```
 
-## Usage
-
-### Quick Run
+### Method B: Direct Install from GitHub (No Clone)
 
 ```bash
-# Using uv
-uv run src/main.py
+python -m venv .venv
 
-# Or run Python directly (after pip install)
-python src/main.py
+# Activate
+# Windows (PowerShell)
+.venv\Scripts\Activate.ps1
+# Linux/macOS
+# source .venv/bin/activate
+
+# Install directly from GitHub
+pip install "git+https://github.com/NgTHung/CSC14003-AIP1.git"
 ```
 
-### Custom Parameters
+## 5. Usage Examples
 
-```bash
-# Set random seed
-uv run src/main.py --seed 123
-```
+### Example 1: Continuous Optimization (Sphere + Firefly Algorithm)
 
-### Programmatic Usage
+This example shows how to configure an algorithm using a dataclass (`FireflyParameter`) and enable tracking via `stat=True`.
 
 ```python
 import numpy as np
-from AIP.problems import Ackley
-from AIP.algorithm.natural.human.tlbo import TLBO, TLBOConfig
 
-# Initialize the problem — 10D Ackley
-problem = Ackley(n_dim=10)
+from AIP.problems.continuous.sphere import Sphere
+from AIP.algorithm.natural.biology.fa import FireflyAlgorithm, FireflyParameter
 
-# Configure the algorithm
-config = TLBOConfig(
-    pop_size=100,       # Population size
-    iterations=5000,    # Number of iterations
-    minimization=True   # Minimize
+# Reproducibility
+np.random.seed(42)
+
+# 30-dimensional Sphere minimization
+problem = Sphere(n_dim=30)
+
+# Dataclass-based hyperparameter configuration
+params = FireflyParameter(
+        n_fireflies=40,
+        alpha=0.35,
+        beta0=1.0,
+        gamma=1.0,
+        alpha_decay=0.98,
+        cycle=300,
 )
 
-# Run optimization
-optimizer = TLBO(configuration=config, problem=problem)
+# Enable detailed state tracking for analysis/visualization
+optimizer = FireflyAlgorithm(configuration=params, problem=problem, stat=True)
 best_solution = optimizer.run()
 
-print(f"Best Fitness: {optimizer.bestFitness:.10f}")
-print(f"Best Solution: {best_solution[:5]}")  # First 5 dimensions
+print("Best fitness:", optimizer.best_fitness)
+print("Best solution (first 5 dims):", best_solution[:5])
+print("History length:", len(optimizer.history))
+print("Tracked populations:", len(optimizer.firefly_pos_history))
 ```
 
-## Algorithms
+### Example 2: Discrete Optimization (TSP + Cuckoo Search)
 
-### Implemented
+The same framework supports discrete combinatorial problems. Here we solve a TSP instance with dataclass parameters and `stat=True`.
 
-| Algorithm | Type | Module |
-|---|---|---|
-| **TLBO** (Teaching-Learning-Based Optimization) | Nature-inspired / Human | `algorithm.natural.human.tlbo` |
+```python
+import numpy as np
 
-### Planned Categories (to be extended)
+from AIP.problems.discrete.tsp import TSP
+from AIP.algorithm.natural.biology.cs import CuckooSearch, CuckooSearchParameter
 
-```
-algorithm/
-├── classical/          # Hill Climbing, Simulated Annealing, ...
-└── natural/
-    ├── biology/        # Genetic Algorithm, PSO, ...
-    ├── evolution/      # Differential Evolution, ...
-    ├── human/          # TLBO ✅
-    └── physic/         # Gravitational Search, ...
-```
+np.random.seed(42)
 
-### TLBO — Details
+# Built-in benchmark instance (8 cities)
+problem = TSP.create_medium()
 
-The TLBO algorithm models the teaching–learning process in a classroom and consists of two phases:
+params = CuckooSearchParameter(
+        n_nests=30,
+        pa=0.25,
+        alpha=0.01,
+        beta=1.5,
+        iteration=500,
+)
 
-1. **Teacher Phase** — Learners learn from the teacher (the best solution), moving toward the teacher with a Teaching Factor $TF \in \{1, 2\}$.
-2. **Learner Phase** — Learners interact with each other and move toward the better solution between two individuals.
+optimizer = CuckooSearch(configuration=params, problem=problem, stat=True)
+best_perm = optimizer.run()
 
-**Configuration parameters (`TLBOConfig`):**
-
-| Parameter | Default | Description |
-|---|---|---|
-| `pop_size` | 50 | Population size |
-| `iterations` | 100 | Maximum number of iterations |
-| `minimization` | `True` | `True` = minimize, `False` = maximize |
-
-## Benchmark Functions
-
-| Function | Formula | Search Space | Global Minimum |
-|---|---|---|---|
-| **Sphere** | $f(\mathbf{x}) = \sum_{i=1}^{n} x_i^2$ | $[-5.12,\ 5.12]^n$ | $f(\mathbf{0}) = 0$ |
-| **Rastrigin** | $f(\mathbf{x}) = An + \sum_{i=1}^{n} [x_i^2 - A\cos(2\pi x_i)]$ | $[-5.12,\ 5.12]^n$ | $f(\mathbf{0}) = 0$ |
-| **Ackley** | $f(\mathbf{x}) = -a \cdot e^{-b\sqrt{\frac{1}{n}\sum x_i^2}} - e^{\frac{1}{n}\sum \cos(c \cdot x_i)} + a + e$ | $[-32.768,\ 32.768]^n$ | $f(\mathbf{0}) = 0$ |
-
-## Architecture
-
-### Class Diagram
-
-```
-Problem (ABC)
-└── ContinuousProblem
-    ├── Sphere
-    ├── Rastrigin
-    └── Ackley
-
-Model[Prob, T, Tr, Opt]
-└── TLBO
+decoded = problem.decode_permutation(best_perm)
+print("Best tour:", decoded["tour_names"])
+print("Total distance:", decoded["total_distance"])
+print("Best fitness:", optimizer.best_fitness)
+print("History length:", len(optimizer.history))
+print("Tracked populations:", len(optimizer.nests_history))
 ```
 
-### Adding a New Algorithm
+## Running Demos
 
-1. Create a file in the appropriate directory (e.g., `algorithm/natural/biology/pso.py`)
-2. Inherit from `Model[ContinuousProblem, np.ndarray, float, YourConfig]`
-3. Implement `run()` → return the best solution
-4. Update `history` and `bestFitness` during execution
+After installation, you can run ready-made demos in `tests/`, for example:
 
-### Adding a New Benchmark Function
-
-1. Create a file under `problems/continuous/` (or `problems/discrete/`)
-2. Inherit from `ContinuousProblem` and implement `eval()`
-3. Export it in `__init__.py`
-
----
+```bash
+python tests/demo_tsp.py
+python tests/demo_physics_algorithms.py
+python tests/demo_knapsack.py
+python tests/demo_evolution.py
+```
 
 ## License
 
-See the [LICENSE](LICENSE) file for details.
+This project is distributed under the terms of the license in `LICENSE`.
