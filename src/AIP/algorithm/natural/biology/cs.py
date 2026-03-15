@@ -50,9 +50,7 @@ class CuckooSearchParameter:
     iteration: int
 
 
-class CuckooSearch(
-    Algorithm[Problem, np.ndarray | None, float, CuckooSearchParameter]
-):
+class CuckooSearch(Algorithm[Problem, np.ndarray | None, float, CuckooSearchParameter]):
     """Cuckoo Search for continuous and discrete optimization.
 
     Algorithm outline per iteration:
@@ -196,10 +194,9 @@ class CuckooSearch(
             New candidate solutions of shape (n_nests, n_dim).
         """
         if not self._is_continuous:
-            return np.array([
-                self._generate_cuckoo_discrete(i)
-                for i in range(self.conf.n_nests)
-            ])
+            return np.array(
+                [self._generate_cuckoo_discrete(i) for i in range(self.conf.n_nests)]
+            )
 
         n = self.conf.n_nests
         steps = self._levy_flight((n, self.n_dim))  # (n_nests, n_dim)
@@ -209,6 +206,7 @@ class CuckooSearch(
             self.best_solution - self.nests
         )
         return self._clamp(new_nests)
+
     def evaluate_cuckoos(self, cuckoos: np.ndarray):
         """Evaluate cuckoos and compare each against a randomly chosen nest.
 

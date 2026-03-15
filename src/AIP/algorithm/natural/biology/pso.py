@@ -66,17 +66,20 @@ class ParticleSwarmOptimization(
        personal and global bests are updated accordingly.
     """
 
-    positions: np.ndarray    # shape (n_particles, n_dim)
-    velocities: np.ndarray   # shape (n_particles, n_dim)
-    fitness: np.ndarray      # shape (n_particles,)
-    p_best: np.ndarray       # personal best positions
+    positions: np.ndarray  # shape (n_particles, n_dim)
+    velocities: np.ndarray  # shape (n_particles, n_dim)
+    fitness: np.ndarray  # shape (n_particles,)
+    p_best: np.ndarray  # personal best positions
     p_best_fitness: np.ndarray  # personal best fitness values
     n_dim: int
     particle_position_history: list[np.ndarray]
     stat: bool
 
     def __init__(
-        self, configuration: PSOParameter, problem: ContinuousProblem, stat: bool = False
+        self,
+        configuration: PSOParameter,
+        problem: ContinuousProblem,
+        stat: bool = False,
     ):
         """Initialize Particle Swarm Optimization.
 
@@ -116,14 +119,10 @@ class ParticleSwarmOptimization(
         self.best_solution = self.positions[best_idx].copy()
         self.best_fitness = float(self.fitness[best_idx])
         self.history = []
-        
+
         self.stat = stat
         if stat:
             self.particle_position_history = []
-
-    # ------------------------------------------------------------------
-    # Helpers
-    # ------------------------------------------------------------------
 
     def _clamp_position(self, position: np.ndarray) -> np.ndarray:
         """Clamp a position to the problem bounds.
@@ -170,10 +169,6 @@ class ParticleSwarmOptimization(
             self.best_fitness = float(self.p_best_fitness[best_idx])
             self.best_solution = self.p_best[best_idx].copy()
 
-    # ------------------------------------------------------------------
-    # Core update
-    # ------------------------------------------------------------------
-
     def update_swarm(self):
         """Perform one iteration of the PSO velocity and position update.
 
@@ -206,10 +201,6 @@ class ParticleSwarmOptimization(
 
         # Evaluate new positions
         self.fitness = cast(np.ndarray, self.problem.eval(self.positions))
-
-    # ------------------------------------------------------------------
-    # Main loop
-    # ------------------------------------------------------------------
 
     @override
     def run(self) -> np.ndarray:

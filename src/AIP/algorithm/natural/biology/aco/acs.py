@@ -7,7 +7,7 @@ best-so-far solution.
 Supports two solution types through ``DiscreteProblem.solution_type``:
 
 * **Permutation** (e.g. TSP): edge-based pheromone ``tau[from][to]``.
-* **Assignment** (e.g. Knapsack, Graph Coloring): position–value pheromone
+* **Assignment** (e.g. Knapsack, Graph Coloring): position-value pheromone
   ``tau[position][value]``.
 
 Reference: Dorigo, M. & Gambardella, L.M. (1997). Ant colony system: a
@@ -112,10 +112,6 @@ class ACS(Algorithm[DiscreteProblem, np.ndarray | None, float, ACSParameter]):
         self.best_fitness = float("inf")
         self.history = []
 
-    # ------------------------------------------------------------------
-    # Selection helpers
-    # ------------------------------------------------------------------
-
     def _select_next_permutation(self, current: int, visited: np.ndarray) -> int:
         """Pseudorandom-proportional rule for permutation problems.
 
@@ -173,10 +169,6 @@ class ACS(Algorithm[DiscreteProblem, np.ndarray | None, float, ACSParameter]):
         scores /= total
         return int(np.random.choice(d, p=scores))
 
-    # ------------------------------------------------------------------
-    # Local pheromone update
-    # ------------------------------------------------------------------
-
     def _local_pheromone_update_edge(self, i: int, j: int):
         """Reduce pheromone on edge (i, j) during construction."""
         new_val = (1 - self.conf.xi) * self.tau[i, j] + self.conf.xi * self.tau0
@@ -189,10 +181,6 @@ class ACS(Algorithm[DiscreteProblem, np.ndarray | None, float, ACSParameter]):
             (1 - self.conf.xi) * self.tau[pos, val]
             + self.conf.xi * self.tau0
         )
-
-    # ------------------------------------------------------------------
-    # Solution construction
-    # ------------------------------------------------------------------
 
     def _construct_ant_solution(self) -> np.ndarray:
         """Construct a single ant's solution with local pheromone updates."""
@@ -255,10 +243,6 @@ class ACS(Algorithm[DiscreteProblem, np.ndarray | None, float, ACSParameter]):
 
         return solutions
 
-    # ------------------------------------------------------------------
-    # Global pheromone update
-    # ------------------------------------------------------------------
-
     def global_pheromone_update(self):
         """Global pheromone update using only the best-so-far solution.
 
@@ -288,10 +272,6 @@ class ACS(Algorithm[DiscreteProblem, np.ndarray | None, float, ACSParameter]):
             positions = np.arange(self.problem.n_dims)
             vals = self.best_solution.astype(np.intp)
             self.tau[positions, vals] += deposit
-
-    # ------------------------------------------------------------------
-    # Main loop
-    # ------------------------------------------------------------------
 
     @override
     def run(self) -> np.ndarray:

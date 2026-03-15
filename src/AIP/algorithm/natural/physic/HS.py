@@ -37,6 +37,7 @@ class HarmonySearch(Algorithm[Problem, np.ndarray, float | None, dict]):
     """
 
     name = "Harmony Search"
+    harmony_memory_history: list[np.ndarray]
 
     def __init__(self, configuration: dict, problem: Problem):
         """
@@ -106,6 +107,7 @@ class HarmonySearch(Algorithm[Problem, np.ndarray, float | None, dict]):
                     if self._is_discrete:
                         # Delegate to problem's perturb for correct handling
                         # of non-binary discrete (e.g. graph coloring)
+                        assert isinstance(self.problem, DiscreteProblem)
                         tmp = new_harmony.copy()
                         tmp = self.problem.perturb(tmp)
                         new_harmony[i] = tmp[i]
@@ -128,6 +130,7 @@ class HarmonySearch(Algorithm[Problem, np.ndarray, float | None, dict]):
         Instead of per-dimension mixing (which breaks permutations),
         pick a whole solution from memory and optionally perturb it.
         """
+        assert isinstance(self.problem, DiscreteProblem)
         if np.random.rand() < self.hmcr:
             # Memory consideration: pick a full solution from memory
             idx = np.random.randint(0, self.hms)
@@ -168,7 +171,7 @@ class HarmonySearch(Algorithm[Problem, np.ndarray, float | None, dict]):
         self.harmony_memory_history = [harmony_memory.copy()]
 
         # Main loop
-        for iteration in range(self.max_iterations):
+        for _ in range(self.max_iterations):
             # Improvise new harmony
             new_harmony = self._improvise_harmony(harmony_memory)
             new_fitness = self.problem.eval(new_harmony)

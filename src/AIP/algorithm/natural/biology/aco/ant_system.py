@@ -8,7 +8,7 @@ Supports two solution types through ``DiscreteProblem.solution_type``:
 * **Permutation** (e.g. TSP): ants build solutions by visiting each node
   exactly once; pheromone is on edges ``tau[from_node][to_node]``.
 * **Assignment** (e.g. Knapsack, Graph Coloring): ants assign a value from
-  a finite domain to each position; pheromone is on position–value pairs
+  a finite domain to each position; pheromone is on position-value pairs
   ``tau[position][value]``.
 """
 
@@ -39,15 +39,18 @@ class AntSystemParameter:
     cycle : int
         Number of iterations.
     """
-    rho: float      # evaporation rate (0 < rho < 1)
-    m: int          # number of ants
-    q: float        # pheromone deposit factor
-    alpha: float    # pheromone importance
-    beta: float     # heuristic importance
-    cycle: int      # running cycle
+
+    rho: float  # evaporation rate (0 < rho < 1)
+    m: int  # number of ants
+    q: float  # pheromone deposit factor
+    alpha: float  # pheromone importance
+    beta: float  # heuristic importance
+    cycle: int  # running cycle
 
 
-class AntSystem(Algorithm[DiscreteProblem, np.ndarray | None, float, AntSystemParameter]):
+class AntSystem(
+    Algorithm[DiscreteProblem, np.ndarray | None, float, AntSystemParameter]
+):
     """Ant System algorithm for discrete optimization.
 
     Constructs solutions probabilistically using pheromone trails and
@@ -55,10 +58,10 @@ class AntSystem(Algorithm[DiscreteProblem, np.ndarray | None, float, AntSystemPa
     based on ``problem.solution_type``.
     """
 
-    tau: np.ndarray         # pheromone matrix
-    eta: np.ndarray         # heuristic information
+    tau: np.ndarray  # pheromone matrix
+    eta: np.ndarray  # heuristic information
     _is_permutation: bool
-    _combined: np.ndarray   # pre-computed tau^alpha * eta^beta
+    _combined: np.ndarray  # pre-computed tau^alpha * eta^beta
 
     def __init__(self, configuration: AntSystemParameter, problem: DiscreteProblem):
         """Initialize Ant System with configuration and problem.
@@ -88,7 +91,7 @@ class AntSystem(Algorithm[DiscreteProblem, np.ndarray | None, float, AntSystemPa
             self.eta = heuristic if heuristic is not None else np.ones((n, d))
 
         # Pre-compute eta^beta (constant across iterations)
-        self._eta_beta = self.eta ** self.conf.beta
+        self._eta_beta = self.eta**self.conf.beta
         self._update_combined()
 
         self.best_solution = None
@@ -97,11 +100,7 @@ class AntSystem(Algorithm[DiscreteProblem, np.ndarray | None, float, AntSystemPa
 
     def _update_combined(self):
         """Recompute the combined score matrix tau^alpha * eta^beta."""
-        self._combined = self.tau ** self.conf.alpha * self._eta_beta
-
-    # ------------------------------------------------------------------
-    # Solution construction
-    # ------------------------------------------------------------------
+        self._combined = self.tau**self.conf.alpha * self._eta_beta
 
     def construct_solution(self) -> list[tuple[np.ndarray, float]]:
         """Construct solutions for all ants.
@@ -180,7 +179,7 @@ class AntSystem(Algorithm[DiscreteProblem, np.ndarray | None, float, AntSystemPa
         totals = scores.sum(axis=1, keepdims=True)
 
         # Positions with zero total get uniform probability
-        zero_mask = (totals.ravel() == 0)
+        zero_mask = totals.ravel() == 0
         if zero_mask.any():
             scores[zero_mask] = 1.0
             totals[zero_mask] = scores.shape[1]
@@ -190,16 +189,15 @@ class AntSystem(Algorithm[DiscreteProblem, np.ndarray | None, float, AntSystemPa
 
         # Draw one uniform random per position and pick via searchsorted
         rands = np.random.rand(scores.shape[0])
-        solution = np.array([
-            np.searchsorted(cumprobs[pos], rands[pos])
-            for pos in range(scores.shape[0])
-        ], dtype=float)
+        solution = np.array(
+            [
+                np.searchsorted(cumprobs[pos], rands[pos])
+                for pos in range(scores.shape[0])
+            ],
+            dtype=float,
+        )
 
         return solution
-
-    # ------------------------------------------------------------------
-    # Pheromone update
-    # ------------------------------------------------------------------
 
     def pheromone_update(self, solutions: list[tuple[np.ndarray, float]]):
         """Update pheromone matrix using vectorised deposits.
@@ -226,10 +224,6 @@ class AntSystem(Algorithm[DiscreteProblem, np.ndarray | None, float, AntSystemPa
                 self.tau[positions, vals] += deposit
 
         self.tau = np.clip(self.tau, 0.01, 100.0)
-
-    # ------------------------------------------------------------------
-    # Main loop
-    # ------------------------------------------------------------------
 
     @override
     def run(self) -> np.ndarray:

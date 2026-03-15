@@ -2,13 +2,15 @@
 
 from typing import Any
 from dataclasses import dataclass
-from AIP.problems.base_problem import Problem,DiscreteProblem
+from AIP.problems.base_problem import Problem, DiscreteProblem
 from AIP.problems.continuous import ContinuousProblem
 from AIP.algorithm.base_algorithm import Algorithm
 
+
 @dataclass
 class HillClimbingParameter:
-    iteration: int 
+    iteration: int
+
 
 class HillClimbing(Algorithm[Problem, Any, float, HillClimbingParameter]):
     """
@@ -95,9 +97,9 @@ class HillClimbing(Algorithm[Problem, Any, float, HillClimbingParameter]):
             # Get all neighbors
 
             neighbors = None
-            if isinstance(self.problem,DiscreteProblem):
+            if isinstance(self.problem, DiscreteProblem):
                 neighbors = self.problem.neighbors(self.current_state)
-            elif isinstance(self.problem,ContinuousProblem):
+            elif isinstance(self.problem, ContinuousProblem):
                 neighbors = self.problem.neighbors(self.current_state)
 
             if not neighbors:
@@ -109,7 +111,12 @@ class HillClimbing(Algorithm[Problem, Any, float, HillClimbingParameter]):
                 neighbor_value = self.problem.eval(neighbor)
 
                 # Check if neighbor is better
-                if (isinstance(self.problem,DiscreteProblem) or isinstance(self.problem,ContinuousProblem))  and self.problem.is_better(float(neighbor_value), float(self.current_value)):
+                if (
+                    isinstance(self.problem, DiscreteProblem)
+                    or isinstance(self.problem, ContinuousProblem)
+                ) and self.problem.is_better(
+                    float(neighbor_value), float(self.current_value)
+                ):
                     self.current_state = neighbor
                     self.current_value = neighbor_value
                     found_better = True
@@ -120,10 +127,10 @@ class HillClimbing(Algorithm[Problem, Any, float, HillClimbingParameter]):
             # Local optimum reached
             if not found_better:
                 break
-    
+
         self.best_solution = self.current_state
         self.best_fitness = float(self.current_value)
-        return self.current_state   
+        return self.current_state
 
     def get_statistics(self) -> dict:
         """
@@ -135,8 +142,7 @@ class HillClimbing(Algorithm[Problem, Any, float, HillClimbingParameter]):
             Dictionary with search statistics.
         """
         return {
-            'history fitness': self.history,
-            'best fitness': self.best_fitness,
-            'best solution': self.best_solution
-
+            "history fitness": self.history,
+            "best fitness": self.best_fitness,
+            "best solution": self.best_solution,
         }

@@ -43,9 +43,7 @@ class ABCParameter:
     iteration: int
 
 
-class ArtificialBeeColony(
-    Algorithm[Problem, np.ndarray | None, float, ABCParameter]
-):
+class ArtificialBeeColony(Algorithm[Problem, np.ndarray | None, float, ABCParameter]):
     """Artificial Bee Colony for continuous and discrete optimization.
 
     Algorithm outline per iteration:
@@ -63,10 +61,10 @@ class ArtificialBeeColony(
     operator is applied instead, preserving solution feasibility.
     """
 
-    food_sources: np.ndarray   # shape (n_bees, n_dim)
-    fitness: np.ndarray        # shape (n_bees,)
-    fit_values: np.ndarray     # transformed fitness for probability calc
-    trials: np.ndarray         # stagnation counters per source
+    food_sources: np.ndarray  # shape (n_bees, n_dim)
+    fitness: np.ndarray  # shape (n_bees,)
+    fit_values: np.ndarray  # transformed fitness for probability calc
+    trials: np.ndarray  # stagnation counters per source
     n_dim: int
     _is_continuous: bool
     food_sources_history: list[np.ndarray]
@@ -112,10 +110,6 @@ class ArtificialBeeColony(
         self.stat = stat
         self.conf = configuration
         super().__init__(configuration, problem)
-
-    # ------------------------------------------------------------------
-    # Helpers
-    # ------------------------------------------------------------------
 
     @staticmethod
     def _calculate_fit(objective_values: np.ndarray) -> np.ndarray:
@@ -188,9 +182,8 @@ class ArtificialBeeColony(
             k = np.random.randint(0, self.conf.n_bees)
 
         phi = np.random.uniform(-1, 1)
-        candidate[j] = (
-            self.food_sources[idx, j]
-            + phi * (self.food_sources[idx, j] - self.food_sources[k, j])
+        candidate[j] = self.food_sources[idx, j] + phi * (
+            self.food_sources[idx, j] - self.food_sources[k, j]
         )
         return self._clamp(candidate)
 
@@ -243,10 +236,6 @@ class ArtificialBeeColony(
             self.best_fitness = float(self.fitness[best_idx])
             self.best_solution = self.food_sources[best_idx].copy()
 
-    # ------------------------------------------------------------------
-    # Phases
-    # ------------------------------------------------------------------
-
     def employed_bee_phase(self):
         """Employed bee phase: local search around each food source.
 
@@ -261,9 +250,9 @@ class ArtificialBeeColony(
             if candidate_fitness < self.fitness[i]:
                 self.food_sources[i] = candidate
                 self.fitness[i] = candidate_fitness
-                self.fit_values[i] = self._calculate_fit(
-                    np.array([candidate_fitness])
-                )[0]
+                self.fit_values[i] = self._calculate_fit(np.array([candidate_fitness]))[
+                    0
+                ]
                 self.trials[i] = 0
             else:
                 self.trials[i] += 1
@@ -292,9 +281,9 @@ class ArtificialBeeColony(
             if candidate_fitness < self.fitness[i]:
                 self.food_sources[i] = candidate
                 self.fitness[i] = candidate_fitness
-                self.fit_values[i] = self._calculate_fit(
-                    np.array([candidate_fitness])
-                )[0]
+                self.fit_values[i] = self._calculate_fit(np.array([candidate_fitness]))[
+                    0
+                ]
                 self.trials[i] = 0
             else:
                 self.trials[i] += 1
@@ -309,17 +298,9 @@ class ArtificialBeeColony(
         for i in range(self.conf.n_bees):
             if self.trials[i] > self.conf.limit:
                 self.food_sources[i] = self.problem.sample(1)[0]
-                self.fitness[i] = cast(
-                    float, self.problem.eval(self.food_sources[i])
-                )
-                self.fit_values[i] = self._calculate_fit(
-                    np.array([self.fitness[i]])
-                )[0]
+                self.fitness[i] = cast(float, self.problem.eval(self.food_sources[i]))
+                self.fit_values[i] = self._calculate_fit(np.array([self.fitness[i]]))[0]
                 self.trials[i] = 0
-
-    # ------------------------------------------------------------------
-    # Main loop
-    # ------------------------------------------------------------------
 
     @override
     def run(self) -> np.ndarray:

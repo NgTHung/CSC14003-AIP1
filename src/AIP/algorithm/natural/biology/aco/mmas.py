@@ -7,10 +7,10 @@ limiting the pheromone range and optionally re-initializing trails.
 Supports two solution types through ``DiscreteProblem.solution_type``:
 
 * **Permutation** (e.g. TSP): edge-based pheromone ``tau[from][to]``.
-* **Assignment** (e.g. Knapsack, Graph Coloring): position–value pheromone
+* **Assignment** (e.g. Knapsack, Graph Coloring): position-value pheromone
   ``tau[position][value]``.
 
-Reference: Stützle, T. & Hoos, H.H. (2000). MAX–MIN Ant System. Future
+Reference: Stützle, T. & Hoos, H.H. (2000). MAX-MIN Ant System. Future
 Generation Computer Systems, 16(8), 889-914.
 """
 
@@ -74,7 +74,7 @@ class MMAS(Algorithm[DiscreteProblem, np.ndarray | None, float, MMASParameter]):
     tau_max: float
     tau_min: float
     _is_permutation: bool
-    _combined: np.ndarray   # pre-computed tau^alpha * eta^beta
+    _combined: np.ndarray  # pre-computed tau^alpha * eta^beta
 
     def __init__(self, configuration: MMASParameter, problem: DiscreteProblem):
         """Initialize MMAS.
@@ -108,7 +108,7 @@ class MMAS(Algorithm[DiscreteProblem, np.ndarray | None, float, MMASParameter]):
             self.eta = heuristic if heuristic is not None else np.ones((n, d))
 
         # Pre-compute eta^beta (constant across iterations)
-        self._eta_beta = self.eta ** self.conf.beta
+        self._eta_beta = self.eta**self.conf.beta
         self._update_combined()
 
         self.best_solution = None
@@ -120,11 +120,7 @@ class MMAS(Algorithm[DiscreteProblem, np.ndarray | None, float, MMASParameter]):
 
     def _update_combined(self):
         """Recompute the combined score matrix tau^alpha * eta^beta."""
-        self._combined = self.tau ** self.conf.alpha * self._eta_beta
-
-    # ------------------------------------------------------------------
-    # Pheromone bounds
-    # ------------------------------------------------------------------
+        self._combined = self.tau**self.conf.alpha * self._eta_beta
 
     def _update_bounds(self):
         """Recompute tau_max and tau_min based on best-so-far cost.
@@ -146,17 +142,6 @@ class MMAS(Algorithm[DiscreteProblem, np.ndarray | None, float, MMASParameter]):
             self.tau_min = self.tau_max / (2.0 * n)
 
         self.tau_min = min(self.tau_min, self.tau_max)
-
-    # ------------------------------------------------------------------
-    # Selection helpers
-    # ------------------------------------------------------------------
-
-    # Selection is handled inline in _construct_permutation using
-    # vectorised numpy operations on _combined.
-
-    # ------------------------------------------------------------------
-    # Solution construction
-    # ------------------------------------------------------------------
 
     def _construct_ant_solution(self) -> np.ndarray:
         """Construct a single ant's solution."""
@@ -203,17 +188,20 @@ class MMAS(Algorithm[DiscreteProblem, np.ndarray | None, float, MMASParameter]):
         scores = self._combined.copy()
         totals = scores.sum(axis=1, keepdims=True)
 
-        zero_mask = (totals.ravel() == 0)
+        zero_mask = totals.ravel() == 0
         if zero_mask.any():
             scores[zero_mask] = 1.0
             totals[zero_mask] = scores.shape[1]
 
         cumprobs = np.cumsum(scores / totals, axis=1)
         rands = np.random.rand(scores.shape[0])
-        solution = np.array([
-            np.searchsorted(cumprobs[pos], rands[pos])
-            for pos in range(scores.shape[0])
-        ], dtype=float)
+        solution = np.array(
+            [
+                np.searchsorted(cumprobs[pos], rands[pos])
+                for pos in range(scores.shape[0])
+            ],
+            dtype=float,
+        )
 
         return solution
 
@@ -234,10 +222,6 @@ class MMAS(Algorithm[DiscreteProblem, np.ndarray | None, float, MMASParameter]):
             solutions.append((solution, fitness))
 
         return solutions
-
-    # ------------------------------------------------------------------
-    # Pheromone update
-    # ------------------------------------------------------------------
 
     def pheromone_update(
         self,
@@ -274,7 +258,7 @@ class MMAS(Algorithm[DiscreteProblem, np.ndarray | None, float, MMASParameter]):
             deposit_fit = self.best_fitness
 
         # Evaporation
-        self.tau *= (1 - self.conf.rho)
+        self.tau *= 1 - self.conf.rho
 
         # Deposit
         deposit = 1.0 / deposit_fit if deposit_fit > 0 else 1.0
@@ -308,10 +292,6 @@ class MMAS(Algorithm[DiscreteProblem, np.ndarray | None, float, MMASParameter]):
                 d = self.problem.domain_size
                 self.tau = np.full((n, d), self.tau_max)
             self._stagnation_counter = 0
-
-    # ------------------------------------------------------------------
-    # Main loop
-    # ------------------------------------------------------------------
 
     @override
     def run(self) -> np.ndarray:

@@ -3,11 +3,11 @@
 Simulates pedestrian crowd dynamics where each agent (pedestrian) updates
 its velocity and position under three forces:
 
-  1. **Inertia**          – preserves the current direction of travel,
+  1. **Inertia**          - preserves the current direction of travel,
                             preventing erratic direction changes.
-  2. **Attraction Force** – pulls the agent towards the global best
+  2. **Attraction Force** - pulls the agent towards the global best
                             position found so far (exploitation).
-  3. **Social Force**     – guides the agent towards the mean position
+  3. **Social Force**     - guides the agent towards the mean position
                             of the whole crowd (exploration).
 
 Velocity / position update equations (vectorized over the full population):
@@ -49,7 +49,7 @@ class SFOConfig:
     Attributes
     ----------
     pop_size : int
-        Number of agents (pedestrians) in the crowd.  Typical: 30–100.
+        Number of agents (pedestrians) in the crowd.  Typical: 30-100.
     iterations : int
         Maximum number of update cycles to run.
     minimization : bool
@@ -64,10 +64,10 @@ class SFOConfig:
         style decay over ~300 iterations before the weight becomes small.
         Default: 0.99.
     c_attract : float
-        Attraction coefficient – strength of the pull towards the global
+        Attraction coefficient - strength of the pull towards the global
         best position.  Default: 1.5.
     c_social : float
-        Social coefficient – strength of the pull towards the crowd mean.
+        Social coefficient - strength of the pull towards the crowd mean.
         Default: 1.5.
     """
 

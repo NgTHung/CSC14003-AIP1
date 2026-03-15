@@ -1,4 +1,4 @@
-from .biology import * # type: ignore
+from .biology import *
 from .evolution import *
 from .human import *
 from .physic import *

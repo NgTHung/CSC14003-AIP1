@@ -64,9 +64,9 @@ class CA(Algorithm[ContinuousProblem, np.ndarray, float, CAConfig]):
 
     Implements the dual-inheritance framework of Cultural Algorithms:
 
-    * **Population Space** – a standard population of real-valued agents that
+    * **Population Space** - a standard population of real-valued agents that
       are evaluated against the objective function.
-    * **Belief Space** – two knowledge sources updated each iteration:
+    * **Belief Space** - two knowledge sources updated each iteration:
         - *Situational Knowledge*: the global best solution found so far.
         - *Normative Knowledge*: a per-dimension interval ``[normative_L,
           normative_U]`` representing the "good region" derived from the
@@ -126,10 +126,6 @@ class CA(Algorithm[ContinuousProblem, np.ndarray, float, CAConfig]):
         """
         super().__init__(configuration, problem)
         self.stat = stat
-
-    # ------------------------------------------------------------------
-    # Public API
-    # ------------------------------------------------------------------
 
     def run(self) -> np.ndarray:
         """Execute the Cultural Algorithm and return the best solution found.

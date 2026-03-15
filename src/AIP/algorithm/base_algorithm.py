@@ -4,7 +4,7 @@ Defines a generic `Model` interface that stores configuration, problem
 instances, and solution history for algorithm implementations.
 """
 
-from AIP.problems import Problem, DiscreteProblem
+from AIP.problems import Problem
 
 
 class Algorithm[Prob: Problem, T, Tr, Opt]:
@@ -84,25 +84,3 @@ class Algorithm[Prob: Problem, T, Tr, Opt]:
             New configuration object with algorithm parameters.
         """
         self.conf = config
-
-
-class SearchGraphAlgorithm[T, Tr, Opt](Algorithm[DiscreteProblem, T, Tr, Opt]):
-    """Generic graph search algorithm interface.
-
-    Type parameters
-    -------
-    T: The solution representation type (typically list for path).
-    Tr: The fitness/score type (typically None or dict for search stats).
-    Opt: The configuration/options type for the algorithm.
-
-    Attributes
-    -------
-    history: Collected states visited during execution.
-    best_solution: The best solution (path) found.
-    conf: Algorithm configuration/options.
-    best_fitness: Best fitness value (typically None for search).
-    problem: Problem instance to solve.
-    name: Human-readable name of the algorithm.
-    """
-
-    name: str = "Generic Search Algorithm"

@@ -1,7 +1,7 @@
 """Gravitational Search Algorithm (GSA) - physics-inspired optimization."""
 
-import numpy as np
 from dataclasses import dataclass
+import numpy as np
 from AIP.problems.base_problem import Problem, DiscreteProblem
 from AIP.problems.continuous.continuous import ContinuousProblem
 from AIP.algorithm.base_algorithm import Algorithm
@@ -43,6 +43,7 @@ class GravitationalSearchAlgorithm(Algorithm[Problem, np.ndarray, float | None, 
     """
 
     name = "Gravitational Search Algorithm"
+    population_history: list[np.ndarray]
 
     def __init__(self, configuration: GravitationalSearchParameter, problem: Problem):
         """

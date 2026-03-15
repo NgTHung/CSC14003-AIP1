@@ -155,7 +155,7 @@ class SelfAdaptiveES(
             if self.fitness[0] < self.best_fitness:
                 self.best_fitness = float(self.fitness[0])
                 self.best_solution = self.population[0].copy()
-
-            self.history.append(self.best_solution.copy())
+            if self.best_solution is not None:
+                self.history.append(self.best_solution.copy())
 
         return cast(np.ndarray, self.best_solution)

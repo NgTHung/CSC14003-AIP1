@@ -1,7 +1,7 @@
 """Simulated Annealing (SA) algorithm - physics-inspired optimization."""
 
-import numpy as np
 from dataclasses import dataclass
+import numpy as np
 from AIP.problems.base_problem import Problem, DiscreteProblem
 from AIP.problems.continuous.continuous import ContinuousProblem
 from AIP.algorithm.base_algorithm import Algorithm
@@ -60,6 +60,7 @@ class SimulatedAnnealing(Algorithm[Problem, np.ndarray, float | None, SimulatedA
     """
 
     name = "Simulated Annealing"
+    trajectory: list[np.ndarray]
 
     def __init__(self, configuration: SimulatedAnnealingParameter, problem: Problem):
         """
@@ -101,6 +102,7 @@ class SimulatedAnnealing(Algorithm[Problem, np.ndarray, float | None, SimulatedA
             Perturbed state.
         """
         if self._is_discrete:
+            assert isinstance(self.problem, DiscreteProblem)
             return self.problem.perturb(state, n_flips=self.n_flips)
         perturbation = np.random.randn(len(state)) * self.step_size
         new_state = state + perturbation
@@ -146,20 +148,16 @@ class SimulatedAnnealing(Algorithm[Problem, np.ndarray, float | None, SimulatedA
             # Calculate energy difference
             delta_energy = new_energy - current_energy
 
-            # Accept or reject
-            accepted = False
             if delta_energy < 0:
                 # Better solution - always accept
                 current_state = new_state
                 current_energy = new_energy
-                accepted = True
             else:
                 # Worse solution - accept with probability
                 acceptance_probability = np.exp(-delta_energy / temperature)
                 if np.random.rand() < acceptance_probability:
                     current_state = new_state
                     current_energy = new_energy
-                    accepted = True
 
             # Update best
             if current_energy < best_energy:
