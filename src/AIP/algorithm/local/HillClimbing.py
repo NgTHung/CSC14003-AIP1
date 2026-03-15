@@ -91,7 +91,7 @@ class HillClimbing(Algorithm[Problem, Any, float, HillClimbingParameter]):
         self.history = [self.current_value]
 
         # Main loop
-        for iteration in range(self.max_iterations):
+        for _ in range(self.max_iterations):
             # Get all neighbors
 
             neighbors = None

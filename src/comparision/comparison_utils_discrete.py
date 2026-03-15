@@ -11,7 +11,6 @@ from __future__ import annotations
 
 import json
 import os
-import sys
 import time
 import random
 import itertools
@@ -21,11 +20,6 @@ from typing import Any, Callable, Literal
 
 import numpy as np
 
-# ── Ensure ``src/`` is on the import path ────────────────────────────────
-_SRC = os.path.join(os.path.dirname(__file__), os.pardir)
-if _SRC not in sys.path:
-    sys.path.insert(0, os.path.abspath(_SRC))
-
 import matplotlib.pyplot as plt
 
 from AIP.problems.base_problem import DiscreteProblem
@@ -33,7 +27,6 @@ from AIP.problems.discrete.tsp import TSP
 from AIP.problems.discrete.knapsack import Knapsack
 from AIP.problems.discrete.graph_coloring import GraphColoring
 
-# ── Algorithm imports ────────────────────────────────────────────────────
 # Classical graph-search
 from AIP.algorithm.classical.DFS import DepthFirstSearch
 from AIP.algorithm.classical.BFS import BreadthFirstSearch
@@ -55,7 +48,6 @@ from AIP.algorithm.natural.biology.aco import (
     MMAS, MMASParameter,
 )
 
-# ── Algorithm categories ──────────────────────────────────────────────────
 # Classical algorithms are deterministic graph-search; they only need one run
 # and produce no iterative convergence curve.
 _CLASSICAL_ALGOS = {"DFS", "BFS", "UCS", "Greedy", "A*"}
@@ -217,7 +209,7 @@ def build_algo(
         A ready-to-run algorithm instance.
     """
     match algo_name:
-        # ── Classical graph-search (no hyperparameters) ────────────
+        # -- Classical graph-search (no hyperparameters) ------------
         case "DFS":
             return DepthFirstSearch({}, problem)
         case "BFS":
@@ -228,7 +220,7 @@ def build_algo(
             return GreedyBestFirstSearch({}, problem)
         case "A*":
             return AStarSearch({}, problem)
-        # ── Local search ─────────────────────────────────────────
+        # -- Local search -----------------------------------------
         case "HC":
             cfg = HillClimbingParameter(
                 iteration=params.get("iteration", cycle),
@@ -349,7 +341,7 @@ def tune_algorithm(
     total = len(combinations)
 
     print(f"\n{'=' * 65}")
-    print(f"  Tuning {algo_name}  |  {total} configs × {n_runs} runs")
+    print(f"  Tuning {algo_name}  |  {total} configs x {n_runs} runs")
     print(f"  Problem: {problem._name}  |  Cycle: {cycle}")
     print(f"{'=' * 65}")
 
@@ -746,7 +738,7 @@ def plot_comparison(
     negate_fitness: bool = False,
     fitness_label: str = "Best Fitness",
 ) -> None:
-    """Generate a 1×2 comparison figure for discrete problems.
+    """Generate a 1*2 comparison figure for discrete problems.
 
     Sub-plots
     ---------
@@ -779,7 +771,7 @@ def plot_comparison(
         save_fitness = None
         save_time = None
 
-    # ── 1. Best Fitness (separate window) ────────────────────────────
+    # -- 1. Best Fitness (separate window) ----------------------------
     fig1, ax1 = plt.subplots(figsize=(10, 7))
     fig1.suptitle(
         f"{fitness_label} — {problem_name}{title_suffix}",
@@ -803,7 +795,7 @@ def plot_comparison(
         fig1.savefig(save_fitness, dpi=150, bbox_inches="tight")
         print(f"\nFitness figure saved to: {save_fitness}")
 
-    # ── 2. Computational Time (separate window) ──────────────────────
+    # -- 2. Computational Time (separate window) -------
     fig2, ax2 = plt.subplots(figsize=(10, 7))
     fig2.suptitle(
         f"Computational Time — {problem_name}{title_suffix}",
@@ -976,7 +968,7 @@ def plot_robustness(
     else:
         save_quality = save_robust = None
 
-    # ── 1. Solution Quality — box-plot ───────────────────────────────
+    # -- 1. Solution Quality — box-plot -------------------------------
     fig1, ax1 = plt.subplots(figsize=(10, 7))
     fig1.suptitle(
         f"Solution Quality — {problem_name}{title_suffix}",
@@ -1004,7 +996,7 @@ def plot_robustness(
         fig1.savefig(save_quality, dpi=150, bbox_inches="tight")
         print(f"\nQuality figure saved to: {save_quality}")
 
-    # ── 2. Robustness — std dev + CV ─────────────────────────────────
+    # -- 2. Robustness — std dev + CV ---------------------------------
     fig2, ax2 = plt.subplots(figsize=(10, 7))
     fig2.suptitle(
         f"Robustness — {problem_name}{title_suffix}",

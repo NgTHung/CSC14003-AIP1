@@ -1,7 +1,7 @@
 """Compare optimization algorithms on the **Rosenbrock** function (2-D).
 
 Metrics: Convergence Speed · Solution Quality · Computational Time · Robustness
-Generates a 2×2 comparison plot.
+Generates a 2x2 comparison plot.
 
 Usage
 -----
@@ -12,12 +12,6 @@ Usage
 from __future__ import annotations
 
 import argparse
-import os
-import sys
-
-_SRC = os.path.join(os.path.dirname(__file__), os.pardir)
-if _SRC not in sys.path:
-    sys.path.insert(0, os.path.abspath(_SRC))
 
 from AIP.problems.continuous.Rosenbrock import Rosenbrock
 from comparision.comparison_utils import (

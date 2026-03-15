@@ -72,6 +72,25 @@ class ArtificialBeeColony(
     food_sources_history: list[np.ndarray]
     stat: bool
 
+    def reset(self):
+        "Reset the state of Algorithm"
+        self._is_continuous = isinstance(self.problem, ContinuousProblem)
+        if self._is_continuous:
+            self.n_dim = self.problem.n_dim  # type: ignore[union-attr]
+        else:
+            self.n_dim = self.problem.n_dims  # type: ignore[union-attr]
+        self.food_sources = self.problem.sample(self.conf.n_bees)
+        self.fitness = cast(np.ndarray, self.problem.eval(self.food_sources))
+        self.fit_values = self._calculate_fit(self.fitness)
+        self.trials = np.zeros(self.conf.n_bees, dtype=int)
+
+        best_idx = int(np.argmin(self.fitness))
+        self.best_solution = self.food_sources[best_idx].copy()
+        self.best_fitness = float(self.fitness[best_idx])
+        self.history = []
+        if self.stat:
+            self.food_sources_history = []
+
     def __init__(
         self, configuration: ABCParameter, problem: Problem, stat: bool = False
     ):
@@ -90,24 +109,9 @@ class ArtificialBeeColony(
             into ``food_sources_history`` for later analysis or
             visualisation. Defaults to False to save memory.
         """
-        super().__init__(configuration, problem)
-        self._is_continuous = isinstance(problem, ContinuousProblem)
-        if self._is_continuous:
-            self.n_dim = problem.n_dim  # type: ignore[union-attr]
-        else:
-            self.n_dim = problem.n_dims  # type: ignore[union-attr]
-        self.food_sources = problem.sample(configuration.n_bees)
-        self.fitness = cast(np.ndarray, problem.eval(self.food_sources))
-        self.fit_values = self._calculate_fit(self.fitness)
-        self.trials = np.zeros(configuration.n_bees, dtype=int)
-
-        best_idx = int(np.argmin(self.fitness))
-        self.best_solution = self.food_sources[best_idx].copy()
-        self.best_fitness = float(self.fitness[best_idx])
-        self.history = []
         self.stat = stat
-        if stat:
-            self.food_sources_history = []
+        self.conf = configuration
+        super().__init__(configuration, problem)
 
     # ------------------------------------------------------------------
     # Helpers
@@ -326,6 +330,7 @@ class ArtificialBeeColony(
         np.ndarray
             Best solution found after all cycles.
         """
+        self.reset()
         for _ in range(self.conf.iteration):
             self.employed_bee_phase()
             self.onlooker_bee_phase()

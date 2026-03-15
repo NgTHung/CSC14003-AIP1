@@ -1,28 +1,38 @@
 """
 Teaching-Learning-Based Optimization implementation.
 """
+
 from dataclasses import dataclass
+from typing import cast
 import numpy as np
 from AIP.algorithm.base_algorithm import Algorithm
 from AIP.problems.continuous.continuous import ContinuousProblem
 
+
 @dataclass
 class TLBOConfig:
     """Configuration parameters for TLBO algorithm."""
+
     pop_size: int = 50
     iterations: int = 100
     # True if the problem is minimization (default for loss functions), False if maximization
-    minimization: bool = True 
+    minimization: bool = True
+
 
 class TLBO(Algorithm[ContinuousProblem, np.ndarray, float, TLBOConfig]):
     """
     Teaching-Learning-Based Optimization (TLBO) algorithm.
     """
+
     name: str = "TLBO"
     population_history: list
     stat: bool
+    population: np.ndarray
+    fitness: np.ndarray
 
-    def __init__(self, configuration: TLBOConfig, problem: ContinuousProblem, stat: bool = False):
+    def __init__(
+        self, configuration: TLBOConfig, problem: ContinuousProblem, stat: bool = False
+    ):
         """Initialize TLBO.
 
         Parameters
@@ -40,86 +50,71 @@ class TLBO(Algorithm[ContinuousProblem, np.ndarray, float, TLBOConfig]):
 
     def run(self):
         """Execute the optimization process."""
-        # 1. Initialize population from Problem (including sampling logic within bounds)
         self.population = self.problem.sample(self.conf.pop_size)
-        
-        # 2. Evaluate initial fitness
-        self.fitness = self.problem.eval(self.population)
-        
-        # Initialize history and best solution
+        self.fitness = cast(np.ndarray, self.problem.eval(self.population))
+
         self.history = []
         if self.stat:
             self.population_history = []
         self._update_global_best()
-        
+
         # Get bounds for clipping during movement
         # Note: Accessing protected member _bounds as per ContinuousProblem definition
         lower_bound = self.problem._bounds[:, 0]
         upper_bound = self.problem._bounds[:, 1]
-        
+
         dim = self.problem._n_dim
 
         for it in range(self.conf.iterations):
-            # ==========================
-            # TEACHER PHASE
-            # ==========================
             # Find Teacher
             teacher_idx = self._get_best_index()
             teacher = self.population[teacher_idx]
-            
+
             # Calculate Mean
             mean_pop = np.mean(self.population, axis=0)
-            
+
             # Create new candidates
-            TF = np.random.randint(1, 3) # Teaching Factor: 1 or 2
+            TF = np.random.randint(1, 3)  # Teaching Factor: 1 or 2
             r = np.random.rand(self.conf.pop_size, dim)
-            
+
             new_pop_teacher = self.population + r * (teacher - TF * mean_pop)
             new_pop_teacher = np.clip(new_pop_teacher, lower_bound, upper_bound)
-            
+
             # Evaluate and update (Greedy Selection)
             new_fit_teacher = self.problem.eval(new_pop_teacher)
             self._greedy_update(new_pop_teacher, new_fit_teacher)
 
-            # ==========================
-            # LEARNER PHASE
-            # ==========================
-            # Create random permutation to select Partner
             partner_indices = np.arange(self.conf.pop_size)
             np.random.shuffle(partner_indices)
             partners = self.population[partner_indices]
             partners_fitness = self.fitness[partner_indices]
-            
+
             r = np.random.rand(self.conf.pop_size, dim)
-            
+
             # Mask to determine who is better
             if self.conf.minimization:
                 better_mask = (self.fitness < partners_fitness).reshape(-1, 1)
             else:
                 better_mask = (self.fitness > partners_fitness).reshape(-1, 1)
-            
+
             # Vectorization logic: Move towards the better individual
             # If we are better: step = X - Partner
             # If partner is better: step = Partner - X = -(X - Partner)
             step = self.population - partners
             direction = np.where(better_mask, 1, -1)
-            
+
             new_pop_learner = self.population + r * (step * direction)
             new_pop_learner = np.clip(new_pop_learner, lower_bound, upper_bound)
-            
+
             # Evaluate and update (Greedy Selection)
             new_fit_learner = self.problem.eval(new_pop_learner)
             self._greedy_update(new_pop_learner, new_fit_learner)
-            
-            # ==========================
-            # RECORDING
-            # ==========================
+
             self._update_global_best()
-            # Record the best fitness of the current iteration into history
-            self.history.append(self.best_fitness)
+            self.history.append(self.best_solution.copy())
             if self.stat:
                 self.population_history.append(self.population.copy())
-            
+
         return self.best_solution
 
     def _get_best_index(self):
@@ -132,11 +127,13 @@ class TLBO(Algorithm[ContinuousProblem, np.ndarray, float, TLBOConfig]):
         """Update the global best solution attribute."""
         idx = self._get_best_index()
         current_best_fit = self.fitness[idx]
-        
+
         # If there is no best solution yet or a better one is found
-        if not hasattr(self, 'bestFitness') or \
-           (self.conf.minimization and current_best_fit < self.best_fitness) or \
-           (not self.conf.minimization and current_best_fit > self.best_fitness):
+        if (
+            not hasattr(self, "bestFitness")
+            or (self.conf.minimization and current_best_fit < self.best_fitness)
+            or (not self.conf.minimization and current_best_fit > self.best_fitness)
+        ):
             self.best_fitness = current_best_fit
             self.best_solution = self.population[idx].copy()
 
@@ -146,6 +143,6 @@ class TLBO(Algorithm[ContinuousProblem, np.ndarray, float, TLBOConfig]):
             improved = new_fitness < self.fitness
         else:
             improved = new_fitness > self.fitness
-            
+
         self.population[improved] = new_pop[improved]
         self.fitness[improved] = new_fitness[improved]

@@ -248,6 +248,6 @@ class CMAES(
                 self.best_fitness = float(fitness[best_gen_idx])
                 self.best_solution = offspring[best_gen_idx].copy()
 
-            self.history.append(self.best_fitness)
+            self.history.append(self.best_solution.copy())
 
         return cast(np.ndarray, self.best_solution)

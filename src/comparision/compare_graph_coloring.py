@@ -1,7 +1,7 @@
 """Compare optimization algorithms on the **Graph Coloring** problem.
 
 Metrics: Best Fitness · Computational Time
-Generates a 1×2 comparison plot.
+Generates a 1x2 comparison plot.
 
 Algorithms compared:
   Classical : DFS, BFS, UCS, Greedy Best-First, A*
@@ -21,19 +21,12 @@ Usage
 from __future__ import annotations
 
 import argparse
-import os
-import sys
 
 import numpy as np
 
-_SRC = os.path.join(os.path.dirname(__file__), os.pardir)
-if _SRC not in sys.path:
-    sys.path.insert(0, os.path.abspath(_SRC))
-
 from AIP.problems.discrete.graph_coloring import GraphColoring
 from comparision.comparison_utils_discrete import (
-    run_comparison, plot_comparison, plot_convergence, plot_robustness,
-    print_summary_table,
+    run_comparison, plot_comparison, plot_convergence, print_summary_table,
     tune_all_algorithms, load_tuned_config, _CLASSICAL_ALGOS,
     make_output_path, make_data_output_path, save_results_json,
 )

@@ -10,7 +10,8 @@ Reynolds, R. G. (1994). An Introduction to Cultural Algorithms.
 Proceedings of the Third Annual Conference on Evolutionary Programming.
 """
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
+from typing import cast
 import numpy as np
 
 from AIP.algorithm.base_algorithm import Algorithm
@@ -105,6 +106,10 @@ class CA(Algorithm[ContinuousProblem, np.ndarray, float, CAConfig]):
     name: str = "Cultural Algorithm (CA)"
     population_history: list
     stat: bool
+    population: np.ndarray
+    fitness: np.ndarray
+    normative_l: np.ndarray
+    normative_u: np.ndarray
 
     def __init__(self, configuration: CAConfig, problem: ContinuousProblem, stat: bool = False):
         """Initialize Cultural Algorithm.
@@ -140,95 +145,52 @@ class CA(Algorithm[ContinuousProblem, np.ndarray, float, CAConfig]):
         n_dim = self.problem._n_dim
         pop_size = self.conf.pop_size
 
-        # ------------------------------------------------------------------
-        # Step 1 – Initialise population space
-        # ------------------------------------------------------------------
-        # shape: (pop_size, n_dim)  – uniformly sampled inside global bounds
         self.population = self.problem.sample(pop_size)
 
-        # ------------------------------------------------------------------
-        # Step 2 – Evaluate initial fitness
-        # ------------------------------------------------------------------
-        # shape: (pop_size,)
-        self.fitness = self.problem.eval(self.population)
+        self.fitness = cast(np.ndarray,self.problem.eval(self.population))
 
-        # ------------------------------------------------------------------
-        # Step 3 – Initialise belief space
-        # ------------------------------------------------------------------
-        # Situational knowledge (global best)
         self._init_global_best()
 
-        # Normative knowledge: initialise to full global bounds
-        self.normative_L = lb.copy()             # (n_dim,)
-        self.normative_U = ub.copy()             # (n_dim,)
+        self.normative_l = lb.copy()             # (n_dim,)
+        self.normative_u = ub.copy()             # (n_dim,)
 
         # Record history
-        self.history= = []
+        self.history= []
         if self.stat:
             self.population_history: list = []
 
         # Number of accepted individuals (at least 1)
         k_accept = max(1, int(pop_size * self.conf.accepted_ratio))
 
-        # Number of exploitation vs exploration candidates
         n_exploit = int(pop_size * self.conf.exploit_ratio)
         n_explore = pop_size - n_exploit
 
-        # ------------------------------------------------------------------
-        # Main evolutionary loop
-        # ------------------------------------------------------------------
         for _it in range(self.conf.iterations):
-
-            # ==============================================================
-            # ACCEPTANCE PROTOCOL – update belief space from top-k agents
-            # ==============================================================
             self._update_belief_space(lb, ub, k_accept)
 
-            # ==============================================================
-            # INFLUENCE PROTOCOL – generate candidate positions
-            # ==============================================================
-            # --- Exploitation: sample uniformly inside normative bounds ----
-            # U(normative_L, normative_U) broadcast over pop agents
-            # shape: (n_exploit, n_dim)
             r_exploit = np.random.rand(n_exploit, n_dim)
-            norm_width = self.normative_U - self.normative_L  # (n_dim,)
-            candidates_exploit = self.normative_L + r_exploit * norm_width
+            norm_width = self.normative_u - self.normative_l  # (n_dim,)
+            candidates_exploit = self.normative_l + r_exploit * norm_width
 
-            # --- Exploration: Gaussian mutation around current positions ---
-            # Sigma is a fraction of the current normative interval width,
-            # providing adaptive step-size: wider intervals → larger steps.
-            # shape: (n_explore, n_dim)
             sigma = self.conf.explore_sigma * norm_width          # (n_dim,)
             noise = np.random.randn(n_explore, n_dim) * sigma     # broadcast
             candidates_explore = self.population[-n_explore:] + noise
 
-            # Concatenate all candidates: (pop_size, n_dim)
-            # Exploitation candidates cover the first n_exploit slots,
-            # exploration covers the last n_explore slots.
             candidates = np.vstack([candidates_exploit, candidates_explore])
 
-            # Clip to global bounds (vectorised)
             candidates = np.clip(candidates, lb, ub)
 
-            # ==============================================================
-            # GREEDY SELECTION – keep new position only when it is better
-            # ==============================================================
             new_fitness = self.problem.eval(candidates)           # (pop_size,)
+            assert new_fitness is np.ndarray
             self._greedy_update(candidates, new_fitness)
 
-            # ==============================================================
-            # RECORD best fitness this iteration
-            # ==============================================================
             self._update_global_best()
-            self.history.append(float(self.best_fitness))
+            self.history.append(self.best_solution.copy())
             if self.stat:
                 self.population_history.append(self.population.copy())
 
         return self.best_solution
 
-    # ------------------------------------------------------------------
-    # Private helpers
-    # ------------------------------------------------------------------
 
     def _is_better(self, a: np.ndarray, b: np.ndarray) -> np.ndarray:
         """Return a boolean mask where *a* is strictly better than *b*.
@@ -280,7 +242,7 @@ class CA(Algorithm[ContinuousProblem, np.ndarray, float, CAConfig]):
 
         For each agent *i*, replace ``population[i]`` with ``candidates[i]``
         only when ``candidate_fitness[i]`` is strictly better than
-        ``self.fitness[i]``.  Fully vectorised – no Python-level loop.
+        ``self.fitness[i]``.
 
         Parameters
         ----------
@@ -289,12 +251,9 @@ class CA(Algorithm[ContinuousProblem, np.ndarray, float, CAConfig]):
         candidate_fitness : np.ndarray, shape (pop_size,)
             Fitness values of ``candidates``.
         """
-        # Boolean mask: True where the candidate is an improvement
-        # shape: (pop_size,) → reshape to (pop_size, 1) for broadcasting
         improved = self._is_better(candidate_fitness, self.fitness)  # (pop_size,)
         improved_2d = improved[:, np.newaxis]                        # (pop_size, 1)
 
-        # Vectorised conditional update
         self.population = np.where(improved_2d, candidates, self.population)
         self.fitness = np.where(improved, candidate_fitness, self.fitness)
 
@@ -328,9 +287,6 @@ class CA(Algorithm[ContinuousProblem, np.ndarray, float, CAConfig]):
         k_accept : int
             Number of individuals in the accepted set.
         """
-        # ------------------------------------------------------------------
-        # 1. Sort population by fitness → select top-k accepted individuals
-        # ------------------------------------------------------------------
         if self.conf.minimization:
             sorted_indices = np.argsort(self.fitness)          # ascending
         else:
@@ -339,29 +295,12 @@ class CA(Algorithm[ContinuousProblem, np.ndarray, float, CAConfig]):
         accepted_idx = sorted_indices[:k_accept]               # (k_accept,)
         accepted_pop = self.population[accepted_idx]           # (k_accept, n_dim)
 
-        # ------------------------------------------------------------------
-        # 2. Situational knowledge update (global best)
-        # ------------------------------------------------------------------
-        # This is deferred to _update_global_best() called after greedy selection,
-        # so nothing extra is needed here – the belief space situational knowledge
-        # is always synchronised via self.best_solution / self.best_fitness.
-
-        # ------------------------------------------------------------------
-        # 3. Normative knowledge update (shrink-only bounding box)
-        # ------------------------------------------------------------------
-        # Per-dimension min/max of the accepted agents
         accepted_min = np.min(accepted_pop, axis=0)            # (n_dim,)
         accepted_max = np.max(accepted_pop, axis=0)            # (n_dim,)
 
-        # Shrink only: raise the lower bound and lower the upper bound
-        self.normative_L = np.maximum(self.normative_L, accepted_min)
-        self.normative_U = np.minimum(self.normative_U, accepted_max)
+        self.normative_l = np.maximum(self.normative_l, accepted_min)
+        self.normative_u = np.minimum(self.normative_u, accepted_max)
 
-        # ------------------------------------------------------------------
-        # 4. Reset degenerate dimensions to avoid stagnation
-        # ------------------------------------------------------------------
-        # A dimension is considered degenerate when its interval width
-        # has collapsed below the tolerance threshold.
-        degenerate = (self.normative_U - self.normative_L) < 1e-6  # (n_dim,) bool
-        self.normative_L = np.where(degenerate, global_lb, self.normative_L)
-        self.normative_U = np.where(degenerate, global_ub, self.normative_U)
+        degenerate = (self.normative_u - self.normative_l) < 1e-6  # (n_dim,) bool
+        self.normative_l = np.where(degenerate, global_lb, self.normative_l)
+        self.normative_u = np.where(degenerate, global_ub, self.normative_u)

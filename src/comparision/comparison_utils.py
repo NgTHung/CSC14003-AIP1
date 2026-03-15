@@ -11,7 +11,6 @@ from __future__ import annotations
 
 import json
 import os
-import sys
 import time
 import random
 import itertools
@@ -20,13 +19,7 @@ from typing import Any, Callable
 
 import numpy as np
 
-# ── Ensure ``src/`` is on the import path ────────────────────────────────
-_SRC = os.path.join(os.path.dirname(__file__), os.pardir)
-if _SRC not in sys.path:
-    sys.path.insert(0, os.path.abspath(_SRC))
-
 import matplotlib.pyplot as plt
-from matplotlib.ticker import MaxNLocator
 
 from AIP.problems.continuous.continuous import ContinuousProblem
 
@@ -498,7 +491,7 @@ def tune_algorithm(
     total = len(combinations)
 
     print(f"\n{'=' * 65}")
-    print(f"  Tuning {algo_name}  |  {total} configs × {n_runs} runs")
+    print(f"  Tuning {algo_name}  |  {total} configs x {n_runs} runs")
     print(f"  Problem: {problem._name}  |  Cycle: {cycle}")
     print(f"{'=' * 65}")
 
@@ -861,7 +854,7 @@ def plot_comparison(
     n_dim: int = 2,
     save_path: str | None = None,
 ) -> None:
-    """Generate a 2×2 comparison figure.
+    """Generate a 2x2 comparison figure.
 
     Sub-plots
     ---------

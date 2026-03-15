@@ -112,6 +112,6 @@ class OnePlusOneES(
                 # success_rate == 1/5 → keep σ unchanged
                 n_success = 0
 
-            self.history.append(self.best_fitness)
+            self.history.append(self.best_solution.copy())
 
         return cast(np.ndarray, self.best_solution)
