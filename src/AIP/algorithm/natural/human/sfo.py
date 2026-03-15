@@ -151,8 +151,6 @@ class SFO(Algorithm[ContinuousProblem, np.ndarray, float, SFOConfig]):
 
         # --- Establish the initial global best ---
         self._update_global_best()
-        self.best_fitness = float('inf')
-        self.best_solution = np.array([])
 
     @override
     def run(self) -> np.ndarray:

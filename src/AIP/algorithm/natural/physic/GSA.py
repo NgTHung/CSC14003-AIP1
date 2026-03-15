@@ -142,6 +142,7 @@ class GravitationalSearchAlgorithm(
         np.ndarray
             Best solution found.
         """
+        self.reset()
         # Initialize population
         positions = self.problem.sample(self.conf.pop_size)
         velocities = np.zeros_like(positions)

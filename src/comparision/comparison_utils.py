@@ -632,19 +632,6 @@ def build_algo_registry(
         )
     return registry
 
-
-# Algorithms whose history stores float fitness values directly
-_FLOAT_HISTORY_ALGOS = {
-    "CA",
-    "SFO",
-    "TLBO",
-    "(1+1)-ES",
-    "SA-ES",
-    "CMA-ES",
-    "(μ/ρ+λ)-ES",
-    "HC",
-}
-
 @dataclass
 class RunResult:
     """Result of a single algorithm run."""
@@ -668,9 +655,6 @@ def _extract_fitness_curve(
     history = model.history
     if not history:
         return [float(model.best_fitness)]
-
-    if algo_name in _FLOAT_HISTORY_ALGOS:
-        return [float(v) for v in history]
 
     # History items are solution vectors → evaluate each
     curve: list[float] = []
@@ -970,6 +954,7 @@ def plot_comparison(
     ax2.set_title("Solution Quality", fontsize=13, fontweight="bold")
     ax2.tick_params(axis="x", rotation=45)
     ax2.grid(True, alpha=0.3, axis="y", linestyle="--")
+    ax2.set_yscale('log')
     fig2.tight_layout(rect=(0, 0, 1, 0.95))
 
     if save_quality:

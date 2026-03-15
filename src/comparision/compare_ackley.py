@@ -66,7 +66,7 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    n_dim = 30
+    n_dim = 2
     problem = Ackley(n_dim=n_dim)
     print(f"Problem : Ackley  |  Dimensions : {n_dim}")
     print(f"Bounds  : {problem._bounds[0]}")
