@@ -42,7 +42,7 @@ from AIP.algorithm.natural.physic.SA import (
     SimulatedAnnealing,
     SimulatedAnnealingParameter,
 )
-from AIP.algorithm.natural.physic.HS import HarmonySearch
+from AIP.algorithm.natural.physic.HS import HarmonySearch, HarmonySearchParameter
 from AIP.algorithm.natural.physic.GSA import (
     GravitationalSearchAlgorithm,
     GravitationalSearchParameter,
@@ -64,10 +64,6 @@ from AIP.algorithm.natural.biology.aco import (
 _CLASSICAL_ALGOS = {"DFS", "BFS", "UCS", "Greedy", "A*"}
 # Algorithms that need a random initial state passed to run()
 _NEEDS_INITIAL_STATE = {"HC"}
-
-# =====================================================================
-# Config directory for persisting tuned parameters
-# =====================================================================
 
 _CONFIGS_DIR = os.path.join(os.path.dirname(__file__), "configs")
 
@@ -114,11 +110,6 @@ def load_tuned_config(
     if algo_names is not None:
         data = {k: v for k, v in data.items() if k in algo_names}
     return data if data else None
-
-
-# =====================================================================
-# Parameter grids for tuning (discrete algorithms)
-# =====================================================================
 
 # --- Common grids (work for all discrete problems) ---
 PARAM_GRIDS_COMMON: dict[str, dict[str, list]] = {
@@ -190,12 +181,6 @@ def get_param_grids(
         grids.update(PARAM_GRIDS_TSP)
     return grids
 
-
-# =====================================================================
-# Algorithm builder — creates an algorithm from name + param dict
-# =====================================================================
-
-
 def build_algo(
     algo_name: str,
     params: dict,
@@ -249,13 +234,13 @@ def build_algo(
             return SimulatedAnnealing(cfg, problem)
         case "HS":
             return HarmonySearch(
-                {
-                    "hms": params.get("hms", 30),
-                    "hmcr": params.get("hmcr", 0.9),
-                    "par": params.get("par", 0.3),
-                    "bw": params.get("bw", 0.1),
-                    "max_iterations": params.get("max_iterations", cycle),
-                },
+                HarmonySearchParameter(
+                    hms=params.get("hms", 30),
+                    hmcr=params.get("hmcr", 0.9),
+                    par=params.get("par", 0.3),
+                    bw=params.get("bw", 0.1),
+                    max_iterations=params.get("max_iterations", cycle),
+                ),
                 problem,
             )
         case "ABC":
@@ -325,12 +310,6 @@ def build_algo(
             return MMAS(cfg, problem)
         case _:
             raise ValueError(f"Unknown discrete algorithm: {algo_name}")
-
-
-# =====================================================================
-# Parameter tuning via grid search
-# =====================================================================
-
 
 def tune_algorithm(
     algo_name: str,
@@ -445,11 +424,6 @@ def _problem_type(
         return "GraphColoring"
     raise ValueError(f"Unknown discrete problem type: {type(problem)}")
 
-
-# =====================================================================
-# Registry — default (name, builder_fn) pairs
-# =====================================================================
-
 ALGO_REGISTRY_CLASSICAL: dict[str, Callable] = {
     "DFS": lambda prob, cyc: build_algo("DFS", {}, prob, cyc),
     "BFS": lambda prob, cyc: build_algo("BFS", {}, prob, cyc),
@@ -502,12 +476,6 @@ def build_algo_registry(
             _n, _p, prob, cyc
         )
     return registry
-
-
-# =====================================================================
-# Data collection
-# =====================================================================
-
 
 @dataclass
 class RunResult:
@@ -682,11 +650,6 @@ def run_comparison(
             )
 
     return results
-
-
-# =====================================================================
-# Plotting helpers
-# =====================================================================
 
 _COLORS = [
     "#4C72B0",

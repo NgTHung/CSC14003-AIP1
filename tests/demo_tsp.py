@@ -9,6 +9,7 @@ Demonstrates:
 """
 
 import sys
+
 sys.path.append("src")
 
 import time
@@ -20,8 +21,11 @@ from AIP.algorithm.classical.UCS import UniformCostSearch
 from AIP.algorithm.classical.GreedyBestFirst import GreedyBestFirstSearch
 from AIP.algorithm.classical.AStar import AStarSearch
 from AIP.algorithm.local.HillClimbing import HillClimbing, HillClimbingParameter
-from AIP.algorithm.natural.physic.SA import SimulatedAnnealing, SimulatedAnnealingParameter
-from AIP.algorithm.natural.physic.HS import HarmonySearch
+from AIP.algorithm.natural.physic.SA import (
+    SimulatedAnnealing,
+    SimulatedAnnealingParameter,
+)
+from AIP.algorithm.natural.physic.HS import HarmonySearch, HarmonySearchParameter
 from AIP.algorithm.natural.biology.abc import ArtificialBeeColony, ABCParameter
 from AIP.algorithm.natural.biology.cs import CuckooSearch, CuckooSearchParameter
 from AIP.algorithm.natural.biology.fa import FireflyAlgorithm, FireflyParameter
@@ -30,20 +34,12 @@ from AIP.algorithm.natural.biology.aco import ACS, ACSParameter
 from AIP.algorithm.natural.biology.aco import MMAS, MMASParameter
 
 
-# ============================================================================
-# Helper — pretty-print a decoded TSP solution
-# ============================================================================
-
 def _print_tsp_result(info: dict, indent: str = "  "):
     """Print a decoded TSP solution (tour, distance)."""
     print(f"{indent}Tour           : {info['tour']}")
     print(f"{indent}Tour (names)   : {' -> '.join(info['tour_names'])}")
     print(f"{indent}Total distance : {info['total_distance']:.2f}")
 
-
-# ============================================================================
-# TSP — Graph Search
-# ============================================================================
 
 def demo_tsp_graph_search():
     """Run classical graph search algorithms on a small TSP instance."""
@@ -59,11 +55,11 @@ def demo_tsp_graph_search():
 
     config: dict = {}
     algorithms = [
-        ("DFS",        DepthFirstSearch(config, problem)),
-        ("BFS",        BreadthFirstSearch(config, problem)),
-        ("UCS",        UniformCostSearch(config, problem)),
+        ("DFS", DepthFirstSearch(config, problem)),
+        ("BFS", BreadthFirstSearch(config, problem)),
+        ("UCS", UniformCostSearch(config, problem)),
         ("Greedy BFS", GreedyBestFirstSearch(config, problem)),
-        ("A*",         AStarSearch(config, problem)),
+        ("A*", AStarSearch(config, problem)),
     ]
 
     for name, algo in algorithms:
@@ -82,10 +78,6 @@ def demo_tsp_graph_search():
             print(f"  Nodes explored: {len(algo.history)}")
         print(f"  Runtime      : {elapsed:.4f}s")
 
-
-# ============================================================================
-# TSP — Local Search (Hill Climbing)
-# ============================================================================
 
 def demo_tsp_local_search():
     """Run Hill Climbing on a TSP instance."""
@@ -111,10 +103,6 @@ def demo_tsp_local_search():
         print("  No solution found.")
     print(f"  Runtime      : {elapsed:.4f}s")
 
-
-# ============================================================================
-# TSP — Simulated Annealing
-# ============================================================================
 
 def demo_tsp_sa():
     """Run Simulated Annealing on a TSP instance."""
@@ -143,10 +131,6 @@ def demo_tsp_sa():
     print(f"  Runtime      : {elapsed:.4f}s")
 
 
-# ============================================================================
-# TSP — Harmony Search
-# ============================================================================
-
 def demo_tsp_hs():
     """Run Harmony Search on a TSP instance."""
     problem = TSP.create_medium()
@@ -156,13 +140,14 @@ def demo_tsp_hs():
     print(f"  Cities: {problem.city_names}")
     print("=" * 65)
 
-    config = {
-        "hms": 30,
-        "hmcr": 0.9,
-        "par": 0.3,
-        "bw": 0.1,
-        "max_iterations": 3000,
-    }
+    config = HarmonySearchParameter(
+        hms=30,
+        hmcr=0.9,
+        par=0.3,
+        bw=0.1,
+        max_iterations=3000,
+    )
+
     algo = HarmonySearch(config, problem)
     t0 = time.perf_counter()
     best = algo.run()
@@ -173,10 +158,6 @@ def demo_tsp_hs():
     print(f"  Iterations   : {len(algo.history)}")
     print(f"  Runtime      : {elapsed:.4f}s")
 
-
-# ============================================================================
-# TSP — Artificial Bee Colony
-# ============================================================================
 
 def demo_tsp_abc():
     """Run Artificial Bee Colony on a TSP instance."""
@@ -199,10 +180,6 @@ def demo_tsp_abc():
     print(f"  Runtime      : {elapsed:.4f}s")
 
 
-# ============================================================================
-# TSP — Cuckoo Search
-# ============================================================================
-
 def demo_tsp_cs():
     """Run Cuckoo Search on a TSP instance."""
     problem = TSP.create_medium()
@@ -212,7 +189,9 @@ def demo_tsp_cs():
     print(f"  Cities: {problem.city_names}")
     print("=" * 65)
 
-    config = CuckooSearchParameter(n_nests=25, pa=0.25, alpha=0.01, beta=1.5, iteration=500)
+    config = CuckooSearchParameter(
+        n_nests=25, pa=0.25, alpha=0.01, beta=1.5, iteration=500
+    )
     algo = CuckooSearch(config, problem)
     t0 = time.perf_counter()
     best = algo.run()
@@ -224,10 +203,6 @@ def demo_tsp_cs():
     print(f"  Runtime      : {elapsed:.4f}s")
 
 
-# ============================================================================
-# TSP — Firefly Algorithm
-# ============================================================================
-
 def demo_tsp_fa():
     """Run Firefly Algorithm on a TSP instance."""
     problem = TSP.create_medium()
@@ -238,8 +213,12 @@ def demo_tsp_fa():
     print("=" * 65)
 
     config = FireflyParameter(
-        n_fireflies=25, alpha=0.5, beta0=1.0,
-        gamma=1.0, alpha_decay=0.97, cycle=300,
+        n_fireflies=25,
+        alpha=0.5,
+        beta0=1.0,
+        gamma=1.0,
+        alpha_decay=0.97,
+        cycle=300,
     )
     algo = FireflyAlgorithm(config, problem)
     t0 = time.perf_counter()
@@ -251,10 +230,6 @@ def demo_tsp_fa():
     print(f"  Iterations   : {len(algo.history)}")
     print(f"  Runtime      : {elapsed:.4f}s")
 
-
-# ============================================================================
-# TSP — Ant System
-# ============================================================================
 
 def demo_tsp_ant_system():
     """Run Ant System on a TSP instance."""
@@ -277,10 +252,6 @@ def demo_tsp_ant_system():
     print(f"  Runtime      : {elapsed:.4f}s")
 
 
-# ============================================================================
-# TSP — Ant Colony System
-# ============================================================================
-
 def demo_tsp_acs():
     """Run Ant Colony System on a TSP instance."""
     problem = TSP.create_medium()
@@ -302,10 +273,6 @@ def demo_tsp_acs():
     print(f"  Runtime      : {elapsed:.4f}s")
 
 
-# ============================================================================
-# TSP — MAX-MIN Ant System
-# ============================================================================
-
 def demo_tsp_mmas():
     """Run MAX-MIN Ant System on a TSP instance."""
     problem = TSP.create_medium()
@@ -326,10 +293,6 @@ def demo_tsp_mmas():
     print(f"  Iterations   : {len(algo.history)}")
     print(f"  Runtime      : {elapsed:.4f}s")
 
-
-# ============================================================================
-# Main
-# ============================================================================
 
 if __name__ == "__main__":
     print("\n" + "#" * 65)

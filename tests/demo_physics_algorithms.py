@@ -1,22 +1,14 @@
 """Demo script to test physics-inspired optimization algorithms (SA, GSA, HS)."""
 
-import sys
-sys.path.append('src')
-
 import numpy as np
 import matplotlib.pyplot as plt
 
 from AIP.problems.continuous.sphere import Sphere
 from AIP.problems.continuous.rastrigin import Rastrigin
 from AIP.problems.continuous.ackley import Ackley
-from AIP.algorithm.physics.SA import SimulatedAnnealing, SimulatedAnnealingParameter
-from AIP.algorithm.physics.GSA import GravitationalSearchAlgorithm
-from AIP.algorithm.physics.HS import HarmonySearch
-
-
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
+from AIP.algorithm.natural.physic.SA import SimulatedAnnealing, SimulatedAnnealingParameter
+from AIP.algorithm.natural.physic.GSA import GravitationalSearchAlgorithm, GravitationalSearchParameter
+from AIP.algorithm.natural.physic.HS import HarmonySearch, HarmonySearchParameter
 
 def print_result(algo, problem_name: str):
     """Print the result of a physics-inspired algorithm run."""
@@ -137,11 +129,6 @@ def plot_comparison_bar(results: list[dict], title: str, filename: str):
     plt.savefig(filename, dpi=150)
     plt.show()
 
-
-# ---------------------------------------------------------------------------
-# Test functions
-# ---------------------------------------------------------------------------
-
 def run_all_on_problem(problem, problem_name: str, tag: str):
     """
     Run SA, GSA, HS on a single continuous problem.
@@ -160,19 +147,19 @@ def run_all_on_problem(problem, problem_name: str, tag: str):
         max_iterations=1000,
         step_size=0.5,
     )
-    gsa_config = {
-        'pop_size': 30,
-        'max_iterations': 200,
-        'G0': 100.0,
-        'alpha': 20.0,
-    }
-    hs_config = {
-        'hms': 20,
-        'hmcr': 0.9,
-        'par': 0.3,
-        'bw': 0.5,
-        'max_iterations': 1000,
-    }
+    gsa_config = GravitationalSearchParameter(
+        pop_size= 30,
+        iteration= 200,
+        G0= 100.0,
+        alpha= 20.0,
+    )
+    hs_config = HarmonySearchParameter(
+        hms= 20,
+        hmcr= 0.9,
+        par= 0.3,
+        bw= 0.5,
+        max_iterations= 1000,
+    )
 
     # --- Run ---
     sa = SimulatedAnnealing(sa_config, problem)
@@ -227,11 +214,6 @@ def test_rastrigin():
 def test_ackley():
     problem = Ackley(n_dim=2)
     run_all_on_problem(problem, 'Ackley 2D', 'ackley')
-
-
-# ---------------------------------------------------------------------------
-# Main
-# ---------------------------------------------------------------------------
 
 if __name__ == '__main__':
     test_sphere()

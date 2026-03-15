@@ -7,9 +7,6 @@ Demonstrates:
 4. Biology-inspired (Artificial Bee Colony, Cuckoo Search, Firefly Algorithm)
 """
 
-import sys
-sys.path.append("src")
-
 import time
 import numpy as np
 from AIP.problems.discrete.knapsack import Knapsack
@@ -19,30 +16,27 @@ from AIP.algorithm.classical.UCS import UniformCostSearch
 from AIP.algorithm.classical.GreedyBestFirst import GreedyBestFirstSearch
 from AIP.algorithm.classical.AStar import AStarSearch
 from AIP.algorithm.local.HillClimbing import HillClimbing, HillClimbingParameter
-from AIP.algorithm.natural.physic.SA import SimulatedAnnealing, SimulatedAnnealingParameter
-from AIP.algorithm.natural.physic.HS import HarmonySearch
+from AIP.algorithm.natural.physic.SA import (
+    SimulatedAnnealing,
+    SimulatedAnnealingParameter,
+)
+from AIP.algorithm.natural.physic.HS import HarmonySearch, HarmonySearchParameter
 from AIP.algorithm.natural.biology.abc import ArtificialBeeColony, ABCParameter
 from AIP.algorithm.natural.biology.cs import CuckooSearch, CuckooSearchParameter
 from AIP.algorithm.natural.biology.fa import FireflyAlgorithm, FireflyParameter
 
-
-# ============================================================================
-# Helper — pretty-print a decoded knapsack solution
-# ============================================================================
 
 def _print_knapsack_result(info: dict, problem: Knapsack, indent: str = "  "):
     """Print a decoded knapsack solution (selected_items, total_value, total_weight)."""
     item_names = [f"item{i}" for i in info["selected_items"]]
     print(f"{indent}Selected items : {info['selected_items']}  {item_names}")
     print(f"{indent}Total value    : {info['total_value']:.0f}")
-    print(f"{indent}Total weight   : {info['total_weight']:.0f}  (capacity {problem.capacity:.0f})")
+    print(
+        f"{indent}Total weight   : {info['total_weight']:.0f}  (capacity {problem.capacity:.0f})"
+    )
     feasible = info["total_weight"] <= problem.capacity
     print(f"{indent}Feasible?      : {feasible}")
 
-
-# ============================================================================
-# Knapsack — Graph Search
-# ============================================================================
 
 def demo_knapsack_graph_search():
     """Run classical graph search algorithms on a small Knapsack instance."""
@@ -58,11 +52,11 @@ def demo_knapsack_graph_search():
 
     config: dict = {}
     algorithms = [
-        ("DFS",        DepthFirstSearch(config, problem)),
-        ("BFS",        BreadthFirstSearch(config, problem)),
-        ("UCS",        UniformCostSearch(config, problem)),
+        ("DFS", DepthFirstSearch(config, problem)),
+        ("BFS", BreadthFirstSearch(config, problem)),
+        ("UCS", UniformCostSearch(config, problem)),
         ("Greedy BFS", GreedyBestFirstSearch(config, problem)),
-        ("A*",         AStarSearch(config, problem)),
+        ("A*", AStarSearch(config, problem)),
     ]
 
     for name, algo in algorithms:
@@ -81,10 +75,6 @@ def demo_knapsack_graph_search():
             print(f"  Nodes explored: {len(algo.history)}")
         print(f"  Runtime      : {elapsed:.4f}s")
 
-
-# ============================================================================
-# Knapsack — Local Search (Hill Climbing)
-# ============================================================================
 
 def demo_knapsack_local_search():
     """Run Hill Climbing on a Knapsack instance."""
@@ -114,10 +104,6 @@ def demo_knapsack_local_search():
     print(f"  Runtime      : {elapsed:.4f}s")
 
 
-# ============================================================================
-# Knapsack — Simulated Annealing
-# ============================================================================
-
 def demo_knapsack_sa():
     """Run Simulated Annealing on a Knapsack instance."""
     problem = Knapsack.create_medium()
@@ -146,10 +132,6 @@ def demo_knapsack_sa():
     print(f"  Runtime      : {elapsed:.4f}s")
 
 
-# ============================================================================
-# Knapsack — Harmony Search
-# ============================================================================
-
 def demo_knapsack_hs():
     """Run Harmony Search on a Knapsack instance."""
     problem = Knapsack.create_medium()
@@ -160,13 +142,13 @@ def demo_knapsack_hs():
     print(f"  Capacity: {problem.capacity}")
     print("=" * 65)
 
-    config = {
-        "hms": 30,
-        "hmcr": 0.9,
-        "par": 0.3,
-        "bw": 0.1,
-        "max_iterations": 3000,
-    }
+    config = HarmonySearchParameter(
+        hms= 30,
+        hmcr= 0.9,
+        par= 0.3,
+        bw= 0.1,
+        max_iterations= 3000,
+    )
     algo = HarmonySearch(config, problem)
     t0 = time.perf_counter()
     best = algo.run()
@@ -177,10 +159,6 @@ def demo_knapsack_hs():
     print(f"  Iterations   : {len(algo.history)}")
     print(f"  Runtime      : {elapsed:.4f}s")
 
-
-# ============================================================================
-# Knapsack — Artificial Bee Colony
-# ============================================================================
 
 def demo_knapsack_abc():
     """Run Artificial Bee Colony on a Knapsack instance."""
@@ -204,10 +182,6 @@ def demo_knapsack_abc():
     print(f"  Runtime      : {elapsed:.4f}s")
 
 
-# ============================================================================
-# Knapsack — Cuckoo Search
-# ============================================================================
-
 def demo_knapsack_cs():
     """Run Cuckoo Search on a Knapsack instance."""
     problem = Knapsack.create_medium()
@@ -218,7 +192,9 @@ def demo_knapsack_cs():
     print(f"  Capacity: {problem.capacity}")
     print("=" * 65)
 
-    config = CuckooSearchParameter(n_nests=25, pa=0.25, alpha=0.01, beta=1.5, iteration=500)
+    config = CuckooSearchParameter(
+        n_nests=25, pa=0.25, alpha=0.01, beta=1.5, iteration=500
+    )
     algo = CuckooSearch(config, problem)
     t0 = time.perf_counter()
     best = algo.run()
@@ -229,10 +205,6 @@ def demo_knapsack_cs():
     print(f"  Iterations   : {len(algo.history)}")
     print(f"  Runtime      : {elapsed:.4f}s")
 
-
-# ============================================================================
-# Knapsack — Firefly Algorithm
-# ============================================================================
 
 def demo_knapsack_fa():
     """Run Firefly Algorithm on a Knapsack instance."""
@@ -245,8 +217,12 @@ def demo_knapsack_fa():
     print("=" * 65)
 
     config = FireflyParameter(
-        n_fireflies=25, alpha=0.5, beta0=1.0,
-        gamma=1.0, alpha_decay=0.97, cycle=300,
+        n_fireflies=25,
+        alpha=0.5,
+        beta0=1.0,
+        gamma=1.0,
+        alpha_decay=0.97,
+        cycle=300,
     )
     algo = FireflyAlgorithm(config, problem)
     t0 = time.perf_counter()
@@ -258,10 +234,6 @@ def demo_knapsack_fa():
     print(f"  Iterations   : {len(algo.history)}")
     print(f"  Runtime      : {elapsed:.4f}s")
 
-
-# ============================================================================
-# Main
-# ============================================================================
 
 if __name__ == "__main__":
     print("\n" + "#" * 65)

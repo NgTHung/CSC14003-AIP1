@@ -45,7 +45,7 @@ from AIP.algorithm.natural.physic.SA import (
     SimulatedAnnealing,
     SimulatedAnnealingParameter,
 )
-from AIP.algorithm.natural.physic.HS import HarmonySearch
+from AIP.algorithm.natural.physic.HS import HarmonySearch, HarmonySearchParameter
 from AIP.algorithm.natural.physic.GSA import (
     GravitationalSearchAlgorithm,
     GravitationalSearchParameter,
@@ -64,11 +64,6 @@ from AIP.algorithm.natural.evolution.es import (
     MuRhoPlusLambdaESParameter,
 )
 from AIP.algorithm.local.HillClimbing import HillClimbing, HillClimbingParameter
-
-
-# =====================================================================
-# Config directory for persisting tuned parameters
-# =====================================================================
 
 _CONFIGS_DIR = os.path.join(os.path.dirname(__file__), "configs")
 
@@ -190,11 +185,6 @@ def load_tuned_config(
 
     return data
 
-
-# =====================================================================
-# Parameter grids for tuning
-# =====================================================================
-
 PARAM_GRIDS: dict[str, dict[str, list]] = {
     "GA": {
         "pop_size": [50, 100],
@@ -278,11 +268,6 @@ PARAM_GRIDS: dict[str, dict[str, list]] = {
         "alpha": [10.0, 20.0],
     },
 }
-
-
-# =====================================================================
-# Algorithm builder — creates an algorithm from name + param dict
-# =====================================================================
 
 
 def build_algo(
@@ -380,13 +365,13 @@ def build_algo(
             return SimulatedAnnealing(cfg, problem)
         case "HS":
             return HarmonySearch(
-                {
-                    "hms": params.get("hms", 50),
-                    "hmcr": params.get("hmcr", 0.9),
-                    "par": params.get("par", 0.3),
-                    "bw": params.get("bw", 0.1),
-                    "max_iterations": cycle,
-                },
+                HarmonySearchParameter(
+                    hms=params.get("hms", 50),
+                    hmcr=params.get("hmcr", 0.9),
+                    par=params.get("par", 0.3),
+                    bw=params.get("bw", 0.1),
+                    max_iterations=cycle,
+                ),
                 problem,
             )
         case "CA":
@@ -462,12 +447,6 @@ def build_algo(
             return HillClimbing(cfg, problem)
         case _:
             raise ValueError(f"Unknown algorithm: {algo_name}")
-
-
-# =====================================================================
-# Parameter tuning via grid search
-# =====================================================================
-
 
 def tune_algorithm(
     algo_name: str,
@@ -604,14 +583,6 @@ def tune_all_algorithms(
 
     return tuned
 
-
-# =====================================================================
-# Registry — default (name, builder_fn) pairs
-# =====================================================================
-# Each builder receives ``(problem, cycle)`` and returns a ready model.
-# These use sensible defaults.  Use ``build_algo_registry`` to create
-# a registry from tuned parameters.
-
 ALGO_REGISTRY: dict[str, Callable] = {
     "GA": lambda prob, cyc: build_algo("GA", {}, prob, cyc),
     "DE": lambda prob, cyc: build_algo("DE", {}, prob, cyc),
@@ -673,12 +644,6 @@ _FLOAT_HISTORY_ALGOS = {
     "(μ/ρ+λ)-ES",
     "HC",
 }
-
-
-# =====================================================================
-# Data collection
-# =====================================================================
-
 
 @dataclass
 class RunResult:
@@ -787,11 +752,6 @@ def run_comparison(
             )
 
     return results
-
-
-# =====================================================================
-# Plotting helpers
-# =====================================================================
 
 _COLORS = [
     "#D32F2F",  # dark red
