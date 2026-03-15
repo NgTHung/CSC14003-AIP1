@@ -5,10 +5,6 @@ and reports best fitness + pass/fail status.
 """
 
 import numpy as np
-import sys
-import os
-
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
 from AIP.problems.continuous.sphere import Sphere
 from AIP.problems.continuous.ackley import Ackley
