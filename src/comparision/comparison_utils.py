@@ -25,27 +25,43 @@ from AIP.problems.continuous.continuous import ContinuousProblem
 
 # ── Algorithm imports ────────────────────────────────────────────────────
 from AIP.algorithm.natural.evolution.ga import (
-    GeneticAlgorithm, GAParameter, SelectionMethod, CrossoverMethod,
+    GeneticAlgorithm,
+    GAParameter,
+    SelectionMethod,
+    CrossoverMethod,
 )
 from AIP.algorithm.natural.evolution.de import (
-    DifferentialEvolution, DEParameter, MutationStrategy, DECrossoverType,
+    DifferentialEvolution,
+    DEParameter,
+    MutationStrategy,
+    DECrossoverType,
     VariableType,
 )
 from AIP.algorithm.natural.biology.pso import ParticleSwarmOptimization, PSOParameter
 from AIP.algorithm.natural.biology.abc import ArtificialBeeColony, ABCParameter
 from AIP.algorithm.natural.biology.cs import CuckooSearch, CuckooSearchParameter
 from AIP.algorithm.natural.biology.fa import FireflyAlgorithm, FireflyParameter
-from AIP.algorithm.natural.physic.SA import SimulatedAnnealing, SimulatedAnnealingParameter
+from AIP.algorithm.natural.physic.SA import (
+    SimulatedAnnealing,
+    SimulatedAnnealingParameter,
+)
 from AIP.algorithm.natural.physic.HS import HarmonySearch
-from AIP.algorithm.natural.physic.GSA import GravitationalSearchAlgorithm, GravitationalSearchParameter
+from AIP.algorithm.natural.physic.GSA import (
+    GravitationalSearchAlgorithm,
+    GravitationalSearchParameter,
+)
 from AIP.algorithm.natural.human.ca import CA, CAConfig
 from AIP.algorithm.natural.human.sfo import SFO, SFOConfig
 from AIP.algorithm.natural.human.tlbo import TLBO, TLBOConfig
 from AIP.algorithm.natural.evolution.es import (
-    OnePlusOneES, OnePlusOneESParameter,
-    SelfAdaptiveES, SelfAdaptiveESParameter,
-    CMAES, CMAESParameter,
-    MuRhoPlusLambdaES, MuRhoPlusLambdaESParameter,
+    OnePlusOneES,
+    OnePlusOneESParameter,
+    SelfAdaptiveES,
+    SelfAdaptiveESParameter,
+    CMAES,
+    CMAESParameter,
+    MuRhoPlusLambdaES,
+    MuRhoPlusLambdaESParameter,
 )
 from AIP.algorithm.local.HillClimbing import HillClimbing, HillClimbingParameter
 
@@ -182,58 +198,58 @@ def load_tuned_config(
 PARAM_GRIDS: dict[str, dict[str, list]] = {
     "GA": {
         "pop_size": [50, 100],
-        "pc":       [0.7, 0.8, 0.9],
-        "pm":       [0.01, 0.02, 0.05],
+        "pc": [0.7, 0.8, 0.9],
+        "pm": [0.01, 0.02, 0.05],
     },
     "DE": {
         "pop_size": [50, 100],
-        "F":        [0.5, 0.8, 1.0],
-        "Cr":       [0.7, 0.9],
+        "F": [0.5, 0.8, 1.0],
+        "Cr": [0.7, 0.9],
     },
     "PSO": {
         "n_particles": [30, 50, 100],
-        "w":           [0.4, 0.7, 0.9],
-        "c1":          [1.5, 2.0],
-        "c2":          [1.5, 2.0],
+        "w": [0.4, 0.7, 0.9],
+        "c1": [1.5, 2.0],
+        "c2": [1.5, 2.0],
     },
     "ABC": {
         "n_bees": [30, 50, 100],
-        "limit":  [20, 50, 100],
+        "limit": [20, 50, 100],
     },
     "CS": {
         "n_nests": [25, 50],
-        "pa":      [0.15, 0.25, 0.35],
-        "alpha":   [0.1, 0.5, 1.0],
+        "pa": [0.15, 0.25, 0.35],
+        "alpha": [0.1, 0.5, 1.0],
     },
     "FA": {
         "n_fireflies": [25, 50],
-        "alpha":       [0.2, 0.5],
-        "beta0":       [0.5, 1.0],
-        "gamma":       [0.5, 1.0],
-        "alpha_decay":  [0.95, 0.98],
+        "alpha": [0.2, 0.5],
+        "beta0": [0.5, 1.0],
+        "gamma": [0.5, 1.0],
+        "alpha_decay": [0.95, 0.98],
     },
     "SA": {
         "initial_temperature": [100.0, 1000.0],
-        "cooling_rate":        [0.9, 0.95, 0.99],
-        "step_size":           [0.05, 0.1, 0.5],
+        "cooling_rate": [0.9, 0.95, 0.99],
+        "step_size": [0.05, 0.1, 0.5],
     },
     "HS": {
-        "hms":  [20, 50],
+        "hms": [20, 50],
         "hmcr": [0.8, 0.9, 0.95],
-        "par":  [0.1, 0.3, 0.5],
-        "bw":   [0.05, 0.1, 0.2],
+        "par": [0.1, 0.3, 0.5],
+        "bw": [0.05, 0.1, 0.2],
     },
     "CA": {
-        "pop_size":       [50, 100],
+        "pop_size": [50, 100],
         "accepted_ratio": [0.1, 0.2, 0.3],
-        "exploit_ratio":  [0.7, 0.8, 0.9],
-        "explore_sigma":  [0.05, 0.1, 0.2],
+        "exploit_ratio": [0.7, 0.8, 0.9],
+        "explore_sigma": [0.05, 0.1, 0.2],
     },
     "SFO": {
-        "pop_size":  [50, 100],
-        "w":         [0.7, 0.9],
+        "pop_size": [50, 100],
+        "w": [0.7, 0.9],
         "c_attract": [1.0, 1.5, 2.0],
-        "c_social":  [1.0, 1.5, 2.0],
+        "c_social": [1.0, 1.5, 2.0],
     },
     "TLBO": {
         "pop_size": [50, 100, 150],
@@ -267,6 +283,7 @@ PARAM_GRIDS: dict[str, dict[str, list]] = {
 # =====================================================================
 # Algorithm builder — creates an algorithm from name + param dict
 # =====================================================================
+
 
 def build_algo(
     algo_name: str,
@@ -451,6 +468,7 @@ def build_algo(
 # Parameter tuning via grid search
 # =====================================================================
 
+
 def tune_algorithm(
     algo_name: str,
     problem: ContinuousProblem,
@@ -512,8 +530,7 @@ def tune_algorithm(
 
         mean_f = float(np.mean(fitnesses))
         print(
-            f"  [{idx:>{len(str(total))}}/{total}] "
-            f"{params}  ->  Mean: {mean_f:.8e}"
+            f"  [{idx:>{len(str(total))}}/{total}] " f"{params}  ->  Mean: {mean_f:.8e}"
         )
 
         if mean_f < best_mean:
@@ -570,7 +587,12 @@ def tune_all_algorithms(
     for name in algo_names:
         if name in PARAM_GRIDS:
             tuned[name] = tune_algorithm(
-                name, problem, cycle, n_runs, seed, save=save,
+                name,
+                problem,
+                cycle,
+                n_runs,
+                seed,
+                save=save,
             )
         else:
             print(f"  [SKIP] No parameter grid for {name}")
@@ -634,15 +656,21 @@ def build_algo_registry(
     for name in ALGO_REGISTRY:
         params = tuned_params.get(name, {})
         # Capture ``name`` and ``params`` in the closure correctly
-        registry[name] = (
-            lambda prob, cyc, _n=name, _p=params: build_algo(_n, _p, prob, cyc)
+        registry[name] = lambda prob, cyc, _n=name, _p=params: build_algo(
+            _n, _p, prob, cyc
         )
     return registry
 
+
 # Algorithms whose history stores float fitness values directly
 _FLOAT_HISTORY_ALGOS = {
-    "CA", "SFO", "TLBO",
-    "(1+1)-ES", "SA-ES", "CMA-ES", "(μ/ρ+λ)-ES",
+    "CA",
+    "SFO",
+    "TLBO",
+    "(1+1)-ES",
+    "SA-ES",
+    "CMA-ES",
+    "(μ/ρ+λ)-ES",
     "HC",
 }
 
@@ -651,14 +679,16 @@ _FLOAT_HISTORY_ALGOS = {
 # Data collection
 # =====================================================================
 
+
 @dataclass
 class RunResult:
     """Result of a single algorithm run."""
+
     algo_name: str
     run_id: int
     best_fitness: float
     time_ms: float
-    fitness_curve: list[float]      # per-iteration best fitness
+    fitness_curve: list[float]  # per-iteration best fitness
 
 
 def _extract_fitness_curve(
@@ -742,15 +772,19 @@ def run_comparison(
             curve = _extract_fitness_curve(name, model, problem)
             bf = float(model.best_fitness)
 
-            results.append(RunResult(
-                algo_name=name,
-                run_id=rid,
-                best_fitness=bf,
-                time_ms=(t1 - t0) * 1000.0,
-                fitness_curve=curve,
-            ))
-            print(f"  Run {rid:>{len(str(n_runs))}}/{n_runs}  "
-                  f"Fitness={bf:.8e}  Time={results[-1].time_ms:.1f} ms")
+            results.append(
+                RunResult(
+                    algo_name=name,
+                    run_id=rid,
+                    best_fitness=bf,
+                    time_ms=(t1 - t0) * 1000.0,
+                    fitness_curve=curve,
+                )
+            )
+            print(
+                f"  Run {rid:>{len(str(n_runs))}}/{n_runs}  "
+                f"Fitness={bf:.8e}  Time={results[-1].time_ms:.1f} ms"
+            )
 
     return results
 
@@ -780,8 +814,25 @@ _COLORS = [
 ]
 
 # Markers placed sparsely on convergence curves for extra distinction
-_MARKERS = ["o", "s", "^", "D", "v", "P", "X", "*", "p", "h",
-            "<", ">", "d", "H", "8", "+", "x"]
+_MARKERS = [
+    "o",
+    "s",
+    "^",
+    "D",
+    "v",
+    "P",
+    "X",
+    "*",
+    "p",
+    "h",
+    "<",
+    ">",
+    "d",
+    "H",
+    "8",
+    "+",
+    "x",
+]
 
 
 def _group_by_algo(results: list[RunResult]) -> dict[str, list[RunResult]]:
@@ -895,25 +946,35 @@ def plot_comparison(
     fig1, ax1 = plt.subplots(figsize=(10, 7))
     fig1.suptitle(
         f"Convergence Speed — {problem_name}{title_suffix}",
-        fontsize=16, fontweight="bold", y=0.98,
+        fontsize=16,
+        fontweight="bold",
+        y=0.98,
     )
     for idx, name in enumerate(algo_names):
         curves = [r.fitness_curve for r in grouped[name]]
         max_len = max(len(c) for c in curves)
         arr = np.full((len(curves), max_len), np.nan)
         for i, c in enumerate(curves):
-            arr[i, :len(c)] = c
+            arr[i, : len(c)] = c
         mean_c = np.nanmean(arr, axis=0)
         std_c = np.nanstd(arr, axis=0)
         x = np.arange(1, max_len + 1)
         marker = _MARKERS[idx % len(_MARKERS)]
         # Place markers sparsely (every ~10% of iterations)
         mark_every = max(1, max_len // 10)
-        ax1.plot(x, mean_c, label=name, color=colors[idx],
-                 linewidth=1.6,
-                 marker=marker, markersize=4, markevery=mark_every)
-        ax1.fill_between(x, mean_c - std_c, mean_c + std_c,
-                         color=colors[idx], alpha=0.08)
+        ax1.plot(
+            x,
+            mean_c,
+            label=name,
+            color=colors[idx],
+            linewidth=1.6,
+            marker=marker,
+            markersize=4,
+            markevery=mark_every,
+        )
+        ax1.fill_between(
+            x, mean_c - std_c, mean_c + std_c, color=colors[idx], alpha=0.08
+        )
     ax1.set_yscale("log")
     ax1.set_xlabel("Iteration", fontsize=11)
     ax1.set_ylabel("Best Fitness (log)", fontsize=11)
@@ -931,13 +992,16 @@ def plot_comparison(
     fig2, ax2 = plt.subplots(figsize=(10, 7))
     fig2.suptitle(
         f"Solution Quality — {problem_name}{title_suffix}",
-        fontsize=16, fontweight="bold", y=0.98,
+        fontsize=16,
+        fontweight="bold",
+        y=0.98,
     )
-    box_data = [
-        [r.best_fitness for r in grouped[name]] for name in algo_names
-    ]
+    box_data = [[r.best_fitness for r in grouped[name]] for name in algo_names]
     bp = ax2.boxplot(
-        box_data, tick_labels=algo_names, patch_artist=True, widths=0.6,
+        box_data,
+        tick_labels=algo_names,
+        patch_artist=True,
+        widths=0.6,
     )
     for patch, c in zip(bp["boxes"], colors):
         patch.set_facecolor(c)
@@ -957,19 +1021,35 @@ def plot_comparison(
     fig3, ax3 = plt.subplots(figsize=(10, 7))
     fig3.suptitle(
         f"Computational Time — {problem_name}{title_suffix}",
-        fontsize=16, fontweight="bold", y=0.98,
+        fontsize=16,
+        fontweight="bold",
+        y=0.98,
     )
     means_t = [np.mean([r.time_ms for r in grouped[n]]) for n in algo_names]
     stds_t = [np.std([r.time_ms for r in grouped[n]]) for n in algo_names]
-    bars = ax3.bar(algo_names, means_t, yerr=stds_t, capsize=4,
-                   color=colors, alpha=0.7, edgecolor="black", linewidth=0.5)
+    bars = ax3.bar(
+        algo_names,
+        means_t,
+        yerr=stds_t,
+        capsize=4,
+        color=colors,
+        alpha=0.7,
+        edgecolor="black",
+        linewidth=0.5,
+    )
     ax3.set_ylabel("Time (ms)", fontsize=11)
     ax3.set_title("Computational Time", fontsize=13, fontweight="bold")
     ax3.tick_params(axis="x", rotation=45)
     ax3.grid(True, alpha=0.3, axis="y", linestyle="--")
     for bar, m in zip(bars, means_t):
-        ax3.text(bar.get_x() + bar.get_width() / 2, bar.get_height(),
-                 f"{m:.0f}", ha="center", va="bottom", fontsize=7)
+        ax3.text(
+            bar.get_x() + bar.get_width() / 2,
+            bar.get_height(),
+            f"{m:.0f}",
+            ha="center",
+            va="bottom",
+            fontsize=7,
+        )
     fig3.tight_layout(rect=(0, 0, 1, 0.95))
 
     if save_time:
@@ -981,13 +1061,23 @@ def plot_comparison(
     fig4, ax4 = plt.subplots(figsize=(10, 7))
     fig4.suptitle(
         f"Robustness — {problem_name}{title_suffix}",
-        fontsize=16, fontweight="bold", y=0.98,
+        fontsize=16,
+        fontweight="bold",
+        y=0.98,
     )
     stds_f = [np.std([r.best_fitness for r in grouped[n]]) for n in algo_names]
     x_pos = np.arange(n_algos)
     width = 0.4
-    bars1 = ax4.bar(x_pos - width / 2, stds_f, width, label="Std Dev (fitness)",
-                    color=colors, alpha=0.6, edgecolor="black", linewidth=0.5)
+    bars1 = ax4.bar(
+        x_pos - width / 2,
+        stds_f,
+        width,
+        label="Std Dev (fitness)",
+        color=colors,
+        alpha=0.6,
+        edgecolor="black",
+        linewidth=0.5,
+    )
     ax4.set_ylabel("Std Dev of Best Fitness", fontsize=11)
     ax4.set_title("Robustness", fontsize=13, fontweight="bold")
     ax4.set_xticks(x_pos)
@@ -996,10 +1086,12 @@ def plot_comparison(
 
     ax4r = ax4.twinx()
     means_f = [np.mean([r.best_fitness for r in grouped[n]]) for n in algo_names]
-    cv = np.array([s / abs(m) if abs(m) > 1e-30 else 0.0
-                    for s, m in zip(stds_f, means_f)])
-    ax4r.plot(x_pos, cv, "D-", color="red", markersize=5, linewidth=1.2,
-              label="CV (Std/Mean)")
+    cv = np.array(
+        [s / abs(m) if abs(m) > 1e-30 else 0.0 for s, m in zip(stds_f, means_f)]
+    )
+    ax4r.plot(
+        x_pos, cv, "D-", color="red", markersize=5, linewidth=1.2, label="CV (Std/Mean)"
+    )
     ax4r.set_ylabel("Coefficient of Variation", fontsize=10, color="red")
     ax4r.tick_params(axis="y", labelcolor="red")
 
@@ -1022,8 +1114,10 @@ def print_summary_table(results: list[RunResult]) -> None:
     grouped = _group_by_algo(results)
     algo_names = list(grouped.keys())
 
-    header = (f"  {'Algorithm':<8s} | {'Mean Fitness':>14s} | {'Std Fitness':>14s} "
-              f"| {'Best':>14s} | {'Worst':>14s} | {'Mean Time(ms)':>14s}")
+    header = (
+        f"  {'Algorithm':<8s} | {'Mean Fitness':>14s} | {'Std Fitness':>14s} "
+        f"| {'Best':>14s} | {'Worst':>14s} | {'Mean Time(ms)':>14s}"
+    )
     sep = "  " + "-" * len(header.strip())
 
     print(f"\n{'=' * len(header.strip())}")

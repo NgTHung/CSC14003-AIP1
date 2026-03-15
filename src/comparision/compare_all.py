@@ -10,6 +10,14 @@ Usage
 -----
     cd src
     python -m comparision.compare_all [--cycle 200] [--runs 10] [--seed 42] [--save]
+    python -m comparision.compare_all --save --output-dir outputs/run_01
+    python -m comparision.compare_all --save --save-json
+
+Output
+------
+    --output-dir sets the output root directory.
+    Figures are saved to <root>/figures and JSON files to <root>/data.
+    If omitted, root defaults to current working directory.
 """
 
 from __future__ import annotations
@@ -40,29 +48,47 @@ from comparision.comparison_utils import (
 
 # -- All five benchmark problems --------------------------------------
 PROBLEMS = {
-    "Ackley":     lambda d: Ackley(n_dim=d),
-    "Griewank":   lambda d: Griewank(n_dim=d),
-    "Rastrigin":  lambda d: Rastrigin(n_dim=d),
+    "Ackley": lambda d: Ackley(n_dim=d),
+    "Griewank": lambda d: Griewank(n_dim=d),
+    "Rastrigin": lambda d: Rastrigin(n_dim=d),
     "Rosenbrock": lambda d: Rosenbrock(n_dim=d),
-    "Sphere":     lambda d: Sphere(n_dim=d),
+    "Sphere": lambda d: Sphere(n_dim=d),
 }
+
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Combined comparison across all continuous problems")
+        description="Combined comparison across all continuous problems"
+    )
     parser.add_argument("--dim", type=int, default=2, help="Problem dimensionality")
     parser.add_argument("--cycle", type=int, default=200, help="Iterations per run")
     parser.add_argument("--runs", type=int, default=10, help="Independent runs")
     parser.add_argument("--seed", type=int, default=42, help="Base random seed")
-    parser.add_argument("--save", action="store_true", help="Save figure instead of showing")
-    parser.add_argument("--output-dir", type=str, default=None,
-                        help="Output root; saves figures to <root>/figures and JSON to <root>/data (default: .)")
-    parser.add_argument("--save-json", action="store_true",
-                        help="Save per-problem raw comparison results as JSON")
-    parser.add_argument("--tune", action="store_true",
-                        help="Tune algorithm parameters per problem via grid search")
-    parser.add_argument("--tune-runs", type=int, default=5,
-                        help="Independent runs per config during tuning (default: 5)")
+    parser.add_argument(
+        "--save", action="store_true", help="Save figure instead of showing"
+    )
+    parser.add_argument(
+        "--output-dir",
+        type=str,
+        default=None,
+        help="Output root; saves figures to <root>/figures and JSON to <root>/data (default: .)",
+    )
+    parser.add_argument(
+        "--save-json",
+        action="store_true",
+        help="Save per-problem raw comparison results as JSON",
+    )
+    parser.add_argument(
+        "--tune",
+        action="store_true",
+        help="Tune algorithm parameters per problem via grid search",
+    )
+    parser.add_argument(
+        "--tune-runs",
+        type=int,
+        default=5,
+        help="Independent runs per config during tuning (default: 5)",
+    )
     args = parser.parse_args()
 
     n_dim = args.dim
@@ -79,13 +105,17 @@ def main() -> None:
         if args.tune:
             print(f"\n>>> Tuning parameters for {prob_name}...")
             tuned_params = tune_all_algorithms(
-                problem=prob, cycle=args.cycle,
-                n_runs=args.tune_runs, seed=args.seed,
+                problem=prob,
+                cycle=args.cycle,
+                n_runs=args.tune_runs,
+                seed=args.seed,
             )
         else:
             tuned_params = load_tuned_config(prob_name)
             if tuned_params:
-                print(f">>> Loaded tuned config for {prob_name} ({len(tuned_params)} algos)")
+                print(
+                    f">>> Loaded tuned config for {prob_name} ({len(tuned_params)} algos)"
+                )
             else:
                 print(f">>> No saved config for {prob_name}, using defaults.")
 
@@ -118,7 +148,9 @@ def main() -> None:
         if args.save_json:
             saved_json = save_results_json(
                 res,
-                make_data_output_path(f"compare_{prob_name.lower()}_dim_{n_dim}.json", args.output_dir),
+                make_data_output_path(
+                    f"compare_{prob_name.lower()}_dim_{n_dim}.json", args.output_dir
+                ),
                 metadata={
                     "problem": prob_name,
                     "problem_type": "continuous",
@@ -170,6 +202,7 @@ def main() -> None:
         print(row)
 
     print(f"{'='*80}")
+
 
 if __name__ == "__main__":
     main()

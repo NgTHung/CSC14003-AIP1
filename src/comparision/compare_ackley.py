@@ -7,6 +7,14 @@ Usage
 -----
     cd src
     python -m comparision.compare_ackley [--cycle 200] [--runs 10] [--seed 42] [--save]
+    python -m comparision.compare_ackley --save --output-dir outputs/run_01
+    python -m comparision.compare_ackley --save --save-json
+
+Output
+------
+    --output-dir sets the output root directory.
+    Figures are saved to <root>/figures and JSON files to <root>/data.
+    If omitted, root defaults to current working directory.
 """
 
 from __future__ import annotations

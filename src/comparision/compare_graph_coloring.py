@@ -13,9 +13,16 @@ The fitness metric is the **number of edge-conflicts** (lower is better;
 
 Usage
 -----
-    python -m src.comparision.compare_graph_coloring [--size medium] [--cycle 500] [--seed 42] [--save]
+    python -m src.comparision.compare_graph_coloring [--size medium] [--cycle 500] [--runs 5] [--seed 42] [--save]
     python -m src.comparision.compare_graph_coloring --no-classical --save
     python -m src.comparision.compare_graph_coloring --tune --tune-runs 3 --save
+    python -m src.comparision.compare_graph_coloring --save --save-json --output-dir outputs/run_01
+
+Output
+------
+    --output-dir sets the output root directory.
+    Figures are saved to <root>/figures and JSON files to <root>/data.
+    If omitted, root defaults to current working directory.
 """
 
 from __future__ import annotations
@@ -26,16 +33,23 @@ import numpy as np
 
 from AIP.problems.discrete.graph_coloring import GraphColoring
 from comparision.comparison_utils_discrete import (
-    run_comparison, plot_comparison, plot_convergence, print_summary_table,
-    tune_all_algorithms, load_tuned_config, _CLASSICAL_ALGOS,
-    make_output_path, make_data_output_path, save_results_json,
+    run_comparison,
+    plot_comparison,
+    plot_convergence,
+    print_summary_table,
+    tune_all_algorithms,
+    load_tuned_config,
+    _CLASSICAL_ALGOS,
+    make_output_path,
+    make_data_output_path,
+    save_results_json,
 )
 
 _SIZE_FACTORIES = {
-    "tiny":   GraphColoring.create_tiny,
-    "small":  GraphColoring.create_small,
+    "tiny": GraphColoring.create_tiny,
+    "small": GraphColoring.create_small,
     "medium": GraphColoring.create_medium,
-    "large":  GraphColoring.create_large,
+    "large": GraphColoring.create_large,
 }
 
 CONFIG_NAME = "GraphColoring"
@@ -43,31 +57,58 @@ CONFIG_NAME = "GraphColoring"
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Algorithm comparison on Graph Coloring")
-    parser.add_argument("--size", type=str, default="medium",
-                        choices=list(_SIZE_FACTORIES.keys()),
-                        help="Problem instance size (default: medium)")
-    parser.add_argument("--cycle", type=int, default=500,
-                        help="Iterations per run (default: 500)")
-    parser.add_argument("--runs", type=int, default=5,
-                        help="Independent runs per stochastic algorithm (default: 5)")
-    parser.add_argument("--seed", type=int, default=42,
-                        help="Base random seed")
-    parser.add_argument("--save", action="store_true",
-                        help="Save figure instead of showing")
-    parser.add_argument("--output-dir", type=str, default=None,
-                        help="Output root; saves figures to <root>/figures and JSON to <root>/data (default: .)")
-    parser.add_argument("--save-json", action="store_true",
-                        help="Save raw comparison results as JSON")
-    parser.add_argument("--tune", action="store_true",
-                        help="Force re-tuning via grid search")
-    parser.add_argument("--tune-runs", type=int, default=3,
-                        help="Independent runs per config during tuning")
-    parser.add_argument("--no-classical", action="store_true",
-                        help="Skip classical graph-search algorithms "
-                             "(recommended for medium/large instances)")
-    parser.add_argument("--timeout", type=float, default=60.0,
-                        help="Max seconds per algorithm run (default: 60)")
+        description="Algorithm comparison on Graph Coloring"
+    )
+    parser.add_argument(
+        "--size",
+        type=str,
+        default="medium",
+        choices=list(_SIZE_FACTORIES.keys()),
+        help="Problem instance size (default: medium)",
+    )
+    parser.add_argument(
+        "--cycle", type=int, default=500, help="Iterations per run (default: 500)"
+    )
+    parser.add_argument(
+        "--runs",
+        type=int,
+        default=5,
+        help="Independent runs per stochastic algorithm (default: 5)",
+    )
+    parser.add_argument("--seed", type=int, default=42, help="Base random seed")
+    parser.add_argument(
+        "--save", action="store_true", help="Save figure instead of showing"
+    )
+    parser.add_argument(
+        "--output-dir",
+        type=str,
+        default=None,
+        help="Output root; saves figures to <root>/figures and JSON to <root>/data (default: .)",
+    )
+    parser.add_argument(
+        "--save-json", action="store_true", help="Save raw comparison results as JSON"
+    )
+    parser.add_argument(
+        "--tune", action="store_true", help="Force re-tuning via grid search"
+    )
+    parser.add_argument(
+        "--tune-runs",
+        type=int,
+        default=3,
+        help="Independent runs per config during tuning",
+    )
+    parser.add_argument(
+        "--no-classical",
+        action="store_true",
+        help="Skip classical graph-search algorithms "
+        "(recommended for medium/large instances)",
+    )
+    parser.add_argument(
+        "--timeout",
+        type=float,
+        default=60.0,
+        help="Max seconds per algorithm run (default: 60)",
+    )
     args = parser.parse_args()
 
     problem = _SIZE_FACTORIES[args.size]()
@@ -92,11 +133,15 @@ def main() -> None:
     else:
         tuned_params = load_tuned_config(config_name)
         if tuned_params:
-            print(f"\n>>> Loaded tuned config for {config_name} "
-                  f"({len(tuned_params)} algos)")
+            print(
+                f"\n>>> Loaded tuned config for {config_name} "
+                f"({len(tuned_params)} algos)"
+            )
         else:
-            print("\n>>> No saved config found, using defaults. "
-                  "Use --tune to run parameter tuning.")
+            print(
+                "\n>>> No saved config found, using defaults. "
+                "Use --tune to run parameter tuning."
+            )
 
     skip_algos = _CLASSICAL_ALGOS if args.no_classical else set()
     # BFS exhausts memory on medium/large instances
@@ -125,31 +170,38 @@ def main() -> None:
         parts = [f"{problem.vertex_names[i]}=C{c}" for i, c in enumerate(arr)]
         return ", ".join(parts)
 
-    print_summary_table(results, fitness_label="Conflicts",
-                        format_solution=_fmt_gc)
+    print_summary_table(results, fitness_label="Conflicts", format_solution=_fmt_gc)
 
-    save_path = make_output_path(
-        f"compare_graph_coloring_{args.size}.png", args.output_dir
-    ) if args.save else None
+    save_path = (
+        make_output_path(f"compare_graph_coloring_{args.size}.png", args.output_dir)
+        if args.save
+        else None
+    )
 
     plot_comparison(
         results,
         problem_name="Graph Coloring",
-        problem_desc=(f"{args.size}, {problem.n_vertices} vertices, "
-                      f"{len(problem.edges)} edges, {problem.n_colors} colors"),
+        problem_desc=(
+            f"{args.size}, {problem.n_vertices} vertices, "
+            f"{len(problem.edges)} edges, {problem.n_colors} colors"
+        ),
         save_path=save_path,
         fitness_label="Conflicts",
     )
 
-    conv_save_path = make_output_path(
-        f"convergence_graph_coloring_{args.size}.png", args.output_dir
-    ) if args.save else None
+    conv_save_path = (
+        make_output_path(f"convergence_graph_coloring_{args.size}.png", args.output_dir)
+        if args.save
+        else None
+    )
 
     plot_convergence(
         results,
         problem_name="Graph Coloring",
-        problem_desc=(f"{args.size}, {problem.n_vertices} vertices, "
-                      f"{len(problem.edges)} edges, {problem.n_colors} colors"),
+        problem_desc=(
+            f"{args.size}, {problem.n_vertices} vertices, "
+            f"{len(problem.edges)} edges, {problem.n_colors} colors"
+        ),
         save_path=conv_save_path,
         fitness_label="Conflicts",
     )
@@ -157,7 +209,9 @@ def main() -> None:
     if args.save_json:
         saved_json = save_results_json(
             results,
-            make_data_output_path(f"compare_graph_coloring_{args.size}.json", args.output_dir),
+            make_data_output_path(
+                f"compare_graph_coloring_{args.size}.json", args.output_dir
+            ),
             metadata={
                 "problem": "GraphColoring",
                 "problem_type": "discrete",
