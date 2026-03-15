@@ -16,7 +16,7 @@ import time
 import random
 import itertools
 from dataclasses import dataclass
-from typing import Callable
+from typing import Any, Callable
 
 import numpy as np
 
@@ -796,6 +796,63 @@ def _group_by_algo(results: list[RunResult]) -> dict[str, list[RunResult]]:
     for r in results:
         grouped.setdefault(r.algo_name, []).append(r)
     return grouped
+
+
+def resolve_output_dir(output_dir: str | None = None) -> str:
+    """Return absolute output root directory, defaulting to current directory."""
+    base_dir = output_dir if output_dir else os.getcwd()
+    return os.path.abspath(base_dir)
+
+
+def make_output_path(filename: str, output_dir: str | None = None) -> str:
+    """Build an absolute figure output path under ``<root>/figures``."""
+    return os.path.join(resolve_output_dir(output_dir), "figures", filename)
+
+
+def make_data_output_path(filename: str, data_dir: str | None = None) -> str:
+    """Build an absolute JSON output path under ``<root>/data``."""
+    return os.path.join(resolve_output_dir(data_dir), "data", filename)
+
+
+def _to_jsonable(value: Any) -> Any:
+    """Convert common numpy/Python objects into JSON-serializable forms."""
+    if isinstance(value, np.ndarray):
+        return value.tolist()
+    if isinstance(value, np.generic):
+        return value.item()
+    if isinstance(value, (list, tuple)):
+        return [_to_jsonable(v) for v in value]
+    if isinstance(value, dict):
+        return {str(k): _to_jsonable(v) for k, v in value.items()}
+    return value
+
+
+def save_results_json(
+    results: list[RunResult],
+    json_path: str,
+    metadata: dict[str, Any] | None = None,
+) -> str:
+    """Persist raw run results as JSON for later figure reconstruction."""
+    payload = {
+        "schema": "comparison_results_v1",
+        "metadata": metadata or {},
+        "results": [
+            {
+                "algo_name": r.algo_name,
+                "run_id": r.run_id,
+                "best_fitness": float(r.best_fitness),
+                "time_ms": float(r.time_ms),
+                "fitness_curve": [float(v) for v in r.fitness_curve],
+            }
+            for r in results
+        ],
+    }
+
+    out_path = os.path.abspath(json_path)
+    os.makedirs(os.path.dirname(out_path) or ".", exist_ok=True)
+    with open(out_path, "w", encoding="utf-8") as f:
+        json.dump(_to_jsonable(payload), f, indent=2)
+    return out_path
 
 
 def plot_comparison(
