@@ -1,0 +1,26 @@
+% ============================================================
+% Conclusion and Future Work
+% ============================================================
+\section{Conclusion and Future Work}
+\label{sec:conclusion}
+
+% ============================================================
+% Summary
+% ============================================================
+\subsection{Summary}
+\label{subsec:summary}
+This project achieved its primary objective of implementing and evaluating a broad taxonomy of search and nature-inspired optimization algorithms entirely from scratch using Python and NumPy. The resulting framework unifies classical graph search, local search, and population-based metaheuristics under consistent problem abstractions, enabling direct and fair comparison across methods. A key contribution is dual-domain support: continuous optimization is handled through bounded vector representations and mathematically defined perturbation steps, while discrete optimization is handled through explicit neighborhood mappings such as bit-flip, recoloring, and permutation-preserving transformations. Empirical evaluation across benchmark functions and combinatorial tasks indicates that the framework captures meaningful convergence behavior and exposes exploration-exploitation trade-offs clearly across algorithm families.
+
+% ============================================================
+% Limitations
+% ============================================================
+\subsection{Limitations}
+\label{subsec:limitations}
+Despite strong experimental coverage, several limitations remain. First, some algorithms incur significant computational overhead; for example, pairwise interaction mechanisms in swarm-style updates (notably Firefly-style attraction) introduce per-iteration complexity on the order of $O(N^2)$ with respect to population size. Second, performance is sensitive to hyperparameter selection (e.g., step scales, attraction and absorption coefficients, discovery rates, and cooling schedules), and the current workflow relies primarily on offline grid-based tuning with static values during each run. Third, scalability remains constrained by dimensionality and search-space growth: as continuous dimension increases, convergence speed and solution quality degrade more noticeably, while larger discrete instances increase neighborhood-evaluation cost and runtime variance. Finally, conclusions are empirical; no formal convergence-rate guarantees are established for all implemented variants.
+
+% ============================================================
+% Future Work
+% ============================================================
+\subsection{Future Work}
+\label{subsec:future_work}
+Future work should focus on improving both autonomy and scalability. A first direction is adaptive parameter control, where coefficients are adjusted online from population diversity, acceptance statistics, or stagnation indicators rather than fixed a priori. A second direction is algorithmic hybridization, such as coupling global metaheuristics with targeted local improvement operators to improve late-stage exploitation without sacrificing early exploration. A third direction is systems-level acceleration through stronger vectorization and parallel execution (multi-core and GPU backends), especially for pairwise interaction steps that dominate runtime in some swarm algorithms. Finally, extending the benchmark suite to larger and more heterogeneous NP-hard instances, with standardized statistical testing and ablation protocols, would strengthen external validity and provide deeper insight into robustness across domains.

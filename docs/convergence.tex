@@ -1,0 +1,348 @@
+% ============================================================
+% Convergence Analysis subsection within the Comparison section
+% ============================================================
+\subsection{Convergence Analysis}
+
+This subsection tracks how the best fitness evolves over time, with emphasis on convergence speed, stagnation, and the ability to escape poor local regions. Continuous curves are averaged over 30 runs, while discrete curves are averaged over 10 runs. In all plots, the shaded region denotes $\pm 1\sigma$ variation.
+
+% \textit{Methodological Note on Visualizations:} Because standard 64-bit floating-point precision bottoms out near $10^{-16}$, any fitness values dropping below this threshold are effectively zero; extreme negative exponents (e.g., $10^{-70}$) represent mathematical artifacts of txhe numerical floor rather than true algorithmic superiority. Additionally, to accommodate the logarithmic $y$-axis on continuous plots, exact zero values are bounded at a $10^{-16}$ baseline, and any negative lower-variance bounds are clipped. Due to the high visual density of the plots (up to 17 overlapping algorithms), an accompanying run statistics table is provided in the next section for exact numerical comparisons.
+
+% ============================================================
+%  CONTINUOUS OPTIMIZATION PROBLEMS
+% ============================================================
+\subsubsection{Continuous Optimization Problems}
+
+All algorithms are run for 200 iterations at $d\in\{2,10,30\}$.
+
+\begin{table}[H]
+    \centering
+    \small
+    \begin{tabular}{|p{0.16\textwidth}|p{0.18\textwidth}|p{0.23\textwidth}|p{0.29\textwidth}|}
+        \hline
+        \textbf{Benchmark} & \textbf{Fastest early descent} & \textbf{Most reliable late-stage behavior} & \textbf{Main observation as dimension grows} \\
+        \hline
+        Ackley & DE, ABC, TLBO at $d=2$ & TLBO & The field compresses quickly, and TLBO becomes the only clearly separated method at $d=10$ and $d=30$. \\
+        \hline
+        Sphere & TLBO, ABC, DE, CMA-ES at $d=2$ & TLBO & Dimensionality hurts most methods sharply; DE shows the clearest collapse from excellent to mediocre. \\
+        \hline
+        Griewank & ABC and TLBO & TLBO & CMA-ES becomes competitive in the middle dimension, but TLBO remains the most stable overall. \\
+        \hline
+        Rastrigin & DE, PSO, ABC, TLBO at $d=2$ & ABC at $d=10$ & Severe multimodality compresses nearly the entire field by $d=30$. \\
+        \hline
+        Rosenbrock & DE at $d=2$ & TLBO, ABC, CMA-ES in higher dimensions & The trajectory shifts from rapid initial gains to slow valley-following behavior as $d$ increases. \\
+        \hline
+    \end{tabular}
+    \caption{High-level convergence patterns on continuous benchmarks.}
+    \label{tab:conv-cont-summary}
+\end{table}
+
+% == Ackley ==================================================
+\paragraph{Ackley Function.}
+Ackley shows the clearest separation between strong and weak optimizers in low dimension, but that separation fades quickly as $d$ grows.
+\begin{itemize}
+    \item $d=2$: DE, ABC, and TLBO reach the numerical floor ($\sim 10^{-15}$) within about 17 iterations. SA, CMA-ES, and (1+1)-ES remain near the top around $20$.
+    \item $d=10$: TLBO is the only method that still reaches the bottom region ($\sim 10^{-14}$). Most other algorithms cluster between $0.1$ and $20$.
+    \item $d=30$: TLBO still separates itself at roughly $10^{-11}$, while the rest of the field compresses into a narrow band between 2 and 20.
+\end{itemize}
+
+\begin{figure}[H]
+    \centering
+    \begin{subfigure}[b]{0.32\textwidth}
+        \includegraphics[width=\textwidth]{figures/compare_ackley_dim_2_convergence.png}
+        \caption{$d=2$}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.32\textwidth}
+        \includegraphics[width=\textwidth]{figures/compare_ackley_dim_10_convergence.png}
+        \caption{$d=10$}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.32\textwidth}
+        \includegraphics[width=\textwidth]{figures/compare_ackley_dim_30_convergence.png}
+        \caption{$d=30$}
+    \end{subfigure}
+    \caption{Convergence curves on the Ackley function. Mean best fitness over 30 runs (log scale) with $\pm 1\sigma$ bands.}
+    \label{fig:conv-ackley}
+\end{figure}
+
+% == Sphere ==================================================
+\paragraph{Sphere Function.}
+Sphere exposes both raw optimization power and dimensional fragility.
+\begin{itemize}
+    \item $d=2$: TLBO, ABC, DE, and CMA-ES all collapse to the numerical floor within 5 to 7 iterations. FA, GSA, and SA barely move and stay near $1$.
+    \item $d=10$: TLBO remains the anchor at the bottom, while CMA-ES, ABC, and PSO form the next tier around $10^{-5}$ to $10^{-3}$.
+    \item $d=30$: TLBO still reaches about $10^{-24}$, but most methods deteriorate sharply. DE is the clearest example, falling from about $10^{-38}$ at $d=2$ to roughly $40$ at $d=30$.
+\end{itemize}
+
+\begin{figure}[H]
+    \centering
+    \begin{subfigure}[b]{0.32\textwidth}
+        \includegraphics[width=\textwidth]{figures/compare_sphere_dim_2_convergence.png}
+        \caption{$d=2$}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.32\textwidth}
+        \includegraphics[width=\textwidth]{figures/compare_sphere_dim_10_convergence.png}
+        \caption{$d=10$}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.32\textwidth}
+        \includegraphics[width=\textwidth]{figures/compare_sphere_dim_30_convergence.png}
+        \caption{$d=30$}
+    \end{subfigure}
+    \caption{Convergence curves on the Sphere function.}
+    \label{fig:conv-sphere}
+\end{figure}
+
+% == Griewank ================================================
+\paragraph{Griewank Function.}
+Griewank is useful because it highlights both crossover behavior and stability.
+\begin{itemize}
+    \item $d=2$: ABC and TLBO descend fastest, reaching roughly $10^{-6}$ and $10^{-5}$ within the first 10 iterations. SA and (1+1)-ES stay flat near $80$.
+    \item $d=10$: CMA-ES overtakes TLBO around iteration 50, and both settle near $10^{-2}$.
+    \item $d=30$: TLBO regains the lead at about $10^{-5}$, although the margin is smaller than on Ackley or Sphere.
+    \item Variance bands matter here: TLBO remains extremely stable ($\sigma=6.9\times10^{-5}$), while CS is highly erratic ($\sigma=247$).
+\end{itemize}
+
+\begin{figure}[H]
+    \centering
+    \begin{subfigure}[b]{0.32\textwidth}
+        \includegraphics[width=\textwidth]{figures/compare_griewank_dim_2_convergence.png}
+        \caption{$d=2$}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.32\textwidth}
+        \includegraphics[width=\textwidth]{figures/compare_griewank_dim_10_convergence.png}
+        \caption{$d=10$}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.32\textwidth}
+        \includegraphics[width=\textwidth]{figures/compare_griewank_dim_30_convergence.png}
+        \caption{$d=30$}
+    \end{subfigure}
+    \caption{Convergence curves on the Griewank function.}
+    \label{fig:conv-griewank}
+\end{figure}
+
+% == Rastrigin ===============================================
+\paragraph{Rastrigin Function.}
+Rastrigin is the harshest test of multimodal robustness in this group.
+\begin{itemize}
+    \item $d=2$: DE, PSO, ABC, and TLBO all reach the exact optimum, which appears on the log plot as the lower clipped bound near $10^{-16}$.
+    \item $d=10$: ABC is the only method that clearly breaks away, descending to about $10^{-4}$. The rest of the field remains packed between 4 and 100.
+    \item $d=30$: Even TLBO and ABC are pulled back into the main cluster, with nearly all algorithms lying between 20 and 400.
+\end{itemize}
+
+\begin{figure}[H]
+    \centering
+    \begin{subfigure}[b]{0.32\textwidth}
+        \includegraphics[width=\textwidth]{figures/compare_rastrigin_dim_2_convergence.png}
+        \caption{$d=2$}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.32\textwidth}
+        \includegraphics[width=\textwidth]{figures/compare_rastrigin_dim_10_convergence.png}
+        \caption{$d=10$}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.32\textwidth}
+        \includegraphics[width=\textwidth]{figures/compare_rastrigin_dim_30_convergence.png}
+        \caption{$d=30$}
+    \end{subfigure}
+    \caption{Convergence curves on the Rastrigin function.}
+    \label{fig:conv-rastrigin}
+\end{figure}
+
+% == Rosenbrock ==============================================
+\paragraph{Rosenbrock Function.}
+Rosenbrock produces the clearest two-stage convergence pattern in the continuous suite.
+\begin{itemize}
+    \item Early phase: most improvement happens in the first 5 to 20 iterations.
+    \item Late phase: progress becomes slow and almost linear, especially in higher dimensions.
+    \item $d=2$: DE reaches the numerical floor, while TLBO and PSO stop around $10^{-9}$.
+    \item $d=30$: TLBO, CMA-ES, and ABC are still improving at iteration 200 and finish between 25 and 50. FA and SA stagnate almost immediately above $10^{5}$.
+\end{itemize}
+
+\begin{figure}[H]
+    \centering
+    \begin{subfigure}[b]{0.32\textwidth}
+        \includegraphics[width=\textwidth]{figures/compare_rosenbrock_dim_2_convergence.png}
+        \caption{$d=2$}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.32\textwidth}
+        \includegraphics[width=\textwidth]{figures/compare_rosenbrock_dim_10_convergence.png}
+        \caption{$d=10$}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.32\textwidth}
+        \includegraphics[width=\textwidth]{figures/compare_rosenbrock_dim_30_convergence.png}
+        \caption{$d=30$}
+    \end{subfigure}
+    \caption{Convergence curves on the Rosenbrock function.}
+    \label{fig:conv-rosenbrock}
+\end{figure}
+
+% ============================================================
+%  DISCRETE OPTIMIZATION PROBLEMS
+% ============================================================
+\subsubsection{Discrete Optimization Problems}
+
+Each algorithm is run for 500 iterations, averaged over 10 independent trials. Classical search results (DFS, BFS, UCS, Greedy, A*) are plotted as horizontal dashed baselines for reference where applicable.
+
+\begin{table}[H]
+    \centering
+    \small
+    \begin{tabular}{|p{0.16\textwidth}|p{0.18\textwidth}|p{0.23\textwidth}|p{0.29\textwidth}|}
+        \hline
+        \textbf{Problem} & \textbf{Strongest trajectory} & \textbf{Typical failure mode} & \textbf{Main takeaway} \\
+        \hline
+        Knapsack & CS on large instances & HC gets trapped early; FA, GSA, SA, and ABC move little & Sustained exploration matters more than aggressive early greed. \\
+        \hline
+        TSP & MMAS, then AS and ACS & General-purpose heuristics plateau quickly & Routing-specific operators dominate as instance size grows. \\
+        \hline
+        Graph Coloring & HC early, CS and ABC late & SA, FA, and GSA stagnate at high conflict counts & Strong local combinatorial moves are essential on large graphs. \\
+        \hline
+    \end{tabular}
+    \caption{High-level convergence patterns on discrete benchmarks.}
+    \label{tab:conv-disc-summary}
+\end{table}
+
+% == Knapsack ================================================
+\paragraph{0/1 Knapsack Problem.}
+Knapsack separates the algorithms more clearly as the item count grows.
+\begin{itemize}
+    \item Tiny instance: nearly all metaheuristics reach the capacity limit quickly, so the plot offers little separation.
+    \item Large instance (200 items, cap $=2546$): CS is the strongest method and keeps improving for nearly the entire 500-iteration budget.
+    \item HC rises quickly in the first 10 iterations, then stalls near a poor local optimum around 5000.
+    \item HS improves more gradually, while FA, GSA, SA, and ABC remain clustered at lower profit levels.
+\end{itemize}
+
+\begin{figure}[H]
+    \centering
+    \begin{subfigure}[b]{0.475\textwidth}
+        \includegraphics[width=\textwidth]{figures/convergence_knapsack_tiny.png}
+        \caption{Tiny}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.475\textwidth}
+        \includegraphics[width=\textwidth]{figures/convergence_knapsack_small.png}
+        \caption{Small}
+    \end{subfigure}
+    \vskip\baselineskip
+    \begin{subfigure}[b]{0.475\textwidth}
+        \includegraphics[width=\textwidth]{figures/convergence_knapsack_medium.png}
+        \caption{Medium}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.475\textwidth}
+        \includegraphics[width=\textwidth]{figures/convergence_knapsack_large.png}
+        \caption{Large (200 Items)}
+    \end{subfigure}
+    \caption{Convergence curves for the 0/1 Knapsack problem. Classical search results are shown as horizontal dashed reference lines.}
+    \label{fig:conv-knapsack}
+\end{figure}
+
+% == TSP =====================================================
+\paragraph{Travelling Salesman Problem.}
+TSP is the clearest example of a domain where specialized search operators matter.
+\begin{itemize}
+    \item Small instance (10 cities): AS, ACS, and MMAS reach the optimum within about 10 iterations.
+    \item Large instance (120 cities): MMAS achieves the best known distance through a steady long-run descent, while AS and ACS improve quickly but plateau slightly higher.
+    \item Among non-ACO methods, CS is the strongest general-purpose alternative and keeps descending throughout the budget. ABC follows the same pattern but more slowly.
+    \item SA, FA, HS, and GSA flatten almost immediately and stay more than $5\times$ above the best ACO results.
+\end{itemize}
+
+\begin{figure}[H]
+    \centering
+    \begin{subfigure}[b]{0.475\textwidth}
+        \includegraphics[width=\textwidth]{figures/convergence_tsp_tiny.png}
+        \caption{Tiny}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.475\textwidth}
+        \includegraphics[width=\textwidth]{figures/convergence_tsp_small.png}
+        \caption{Small}
+    \end{subfigure}
+    \vskip\baselineskip
+    \begin{subfigure}[b]{0.475\textwidth}
+        \includegraphics[width=\textwidth]{figures/convergence_tsp_medium.png}
+        \caption{Medium}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.475\textwidth}
+        \includegraphics[width=\textwidth]{figures/convergence_tsp_large.png}
+        \caption{Large (120 Cities)}
+    \end{subfigure}
+    \caption{Convergence curves for the TSP. Classical search results shown as dashed reference lines.}
+    \label{fig:conv-tsp}
+\end{figure}
+
+% == Graph Coloring ==========================================
+\paragraph{Graph Coloring Problem.}
+For Graph Coloring, the conflict count makes the difference between fast local repair and long-run search easy to see.
+\begin{itemize}
+    \item Tiny and small instances: almost every method reaches zero conflicts quickly, so these cases are not very discriminative.
+    \item Medium instance (20 vertices): HC reaches zero conflicts fastest, ABC gets there more gradually over roughly 250 iterations, and CS stalls at one remaining conflict.
+    \item Large instance (120 vertices, 1080 edges): HC drops sharply from about 180 to 25 conflicts, then stops improving.
+    \item CS and ABC keep making progress to roughly 35 and 45 conflicts, while SA, FA, and GSA stay above 130 for most of the run.
+\end{itemize}
+
+\begin{figure}[H]
+    \centering
+    \begin{subfigure}[b]{0.475\textwidth}
+        \includegraphics[width=\textwidth]{figures/convergence_graph_coloring_tiny.png}
+        \caption{Tiny}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.475\textwidth}
+        \includegraphics[width=\textwidth]{figures/convergence_graph_coloring_small.png}
+        \caption{Small}
+    \end{subfigure}
+    \vskip\baselineskip
+    \begin{subfigure}[b]{0.475\textwidth}
+        \includegraphics[width=\textwidth]{figures/convergence_graph_coloring_medium.png}
+        \caption{Medium (20 Vertices)}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.475\textwidth}
+        \includegraphics[width=\textwidth]{figures/convergence_graph_coloring_large.png}
+        \caption{Large (120 Vertices)}
+    \end{subfigure}
+    \caption{Convergence curves for the Graph Coloring problem. Classical search results shown as dashed reference lines.}
+    \label{fig:conv-gc}
+\end{figure}
+
+% ============================================================
+%  OVERALL DISCUSSION
+% ============================================================
+\subsubsection{Discussion}
+
+\begin{table}[H]
+    \centering
+    \small
+    \begin{tabular}{|p{0.24\textwidth}|p{0.28\textwidth}|p{0.36\textwidth}|}
+        \hline
+        \textbf{Theme} & \textbf{Observed pattern} & \textbf{Interpretation} \\
+        \hline
+        Curve shape & Steep-then-flat, sustained descent, and near-flat curves appear repeatedly. & HC and (1+1)-ES usually behave greedily, TLBO/ABC/MMAS keep exploring, and SA/FA/GSA often fail to move far from their initial region. \\
+        \hline
+        Scaling effect & Performance gaps are huge in small problems but shrink as dimension or instance size rises. & On hard large-scale problems, many methods collapse into the same mediocre band, while a few specialized algorithms still separate themselves. \\
+        \hline
+        Consistency & Variance bands differ sharply across methods. & TLBO is usually stable across seeds, whereas CS can alternate between excellent and poor runs on the same benchmark. \\
+        \hline
+    \end{tabular}
+    \caption{Main lessons from the convergence plots.}
+    \label{tab:conv-discussion-summary}
+\end{table}
+
+Three patterns recur throughout the plots:
+\begin{enumerate}
+    \item Steep-then-flat curves usually indicate aggressive local improvement followed by early stagnation.
+    \item Sustained downward curves indicate that the method keeps finding productive moves late into the run.
+    \item Nearly flat curves usually signal that the algorithm never adapts well to the landscape.
+\end{enumerate}
+
+Scale changes the story substantially. On easy low-dimensional cases such as Sphere with $d=2$, the best and worst methods are separated by many orders of magnitude. On harder settings such as Rastrigin with $d=30$ or large TSP instances, much of the field compresses into a narrow band, and only a few algorithms remain visibly competitive.
+
+The variance bands also add an important practical view. Methods such as TLBO tend to produce a repeatable trajectory from run to run, while methods such as CS can be highly seed-sensitive. In an engineering setting, that difference matters almost as much as the final mean fitness.

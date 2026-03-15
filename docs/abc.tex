@@ -1,0 +1,128 @@
+
+% ============================================================
+% Artificial Bee Colony (ABC)
+% ============================================================
+\subsection{Artificial Bee Colony (ABC)}
+
+\subsubsection{Biological Inspiration.}
+Introduced by Karaboga in 2005, the Artificial Bee Colony (ABC) algorithm simulates the intelligent foraging behavior of honeybee swarms \autocite{Karaboga2007}. The artificial colony is strictly divided into three specialized groups: \textit{employed bees}, \textit{onlooker bees}, and \textit{scout bees}. Employed bees exploit known food sources (representing candidate solutions) and share information regarding their quality with onlooker bees waiting in the hive. Onlooker bees then probabilistically select and exploit the most lucrative sources. Finally, when a food source is exhausted, the employed bee transitions into a scout bee, randomly exploring the environment for an entirely new food source.
+
+\subsubsection{Algorithm Description.}
+The ABC algorithm continuously refines a population of $N$ food sources through a three-phase cyclic process:
+\begin{enumerate}
+    \item \textbf{Employed Bee Phase:} Each employed bee explores the local neighborhood of its assigned food source $x_i$ to discover a new candidate solution $v_i$. For continuous problems, this is achieved via arithmetic perturbation along a single, randomly chosen dimension $j$:
+    \begin{equation}
+        v_{ij} = x_{ij} + \phi \cdot (x_{ij} - x_{kj})
+    \end{equation}
+    where $k \in \{1, \dots, N\}$ is a randomly chosen index distinct from $i$, and $\phi$ is a uniform random number in $[-1, 1]$ \autocite{Karaboga2007}. A greedy selection mechanism is applied: if $v_i$ yields a better fitness than $x_i$, $v_i$ replaces $x_i$ and its trial counter is reset; otherwise, the trial counter for $x_i$ increments.
+    \item \textbf{Onlooker Bee Phase:} Employed bees share the fitness of their sources with onlooker bees. Onlooker bees select food sources to exploit via a fitness-proportional mechanism (roulette-wheel selection). Selected sources undergo the identical local perturbation and greedy selection process described in the first phase.
+    \item \textbf{Scout Bee Phase:} To mitigate premature convergence and escape local optima, a stagnation mechanism is enforced. If a food source fails to improve after a predefined abandonment limit ($L$) of trials, it is deemed exhausted. The bee abandons the source and assumes the role of a scout, generating a completely random new solution within the search space to replace it.
+\end{enumerate}
+For discrete optimization environments, mathematical perturbation is conceptually invalid. Instead, the continuous generation equation is replaced by invoking a domain-specific \texttt{random\_neighbor()} mutation to navigate the discrete topology.
+
+\subsubsection{Parameters.}~
+
+\begin{table}[H]
+\centering
+\caption{ABC hyperparameters.}
+\label{tab:abc-params}
+\begin{tabular}{l l p{7cm}}
+\hline
+\textbf{Parameter} & \textbf{Symbol} & \textbf{Description} \\
+\hline
+Number of food sources & $N$       & Population size (employed bees) \\
+Abandonment limit      & $L$       & Trials before a source is abandoned \\
+Iterations             & $T$       & Number of foraging cycles \\
+\hline
+\end{tabular}
+\end{table}
+
+\subsubsection{Pseudocode.}~
+
+\begin{algorithm}[H]
+\caption{Artificial Bee Colony (ABC)}
+\label{alg:abc}
+\begin{algorithmic}[1]
+  \State Initialize $N$ food sources randomly; set $\text{trial}_i \gets 0$ for all $i \in \{1, \dots, N\}$
+  \State Evaluate initial fitness and record the global best
+  \For{$t = 1$ to $T$}
+    \State \textbf{// Employed Bee Phase}
+    \For{$i = 1$ to $N$}
+      \State Generate candidate $v_i$ via continuous perturbation or discrete neighborhood search
+      \If{$f(v_i)$ is better than $f(x_i)$}
+        \State $x_i \gets v_i$, $\text{trial}_i \gets 0$
+      \Else
+        \State $\text{trial}_i \gets \text{trial}_i + 1$
+      \EndIf
+    \EndFor
+    \State \textbf{// Onlooker Bee Phase}
+    \State Calculate selection probabilities $P_i$ proportional to fitness
+    \State $m \gets 0, i \gets 1$
+    \While{$m < N$}
+      \If{$\text{Random}(0, 1) < P_i$}
+        \State Generate candidate $v_i$ around $x_i$
+        \State Apply greedy selection between $v_i$ and $x_i$; update $\text{trial}_i$ accordingly
+        \State $m \gets m + 1$
+      \EndIf
+      \State $i \gets (i \bmod N) + 1$
+    \EndWhile
+    \State \textbf{// Scout Bee Phase}
+    \For{$i = 1$ to $N$}
+      \If{$\text{trial}_i > L$}
+        \State $x_i \gets \text{GenerateRandomSolution}()$
+        \State $\text{trial}_i \gets 0$
+      \EndIf
+    \EndFor
+    \State Update global best solution
+  \EndFor
+\end{algorithmic}
+\end{algorithm}
+
+\subsubsection{Implementation Notes.}
+The implementation remains simple, but a few details are important for reliable behavior:
+\begin{itemize}
+  \item \textbf{Continuous vs. Discrete Generation:} In continuous spaces, perturbation is restricted to a single variable dimension per trial to encourage fine-grained local search. In discrete spaces (e.g., TSP or Graph Coloring), arithmetic updates are replaced with randomized neighborhood moves.
+  \item \textbf{Fitness Conversion:} Roulette-wheel selection requires strictly positive values where larger values correspond to better solutions. For that reason, minimization objectives ($f_i$) are transformed using $\text{fit}_i = \frac{1}{1 + f_i}$ if $f_i \geq 0$, and $\text{fit}_i = 1 + |f_i|$ if $f_i < 0$.
+  \item \textbf{Clamping Strategy:} Continuous perturbations can easily leave the valid search region, so a post-generation clamping step keeps $v_{ij}$ inside $[lb, ub]$.
+\end{itemize}
+
+\subsubsection{Complexity Analysis of the Current Implementation.}
+Let $N$ denote the number of food sources, $d$ the dimensionality, and $T$ the number of iterations.
+\begin{itemize}
+  \item \textbf{Time complexity:} Each iteration contains employed-bee updates, onlooker-bee updates, and scout resets. For continuous problems, candidate generation and correction are typically $O(d)$ per update, so the arithmetic work is roughly linear in $N$ and $d$. A practical runtime model is
+  $$
+  O\big(T\,N\,(d + C_f)\big),
+  $$
+  with constant factors introduced by the three ABC phases and roulette-wheel selection.
+  \item \textbf{Space complexity:} Food-source storage requires $O(Nd)$, while fitness values, trial counters, and selection probabilities require $O(N)$. Best-history tracking adds $O(Td)$, and optional full-population snapshots raise storage to $O(TNd)$.
+\end{itemize}
+
+\subsubsection{Performance Profile and Applications.}
+
+\begin{table}[H]
+\centering
+\caption{ABC at-a-glance assessment.}
+\label{tab:abc-profile}
+\begin{tabular}{p{3.2cm} p{9.3cm}}
+\hline
+\textbf{Aspect} & \textbf{Summary} \\
+\hline
+Search bias & Phase-coupled search with local improvement and scout-driven diversification. \\
+Time complexity & Approximately $O(Nd)$ neighborhood operations per iteration (excluding objective cost). \\
+Key risks & Weaker late-stage exploitation and sensitivity to abandonment limit $L$. \\
+Best fit problems & Noisy or multimodal black-box tasks requiring robust restart behavior. \\
+\hline
+\end{tabular}
+\end{table}
+
+\paragraph{Advantages}
+ABC is valued for its modular phase structure, low conceptual complexity, and robust diversification through the scout-bee mechanism, which directly re-injects randomness when food sources stagnate \autocite{Karaboga2007}. Compared with operators that require covariance estimation or gradient surrogates, ABC has low implementation overhead and can be adapted to mixed objective landscapes with minimal assumptions.
+
+\paragraph{Disadvantages}
+Exploitation pressure can be weaker than in strongly elitist methods, causing slower asymptotic refinement on smooth unimodal tasks. Performance is also sensitive to colony size and abandonment limit $L$; poor settings may produce either excessive random restarts or premature concentration of onlooker selection probabilities \autocite{Karaboga2007}.
+
+\paragraph{Convergence Behavior}
+ABC balances exploration and exploitation through phase coupling: employed bees and onlookers perform local improvement, while scouts provide non-local diversification. This architecture generally yields stable convergence on rugged spaces and reduces entrapment risk in local minima, since stagnated regions are explicitly abandoned after finite trials \autocite{Karaboga2007}. In practice, convergence speed is often moderate rather than rapid, and final-stage precision can require additional cycles.
+
+\paragraph{Real-World Applications}
+ABC has been employed in engineering design optimization, clustering, image thresholding and segmentation, routing and scheduling, feature selection, and neural-network training or parameter tuning \autocite{Karaboga2007}.

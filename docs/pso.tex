@@ -1,0 +1,116 @@
+% ============================================================
+% Particle Swarm Optimisation (PSO)
+% ============================================================
+\subsection{Particle Swarm Optimisation (PSO)}
+
+\subsubsection{Biological Inspiration.}
+Particle Swarm Optimisation (PSO) is motivated by the emergent social behaviour observed in bird flocking and fish schooling. Introduced by Kennedy and Eberhart (1995), the algorithm models how a group of organisms collaboratively searches for food by sharing information \autocite{KennedyEberhart1995}. Instead of relying on evolutionary operators like crossover or mutation, PSO simulates individuals (particles) "flying" through the search space, adjusting their trajectories based on both their own personal experience and the collective success of the swarm.
+
+\subsubsection{Algorithm Description.}
+In PSO, each candidate solution is represented as a particle with a current position $x_i$ and a velocity $v_i$. The swarm traverses the search space by iteratively updating these two properties. A particle's velocity is adjusted using three components:
+\begin{enumerate}
+    \item \textbf{Inertia:} The particle's tendency to continue in its current direction.
+    \item \textbf{Cognitive (Personal Best):} Attraction toward the best position the individual particle has discovered so far ($\text{pbest}_i$).
+    \item \textbf{Social (Global Best):} Attraction toward the best position discovered by the entire swarm ($\text{gbest}$).
+\end{enumerate}
+The velocity and position updates for the $i$-th particle at iteration $t$ are defined as:
+$$v_i^{(t+1)} = w \cdot v_i^{(t)} + c_1 \cdot r_1 \cdot (\text{pbest}_i - x_i^{(t)}) + c_2 \cdot r_2 \cdot (\text{gbest} - x_i^{(t)})$$
+$$x_i^{(t+1)} = x_i^{(t)} + v_i^{(t+1)}$$
+where $w$ is the inertia weight, $c_1$ and $c_2$ are acceleration coefficients, and $r_1$ and $r_2$ are random vectors uniformly distributed in $[0, 1]$ \autocite{KennedyEberhart1995,WangEtAl2018PSO}.
+
+\subsubsection{Parameters.}~
+
+\begin{table}[H]
+\centering
+\caption{PSO hyperparameters.}
+\label{tab:pso-params}
+\begin{tabular}{l l p{7cm}}
+\hline
+\textbf{Parameter} & \textbf{Symbol} & \textbf{Description} \\
+\hline
+Number of particles & $N$          & Population size \\
+Inertia weight      & $w$          & Controls influence of previous velocity \\
+Cognitive coeff.    & $c_1$        & Attraction toward personal best \\
+Social coeff.       & $c_2$        & Attraction toward global best \\
+Max velocity        & $v_{\max}$   & Velocity clamp per dimension (optional) \\
+Iterations          & $T$          & Number of update cycles \\
+\hline
+\end{tabular}
+\end{table}
+
+\subsubsection{Pseudocode.}~
+
+\begin{algorithm}[H]
+\caption{Particle Swarm Optimisation}
+\label{alg:pso}
+\begin{algorithmic}[1]
+  \State Initialise $N$ particle positions $\mathbf{x}$ and velocities $\mathbf{v}$ randomly
+  \State Evaluate initial fitness and set $\mathbf{p}_i = \mathbf{x}_i$ for all $i$
+  \State Set global best $\mathbf{g}$ to the best initial $\mathbf{p}_i$
+  \For{$t = 1$ to $T$}
+    \For{each particle $i \in \{1, \dots, N\}$}
+      \State Generate random vectors $r_1, r_2 \sim U(0,1)$
+      \State $v_i \gets w \cdot v_i + c_1 \cdot r_1 \cdot (\mathbf{p}_i - x_i) + c_2 \cdot r_2 \cdot (\mathbf{g} - x_i)$
+      \State Clamp velocity $v_i$ to $[-v_{\max}, v_{\max}]$
+      \State Update position: $x_i \gets x_i + v_i$
+      \State Clamp position $x_i$ to search bounds
+   \State Evaluate fitness $f(x_i)$
+      \If{$f(x_i) < f(\mathbf{p}_i)$}
+        \State $\mathbf{p}_i \gets x_i$
+        \If{$f(\mathbf{p}_i) < f(\mathbf{g})$}
+          \State $\mathbf{g} \gets \mathbf{p}_i$
+        \EndIf
+      \EndIf
+    \EndFor
+  \EndFor
+\end{algorithmic}
+\end{algorithm}
+
+\subsubsection{Implementation Notes.}
+PSO is most naturally suited to continuous optimization because the velocity update rule assumes a continuous search space. In practice, three implementation choices matter most:
+\begin{itemize}
+  \item \textbf{Velocity control:} Clamping to $[-v_{\max}, v_{\max}]$ helps prevent unstable trajectories.
+  \item \textbf{Boundary handling:} Positions are clipped to the valid search range after each update.
+  \item \textbf{Parameter scheduling:} Common settings use $c_1 \approx c_2 \approx 2.05$, while $w$ is either fixed (for example, $0.729$) or gradually decayed from $0.9$ to $0.4$ to shift the swarm from exploration to exploitation.
+\end{itemize}
+
+\subsubsection{Complexity Analysis of the Current Implementation.}
+Let $N$ denote the number of particles, $d$ the dimensionality, and $T$ the number of iterations.
+\begin{itemize}
+  \item \textbf{Time complexity:} Each iteration performs vectorized velocity updates, position updates, clamping, and best-state maintenance over all particles. Ignoring objective cost, the dominant work is $O(Nd)$ per iteration. Including fitness evaluation, the total runtime becomes
+  $$
+  O\big(T\,(Nd + N\,C_f)\big),
+  $$
+  where $C_f$ is the average cost of one objective evaluation.
+  \item \textbf{Space complexity:} Positions, velocities, and personal bests each require $O(Nd)$ storage, while auxiliary fitness vectors contribute $O(N)$. Best-solution history adds $O(Td)$, and optional full-population logging increases storage to $O(TNd)$.
+\end{itemize}
+
+\subsubsection{Performance Profile and Applications.}
+
+\begin{table}[H]
+\centering
+\caption{PSO at-a-glance assessment.}
+\label{tab:pso-profile}
+\begin{tabular}{p{3.2cm} p{9.3cm}}
+\hline
+\textbf{Aspect} & \textbf{Summary} \\
+\hline
+Search bias & Fast early global search, then strong attraction-driven local refinement. \\
+Time complexity & Approximately $O(Nd)$ state updates per iteration (excluding objective cost). \\
+Key risks & Premature swarm collapse, hyperparameter sensitivity, velocity instability. \\
+Best fit problems & Continuous, nonlinear, black-box optimization with moderate dimensionality. \\
+\hline
+\end{tabular}
+\end{table}
+
+\paragraph{Advantages}
+PSO is widely regarded as one of the simplest population-based optimizers to implement and tune at baseline level, requiring only velocity-position state vectors and a compact set of hyperparameters, which yields low per-particle memory cost and efficient vectorized execution in continuous domains \autocite{KennedyEberhart1995,WangEtAl2018PSO}. Additional practical strengths include derivative-free optimization, straightforward parallelization, and consistently strong initial progress on smooth and moderately multimodal objectives.
+
+\paragraph{Disadvantages}
+PSO performance is sensitive to $w$, $c_1$, $c_2$, velocity limits, and swarm size. Without proper clamping or adaptive scheduling, trajectories can diverge or oscillate, while strongly connected global-best communication may reduce diversity too early, causing stagnation around local optima \autocite{WangEtAl2018PSO}.
+
+\paragraph{Convergence Behavior}
+PSO convergence is governed by the dynamic equilibrium between momentum-driven exploration (inertia term) and attraction-driven exploitation (cognitive/social terms). In early iterations, larger effective velocities promote broad spatial coverage, while later updates increasingly contract around promising basins as personal-best and global-best attractors dominate \autocite{KennedyEberhart1995}. Empirically, PSO often converges quickly on continuous benchmarks, but this speed can come at the cost of premature convergence when information sharing is too aggressive or when the objective has deceptive local minima. Contemporary practice therefore emphasizes adaptive inertia control, topology design, and diversity-preserving variants \autocite{WangEtAl2018PSO}.
+
+\paragraph{Real-World Applications}
+PSO has been successfully deployed in high-dimensional engineering optimization, including structural and mechanical design parameter tuning, power-system operation and economic dispatch, controller calibration, neural-network hyperparameter search, and wrapper-based feature selection in machine learning pipelines \autocite{WangEtAl2018PSO}.

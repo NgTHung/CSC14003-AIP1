@@ -1,0 +1,157 @@
+% ============================================================
+% Ant Colony Optimisation (ACO)
+% ============================================================
+\subsection{Ant Colony Optimisation (ACO)}
+
+\subsubsection{Biological Inspiration.}
+Introduced by Marco Dorigo in 1992, Ant Colony Optimisation (ACO) is a probabilistic metaheuristic inspired by the natural foraging behavior of ant colonies \autocite{DorigoBirattariStutzle2007}. In nature, ants communicate indirectly via stigmergy/depositing chemical trails (pheromones) as they travel between their nest and a food source. Shorter routes are traversed more rapidly, causing pheromones to accumulate faster. This elevated concentration probabilistically attracts more ants, creating a positive feedback loop that eventually converges the entire colony onto the shortest possible path.
+
+\subsubsection{Common Framework.}
+The general ACO framework models discrete optimization as a pathfinding process over a weighted graph. A colony of $m$ artificial ants iteratively constructs solutions by probabilistically transitioning from node $i$ to a feasible neighborhood node $j$. The transition probability $p_{ij}$ is defined as:
+\begin{equation}
+    p_{ij} = \frac{[\tau_{ij}]^\alpha [\eta_{ij}]^\beta}{\sum_{l \in \mathcal{N}_i} [\tau_{il}]^\alpha [\eta_{il}]^\beta}
+\end{equation}
+where $\tau_{ij}$ represents the pheromone trail (historical memory of path quality), $\eta_{ij}$ is problem-specific heuristic information (e.g., the inverse distance between nodes), and $\mathcal{N}_i$ is the set of unvisited, feasible nodes for the current ant. The exponents $\alpha$ and $\beta$ control the relative influence of pheromone versus heuristic visibility. Upon completing a cycle, pheromone trails undergo a two-step update: \textit{evaporation} (mimicking natural decay to forget poor paths) and \textit{deposit} (reinforcing successful paths) \autocite{DorigoBirattariStutzle2007}. This implementation covers three standard variants: Ant System (AS), Ant Colony System (ACS), and MAX-MIN Ant System (MMAS).
+
+% ---- Ant System (AS) --------------------------------------
+\subsubsection{Ant System (AS).}
+Ant System (AS) is the foundational ACO algorithm. During the global update phase, every ant $k \in \{1, \dots, m\}$ deposits a quantity of pheromone inversely proportional to the cost of its constructed solution, $f(s_k)$. The global update rule for edge $(i,j)$ is:
+\begin{equation}
+    \tau_{ij} \gets (1 - \rho)\tau_{ij} + \sum_{k=1}^m \Delta \tau_{ij}^k, \quad \text{where } \Delta \tau_{ij}^k = \begin{cases} Q / f(s_k) & \text{if edge } (i,j) \in s_k \\ 0 & \text{otherwise} \end{cases}
+\end{equation}
+Here, $\rho \in (0,1]$ is the evaporation rate, and $Q$ is a constant scaling factor. To prevent mathematical instability and extreme divergence, pheromone levels in standard AS are strictly clamped within the heuristic bounds $[0.01, 100.0]$ \autocite{DorigoBirattariStutzle2007}.
+
+\begin{table}[H]
+\centering
+\caption{Ant System hyperparameters.}
+\label{tab:as-params}
+\begin{tabular}{l l p{7cm}}
+\hline
+\textbf{Parameter} & \textbf{Symbol} & \textbf{Description} \\
+\hline
+Number of ants        & $m$         & Colony size \\
+Evaporation rate      & $\rho$      & Fraction of pheromone that evaporates \\
+Deposit factor        & $Q$         & Scales pheromone deposit amount \\
+Pheromone importance  & $\alpha$    & Exponent on pheromone in transition rule \\
+Heuristic importance  & $\beta$     & Exponent on heuristic in transition rule \\
+Iterations            & $T$         & Number of construction--update cycles \\
+\hline
+\end{tabular}
+\end{table}
+
+% ---- Ant Colony System (ACS) --------------------------------
+\subsubsection{Ant Colony System (ACS).}
+ACS introduces aggressive exploitation and local memory to accelerate convergence. Construction utilizes a pseudorandom-proportional rule: a random number $q \sim U(0,1)$ is drawn; if $q \leq q_0$, the ant greedily selects the edge maximizing $[\tau_{ij}] [\eta_{ij}]^\beta$; otherwise, it employs standard roulette-wheel selection. Furthermore, as ants traverse edges, they immediately apply a local pheromone evaporation:
+\begin{equation}
+    \tau_{ij} \gets (1 - \xi)\tau_{ij} + \xi \tau_0
+\end{equation}
+where $\xi$ is the local decay parameter and $\tau_0$ is the initial pheromone level. This local penalty decreases the attractiveness of already-visited edges, forcing subsequent ants to explore alternative sub-paths. Finally, the global update is strictly elitist: only the global best-so-far ant is permitted to deposit pheromones \autocite{DorigoBirattariStutzle2007}.
+
+\begin{table}[H]
+\centering
+\caption{ACS additional hyperparameters (beyond AS).}
+\label{tab:acs-params}
+\begin{tabular}{l l p{7cm}}
+\hline
+\textbf{Parameter} & \textbf{Symbol} & \textbf{Description} \\
+\hline
+Exploitation threshold & $q_0$     & Probability of greedy selection \\
+Local evaporation rate & $\xi$     & Decay during construction \\
+\hline
+\end{tabular}
+\end{table}
+
+% ---- MAX-MIN Ant System (MMAS) ------------------------------
+\subsubsection{MAX-MIN Ant System (MMAS).}
+MMAS aggressively constrains the pheromone matrix to prevent premature stagnation. Pheromone values are strictly bounded within $[\tau_{\min}, \tau_{\max}]$. The upper bound is dynamically updated based on the optimal solution length $L_{\text{best}}$ via the equation $\tau_{\max} = 1 / (\rho \cdot L_{\text{best}})$. The lower bound $\tau_{\min}$ is derived mathematically from $\tau_{\max}$ and a target convergence probability parameter, $p_{\text{best}}$. To balance exploration and exploitation, MMAS alternates pheromone deposits between the iteration-best ant and the global-best ant. Furthermore, MMAS incorporates an explicit stagnation recovery mechanism: if the global best solution fails to improve for a sequence of iterations equal to the problem's dimensionality, the entire pheromone matrix is forcefully re-initialized to $\tau_{\max}$, rapidly rebooting path exploration \autocite{DorigoBirattariStutzle2007}.
+
+\begin{table}[H]
+\centering
+\caption{MMAS additional hyperparameters (beyond AS).}
+\label{tab:mmas-params}
+\begin{tabular}{l l p{7cm}}
+\hline
+\textbf{Parameter} & \textbf{Symbol} & \textbf{Description} \\
+\hline
+Convergence probability & $p_{\text{best}}$        & Controls $\tau_{\min}$ computation \\
+Use iteration best      & \texttt{use\_iter\_best}  & Alternate between iteration-best and global-best deposits \\
+\hline
+\end{tabular}
+\end{table}
+
+\subsubsection{Pseudocode.}
+
+\begin{algorithm}[H]
+\caption{Ant Colony Optimisation (General Framework)}
+\label{alg:aco}
+\begin{algorithmic}[1]
+  \State Initialize pheromone matrix $\tau_{ij} \gets \tau_0$ and compute heuristic matrix $\eta_{ij}$
+  \State Record global best solution $s_{\text{best}} \gets \emptyset$
+  \For{$t = 1$ to $T$}
+    \For{each ant $k = 1$ to $m$}
+      \State Start at a random initial node
+      \While{solution $s_k$ is incomplete}
+        \State \textit{(ACS only)} Determine next node $j$ via pseudorandom-proportional rule
+        \State \textit{(AS/MMAS)} Determine next node $j$ via probabilistic roulette-wheel selection
+        \State Add $j$ to $s_k$
+        \State \textit{(ACS only)} Apply local evaporation on visited edge $(i, j)$
+      \EndWhile
+    \EndFor
+    \State Evaluate fitness for all constructed solutions $s_1, \dots, s_m$
+    \State Update global best solution $s_{\text{best}}$
+    \State Evaporate all pheromone trails: $\tau_{ij} \gets (1 - \rho)\,\tau_{ij}$
+    \State Deposit pheromones (Variant specific: All ants for AS, Best ant for ACS/MMAS)
+    \State \textit{(MMAS only)} Compute $\tau_{\max}, \tau_{\min}$ and clamp matrix $\tau \in [\tau_{\min}, \tau_{\max}]$
+    \State \textit{(MMAS only)} If stagnation detected, re-initialize $\tau \gets \tau_{\max}$
+  \EndFor
+\end{algorithmic}
+\end{algorithm}
+
+\subsubsection{Implementation Notes.}
+Several implementation choices make the ACO framework easier to reuse across discrete problems:
+\begin{itemize}
+  \item \textbf{Domain Adaptability:} The framework supports both permutation problems (e.g., TSP, where nodes are visited once) and categorical assignment problems (e.g., Graph Coloring, where vertices are assigned color states probabilistically).
+    \item \textbf{Heuristic Formulation:} The heuristic matrix $\eta$ requires domain-specific computation. For TSP, $\eta_{ij} = 1 / d_{ij}$ (inverse distance). For Graph Coloring, $\eta$ scales inversely with color conflict penalties.
+  \item \textbf{Computational Efficiency:} To keep large iteration budgets practical, the probabilistic transition rule is vectorized. Neighborhoods are represented with binary masks so invalid or previously visited nodes receive zero probability immediately.
+\end{itemize}
+
+\subsubsection{Complexity Analysis of the Current Implementation.}
+Let $m$ denote the number of ants, $n$ the problem size (for example, number of nodes or items), and $T$ the number of iterations.
+\begin{itemize}
+  \item \textbf{Time complexity:} In constructive ACO, each ant builds one complete solution per iteration and repeatedly computes transition probabilities over feasible moves. For dense permutation-style problems, this leads to about $O(mn^2)$ transition work per iteration, followed by $O(n^2)$ pheromone updates. A practical runtime model is
+  $$
+  O\big(T\,(mn^2 + n^2 + m\,C_f)\big),
+  $$
+  where $C_f$ is the cost of evaluating one constructed solution.
+  \item \textbf{Space complexity:} Pheromone and heuristic matrices dominate storage with $O(n^2)$ each, while ant-solution storage contributes about $O(mn)$. Other bookkeeping terms are lower order by comparison.
+\end{itemize}
+
+\subsubsection{Performance Profile and Applications.}
+
+\begin{table}[H]
+\centering
+\caption{ACO at-a-glance assessment.}
+\label{tab:aco-profile}
+\begin{tabular}{p{3.2cm} p{9.3cm}}
+\hline
+\textbf{Aspect} & \textbf{Summary} \\
+\hline
+Search bias & Probabilistic constructive search with pheromone-guided reinforcement. \\
+Time complexity & Depends on ants and construction length; typically high in large combinatorial instances. \\
+Key risks & Pheromone stagnation, parameter coupling ($\alpha$, $\beta$, $\rho$), computational overhead. \\
+Best fit problems & Routing, sequencing, assignment, and graph-based combinatorial optimization. \\
+\hline
+\end{tabular}
+\end{table}
+
+\paragraph{Advantages}
+ACO is particularly strong for discrete combinatorial optimization because its probabilistic construction process and pheromone memory explicitly encode path quality over time, enabling adaptive reuse of high-value substructures \autocite{DorigoBirattariStutzle2007}. It is flexible across routing, sequencing, and assignment representations, and variant families (AS/ACS/MMAS) provide tunable exploration-exploitation behavior.
+
+\paragraph{Disadvantages}
+The main disadvantages are computational cost and parameter coupling: solution construction for many ants over many iterations can be expensive, and convergence quality depends strongly on $\alpha$, $\beta$, $\rho$, and variant-specific controls. Without careful evaporation and bounds, pheromone over-amplification may induce stagnation and premature fixation on suboptimal tours \autocite{DorigoBirattariStutzle2007}.
+
+\paragraph{Convergence Behavior}
+ACO convergence arises from the interaction between positive feedback (pheromone reinforcement), distributed search (multiple ants), and negative feedback (evaporation). Early in the run, heuristic information and stochastic transitions promote broad exploration; later, reinforced trails progressively bias construction toward elite components, yielding intensified exploitation \autocite{DorigoBirattariStutzle2007}. MMAS trail bounds and ACS local updates are widely used to prevent premature stagnation.
+
+\paragraph{Real-World Applications}
+ACO has demonstrated strong performance in vehicle routing and logistics, telecommunication network routing, production scheduling, timetabling, and bioinformatics sequence-related combinatorial tasks \autocite{DorigoBirattariStutzle2007}.

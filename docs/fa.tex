@@ -1,0 +1,121 @@
+% ============================================================
+% Firefly Algorithm (FA)
+% ============================================================
+\subsection{Firefly Algorithm (FA)}
+
+\subsubsection{Biological Inspiration.}
+The Firefly Algorithm (FA) is a nature-inspired metaheuristic proposed by \textcite{Yang2008}. It mathematically models the flashing characteristics of fireflies, which use bioluminescence to attract mating partners and potential prey. The algorithm is built upon three idealized rules: all fireflies are unisex (any firefly can attract any other), attractiveness is proportional to their brightness (which decreases as distance increases), and the brightness of a firefly is determined by the landscape of the objective function.
+
+\subsubsection{Algorithm Description.}
+In FA, a firefly's intrinsic light intensity $I$ represents the quality of its current solution. For minimization problems, the objective function $f(x)$ is mapped to an intrinsic brightness strictly greater than zero using the following piecewise transformation:
+$$I(x) = \begin{cases} 
+\frac{1}{1 + f(x)} & \text{if } f(x) \ge 0 \\ 
+1 + |f(x)| & \text{if } f(x) < 0 
+\end{cases}$$
+This brightness mapping follows standard FA objective-to-intensity conversion conventions \autocite{Yang2008,YangHe2013}.
+
+Because light is absorbed by the environment, the \textit{apparent} brightness of firefly $j$ as seen by firefly $i$ decays with the squared Euclidean distance $r_{ij}^2$ between them. If the apparent brightness of $j$ exceeds the intrinsic brightness of $i$ (i.e., $I_j \exp(-\gamma r_{ij}^2) > I_i$), firefly $i$ moves toward $j$.
+
+For continuous optimization, this movement is governed by:
+$$x_i^{(t+1)} = x_i^{(t)} + \beta_0 \exp(-\gamma r_{ij}^2)(x_j^{(t)} - x_i^{(t)}) + \alpha (\text{rand} - 0.5) \cdot \text{span}$$
+where $\beta_0$ is the base attractiveness, $\gamma$ is the light absorption coefficient, $\text{rand}$ is a vector of uniform random numbers in $[0, 1)$, and $\text{span}$ is the geometric size of the search space bounds. To facilitate convergence, the randomization parameter $\alpha$ decays geometrically each iteration: $\alpha \gets \alpha \cdot \delta$ \autocite{Yang2008,YangHe2013}.
+
+For discrete problems, spatial distance is undefined. The distance-based decay is bypassed entirely, and firefly $i$ simply moves to a random valid neighbor if $j$'s intrinsic brightness is greater than $i$'s.
+
+\subsubsection{Parameters.}
+
+\begin{table}[htbp]
+\centering
+\caption{Firefly Algorithm hyperparameters.}
+\label{tab:fa-params}
+\begin{tabular}{l l p{7cm}}
+\hline
+\textbf{Parameter} & \textbf{Symbol} & \textbf{Description} \\
+\hline
+Number of fireflies   & $N$                & Population size \\
+Randomisation param.  & $\alpha$           & Step size scaling for random perturbation \\
+Base attractiveness   & $\beta_0$          & Attractiveness at zero distance \\
+Absorption coeff.     & $\gamma$           & Controls apparent brightness decay \\
+Alpha decay           & $\delta$           & Multiplicative decay of $\alpha$ per iteration \\
+Iterations            & $T$                & Number of cycles \\
+\hline
+\end{tabular}
+\end{table}
+
+\subsubsection{Pseudocode.}
+
+\begin{algorithm}[H]
+\caption{Firefly Algorithm}
+\label{alg:fa}
+\begin{algorithmic}[1]
+  \State Initialise $N$ fireflies randomly $\mathbf{x}$; evaluate initial fitness
+  \State Compute intrinsic light intensities $I_i$ using piecewise mapping
+  \For{$t = 1$ to $T$}
+    \For{each firefly $i \in \{1, \dots, N\}$}
+      \For{each firefly $j \in \{1, \dots, N\}$}
+        \State \textbf{Continuous:}
+        \If{$I_j \cdot \exp(-\gamma r_{ij}^2) > I_i$}
+          \State Move $i$ toward $j$ adding scaled random perturbation
+          \State Clamp $x_i$ to boundaries
+          \State Re-evaluate fitness $f(x_i)$ and update intrinsic $I_i$
+        \EndIf
+        \State \textbf{Discrete:}
+        \If{$I_j > I_i$}
+          \State Replace $x_i$ with a random neighbor
+          \State Re-evaluate fitness $f(x_i)$ and update intrinsic $I_i$
+        \EndIf
+      \EndFor
+    \EndFor
+    \State Decay randomness: $\alpha \gets \alpha \cdot \delta$
+    \State Update global best solution
+  \EndFor
+\end{algorithmic}
+\end{algorithm}
+
+\subsubsection{Implementation Notes.}
+Several specific engineering details characterize this implementation:
+\begin{itemize}
+    \item \textbf{Apparent vs. Intrinsic Brightness:} For continuous spaces, movement is triggered by comparing $j$'s \textit{apparent} brightness against $i$'s \textit{intrinsic} brightness. This prevents unnecessary localized shuffling when distant fireflies are intrinsically bright but heavily obscured by distance.
+    \item \textbf{Immediate Re-evaluation:} Unlike generational algorithms, a firefly's fitness and light intensity are updated immediately after it moves. Subsequent pairwise comparisons within the same inner loop utilize the newly updated spatial position and brightness.
+  \item \textbf{Perturbation Scaling:} The random walk component for continuous problems is scaled by the parameter bounds (\texttt{span}). This keeps the exploratory step proportional to the problem's domain size and prevents $\alpha$ from becoming scale-dependent.
+\end{itemize}
+
+\subsubsection{Complexity Analysis of the Current Implementation.}
+Let $N$ be the number of fireflies, $d$ the dimensionality, and $T$ the number of iterations.
+\begin{itemize}
+  \item \textbf{Time complexity:} The nested pairwise interaction loop gives FA a quadratic population cost. Ignoring objective evaluations, the main arithmetic work is $O(N^2 d)$ per iteration. Because moved fireflies are re-evaluated immediately, the worst-case runtime becomes
+  $$
+  O\big(T\,(N^2 d + N^2 C_f)\big).
+  $$
+  \item \textbf{Space complexity:} The position matrix requires $O(Nd)$ memory, while fitness and light-intensity vectors require $O(N)$. Best-history storage costs $O(Td)$, and optional full-population snapshots increase memory to $O(TNd)$.
+\end{itemize}
+
+\subsubsection{Performance Profile and Applications.}
+
+\begin{table}[H]
+\centering
+\caption{FA at-a-glance assessment.}
+\label{tab:fa-profile}
+\begin{tabular}{p{3.2cm} p{9.3cm}}
+\hline
+\textbf{Aspect} & \textbf{Summary} \\
+\hline
+Search bias & Distance-aware attraction with stochastic movement and gradual randomization decay. \\
+Time complexity & Pairwise interaction cost is $O(N^2 d)$ per iteration (excluding objective cost). \\
+Key risks & Quadratic computational growth, parameter coupling ($\alpha$, $\beta_0$, $\gamma$). \\
+Best fit problems & Nonlinear multimodal black-box optimization in continuous and adapted discrete spaces. \\
+\hline
+\end{tabular}
+\end{table}
+
+\paragraph{Advantages}
+FA is attractive due to its conceptually transparent movement rule, derivative-free search behavior, and robust handling of multimodal landscapes via distance-modulated attraction and stochastic perturbation \autocite{Yang2008,YangHe2013}. The algorithm can be adapted to both continuous and discrete domains with minimal structural changes, which is valuable in unified optimization frameworks.
+
+\paragraph{Disadvantages}
+Its main drawbacks are computational and parametric: the pairwise interaction structure induces $O(N^2)$ comparisons per iteration, scalability may degrade for large swarms, and convergence quality is sensitive to the joint configuration of $\alpha$, $\beta_0$, and $\gamma$ \autocite{YangHe2013}.
+
+\paragraph{Convergence Behavior}
+FA naturally embeds an exploration-exploitation schedule. Large randomization and low effective attraction encourage global roaming in early search, while geometric decay of $\alpha$ and distance-dependent attraction progressively intensify local refinement around high-quality regions \autocite{Yang2008}. This mechanism often yields stable progress on rugged objectives, but convergence can be prematurely concentrated when attractiveness is too strong or when randomness decays too rapidly. Conversely, overly persistent randomness can slow final precision \autocite{YangHe2013}.
+
+\paragraph{Real-World Applications}
+Reported FA applications include structural and mechanical design optimization, load dispatch and power-system parameter scheduling, image processing and segmentation, wireless sensor-network localization, clustering, and machine-learning model calibration \autocite{YangHe2013}.

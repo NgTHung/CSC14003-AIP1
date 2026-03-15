@@ -1,0 +1,126 @@
+% ============================================================
+% Implementation Details and Software Architecture
+% ============================================================
+\section{Implementation Details and Software Architecture}
+\label{sec:implementation}
+
+Developing a unified framework capable of executing classical graph searches alongside complex, nature-inspired metaheuristics necessitates a rigid yet extensible software architecture. Given the strict project constraint to utilize only base Python and NumPy, we prioritized a layered, object-oriented design over procedural scripts. This section details the architectural layers and the engineering trade-offs made during development.
+
+\subsection{Data and Configuration Layer: Strict Typing and Dataclasses}
+At the foundational level, algorithm configuration is governed by dedicated \texttt{@dataclass}-decorated parameter objects. Each algorithm exposes a corresponding configuration struct: \texttt{CuckooSearchParameter} declares fields \texttt{n\_nests}, \texttt{pa}, \texttt{alpha}, \texttt{beta}, and \texttt{iteration}, while \texttt{FireflyParameter} declares \texttt{n\_fireflies}, \texttt{alpha}, \texttt{beta0}, \texttt{gamma}, \texttt{alpha\_decay}, and \texttt{cycle}.
+
+This design was deliberately chosen over raw dictionaries or variadic \texttt{**kwargs} for three practical reasons:
+\begin{enumerate}
+    \item Every field carries an explicit type, allowing static analysis to detect parameter mismatches before runtime.
+    \item Named-keyword dataclass construction avoids positional ambiguity. For example, accidentally swapping \texttt{alpha} and \texttt{beta} can produce plausible but incorrect behavior that is difficult to debug.
+    \item Decoupling configuration from algorithm state through \texttt{Algorithm.\_\_init\_\_(configuration, problem)} enables safe parameter swapping via \texttt{set\_config()} across benchmark runs without rebuilding model instances.
+\end{enumerate}
+
+The broader codebase enforces static contracts through the \texttt{typing} module. The generic signature \texttt{Algorithm[Prob, T, Tr, Opt]} is intentionally explicit: \texttt{Prob} denotes the accepted problem class (e.g., \texttt{ContinuousProblem} or \texttt{Problem}), \texttt{T} denotes the returned solution type (e.g., \texttt{np.ndarray | None}), \texttt{Tr} denotes the scalar fitness type (typically \texttt{float}), and \texttt{Opt} denotes the hyperparameter dataclass type. Its constructor \texttt{Algorithm.\_\_init\_\_(configuration, problem)} therefore has two strongly typed dependencies: a configuration object and a problem object, both validated by contract rather than by positional convention.
+
+At domain-dispatch boundaries, where one class must support multiple spaces, explicit \texttt{cast(ContinuousProblem, self.problem)} calls make runtime assumptions visible instead of hiding them behind implicit dynamic dispatch. The \texttt{@override} decorator on \texttt{run()} and other overriding methods further enforces subclass intent at the syntax level, preventing silent omissions when extending the framework.
+
+\subsection{Domain Abstraction Layer: Continuous vs. Discrete Unification}
+A primary architectural challenge was designing metaheuristics capable of operating across two very different mathematical domains, bounded real-valued spaces and combinatorial discrete spaces, without duplicating algorithm classes or cluttering optimization loops with repeated domain checks. The design decision was to encapsulate domain-specific spatial logic inside the \texttt{Problem} hierarchy rather than inside algorithm classes, directly applying the Open/Closed Principle.
+
+The abstract \texttt{Problem(ABC)} root class exposes exactly three mandatory methods an optimizer must call: \texttt{sample()} for population initialization, \texttt{eval()} for fitness measurement, and \texttt{is\_valid()} for constraint verification. This is the escalation path of the hierarchy: \texttt{Problem} defines the mandatory abstract contract, then \texttt{ContinuousProblem} and \texttt{DiscreteProblem} derive from it and supply domain-specific semantics while preserving the same callable surface.
+
+\texttt{ContinuousProblem} fulfills this contract for real-valued domains by implementing \texttt{sample()} as a bounded uniform draw scaled to each dimension's \texttt{bounds}, and providing a \texttt{neighbors()} method that generates step-perturbed solutions clipped within bounds, enabling local-search compatibility. \texttt{DiscreteProblem} fulfills the same contract for combinatorial domains by additionally supplying \texttt{neighbors()}, \texttt{random\_neighbor()}, and \texttt{perturb()} for neighborhood-based movement, along with optional graph-search primitives (\texttt{actions()}, \texttt{result()}, \texttt{cost()}, \texttt{heuristic()}) and ACO metadata fields (\texttt{solution\_type}, \texttt{domain\_size}). This means a single subclass instance is simultaneously compatible with population-based algorithms, local search, classical graph search, and ant colony optimization.
+
+The algorithmic consequence at the solver level is a clean separation of concerns. Both \texttt{CuckooSearch} and \texttt{FireflyAlgorithm} resolve the domain at construction time via a single \texttt{isinstance(problem, ContinuousProblem)} check that sets the internal \texttt{\_is\_continuous} flag. After that, the core optimization loop calls only \texttt{problem.sample()}, \texttt{\_clamp()} (continuous branch), or \texttt{problem.random\_neighbor()} (discrete branch). The loop therefore remains structurally simple. The same \texttt{CuckooSearch} class can optimize a continuous Sphere function and a discrete Traveling Salesman Problem without modifying core algorithm logic.
+
+Compatibility-restricted algorithms are handled through type narrowing at the class boundary. For example, PSO is declared as \texttt{ParticleSwarmOptimization(Algorithm[ContinuousProblem, ...])} and its constructor expects a \texttt{ContinuousProblem}; this prevents discrete usage at type-check time and documents the intended domain unambiguously. In practice, this pattern can be reinforced with explicit runtime guards (\texttt{if not isinstance(problem, ContinuousProblem): raise TypeError(...)}) so that misconfigured experiment pipelines fail fast with a clear diagnostic instead of producing downstream numerical errors.
+
+\subsection{Execution Layer: Vectorization and NumPy Integration}
+At the execution layer, \texttt{Algorithm.run()} drives the iterative optimization loop, delegating all computationally intensive operations to NumPy array primitives. The rationale for this is direct: since the project constraint prohibits SciPy and other C-backed scientific libraries, pure Python alternatives would incur $O(N)$ or $O(N^2)$ interpreter overhead per iteration that, at typical population sizes of 20-50 agents over hundreds of iterations, becomes a severe computational bottleneck.
+
+Cuckoo Search demonstrates batch vectorization most clearly. The population is maintained as a single \texttt{(n\_nests, n\_dim)} matrix. \texttt{generate\_cuckoos()} draws two full \texttt{(n\_nests, n\_dim)} arrays simultaneously, \texttt{u} from a scaled normal and \texttt{v} from a unit normal, and synthesizes Lévy step lengths in one element-wise expression. New candidate positions are then computed as a single matrix expression:
+\begin{equation}
+    \mathbf{X}_{\text{new}} = \mathbf{X} + \alpha \cdot \text{step} \cdot (\mathbf{x}^* - \mathbf{X})
+\end{equation}
+where broadcasting automatically propagates the \texttt{(n\_dim,)} best-solution vector \(\mathbf{x}^*\) across the entire population matrix. Bound enforcement is a single \texttt{numpy.clip} broadcast call. Fitness evaluation of the entire candidate population is dispatched as one call to \texttt{problem.eval(cuckoos)}, returning a \texttt{(n\_nests,)} fitness vector. Nest abandonment identifies replacements via \texttt{numpy.argsort} and batch-evaluates all new nests in a single \texttt{problem.eval(new\_nests)} call.
+
+The Firefly Algorithm's $O(N^2)$ pairwise attraction model is algorithmically sequential by design, because each firefly must be re-evaluated immediately after moving so that subsequent comparisons reflect the updated population state. However, even within this sequential outer loop, inner numerical operations remain vectorized: squared Euclidean distances are computed via \texttt{numpy.dot}, attractiveness values via \texttt{numpy.exp}, position updates via array addition with broadcasting, and brightness conversion via \texttt{numpy.where} for a branchless conditional transform. Python interpreter overhead is therefore mostly confined to outer-loop bookkeeping, keeping the $O(N^2)$ algorithm practically tractable for the population sizes used in benchmarking.
+
+\subsection{Tracking and Analytics Layer: Memory-Safe State Recording}
+To facilitate the comprehensive statistical analysis and visualization required by this study, each algorithm maintains a state-recording layer. Every iteration appends the current \texttt{best\_solution} vector to \texttt{self.history}, producing a convergence trajectory suitable for fitness-versus-iteration curve analysis. This baseline recording is unconditional and incurs $O(T \cdot d)$ memory, where $T$ is the iteration count and $d$ the solution dimensionality.
+
+However, generating 3D population surface plots and spatial trajectory visualizations requires storing full population snapshots, namely the entire \texttt{(n\_nests, n\_dim)} matrix each iteration for Cuckoo Search (\texttt{self.nests\_history}) or the entire \texttt{(n\_fireflies, n\_dim)} matrix for Firefly Algorithm (\texttt{self.firefly\_pos\_history}). This pushes memory consumption to $O(T \cdot N \cdot d)$, which becomes prohibitive when running large-scale benchmarks across many algorithm configurations, problem instances, and dimensionalities simultaneously.
+
+The engineering decision was to make full population recording an explicit opt-in through the \texttt{stat: bool = False} constructor argument. When \texttt{stat=False} (the default during benchmarking), the population history arrays are never allocated. When \texttt{stat=True} (activated for per-experiment visualization), the full snapshot is appended at each iteration. This opt-in discipline was chosen over alternatives such as post-hoc filtering or a separate external recorder class because the allocation cost is incurred at write time. In other words, there is no efficient way to recover population positions after the fact. Making the decision at construction time ensures memory usage during bulk comparative experiments remains bounded and predictable, while retaining the granular positional data required for the visual analyses presented in Section~\ref{sec:results}.
+
+\subsection{Architecture Review: Design Patterns, SOLID, and Class Hierarchy}
+This subsection summarizes the implemented architecture in a compact review format so that key design decisions are quickly auditable.
+
+\subsubsection{Architecture at a Glance}
+\begin{table}[H]
+\centering
+\caption{High-level architecture summary.}
+\label{tab:architecture-summary}
+\begin{tabular}{p{3.2cm} p{9.3cm}}
+\hline
+\textbf{Dimension} & \textbf{Observation} \\
+\hline
+Abstraction core & Generic \texttt{Algorithm[Prob, T, Tr, Opt]} + abstract \texttt{Problem(ABC)} contracts. \\
+Domain model & Split into \texttt{ContinuousProblem} and \texttt{DiscreteProblem} with shared optimization interface. \\
+Extensibility & New problems/algorithms added mainly via subclassing; minimal core edits required. \\
+Runtime safety & Type narrowing (e.g., PSO with \texttt{ContinuousProblem}) + explicit runtime checks. \\
+Experimentability & Hyperparameters encapsulated in dataclasses and injected through constructors. \\
+\hline
+\end{tabular}
+\end{table}
+
+\subsubsection{Class Tree (Visual)}
+\begin{figure}[H]
+\centering
+\fbox{%
+\begin{minipage}{0.95\linewidth}
+\small
+\texttt{Problem (ABC)}\\
+\hspace*{1em}\texttt{|-- ContinuousProblem}\\
+\hspace*{1em}\texttt{|-- DiscreteProblem}\\[2mm]
+\texttt{Algorithm[Prob, T, Tr, Opt]}\\
+\hspace*{1em}\texttt{|-- ParticleSwarmOptimization[ContinuousProblem, ...]}\\
+\hspace*{1em}\texttt{|-- FireflyAlgorithm[Problem, ...]}\\
+\hspace*{1em}\texttt{|-- CuckooSearch[Problem, ...]}\\
+\hspace*{1em}\texttt{|-- ... other natural/classical/local algorithms}
+\end{minipage}%
+}
+\caption{Simplified class hierarchy used by the framework.}
+\label{fig:class-hierarchy}
+\end{figure}
+
+\subsubsection{Design Pattern Mapping}
+\begin{table}[H]
+\centering
+\caption{Pattern-level interpretation of current implementation.}
+\label{tab:pattern-mapping}
+\begin{tabular}{p{2.7cm} p{4.2cm} p{5.6cm}}
+\hline
+\textbf{Pattern} & \textbf{Where observed} & \textbf{Practical benefit} \\
+\hline
+Strategy & Concrete algorithm subclasses + interchangeable \texttt{Problem} objects & Decouples search logic from objective/domain definition. \\
+Template Method (lightweight) & Base \texttt{Algorithm} contract with subclass \texttt{run()} implementations & Uniform lifecycle and reporting fields across algorithms. \\
+\hline
+\end{tabular}
+\end{table}
+
+\subsubsection{SOLID Compliance Snapshot}
+\begin{table}[H]
+\centering
+\caption{Concise SOLID assessment for the current codebase.}
+\label{tab:solid-snapshot}
+\begin{tabular}{p{1.0cm} p{2.6cm} p{8.9cm}}
+\hline
+\textbf{Name} & \textbf{Status} & \textbf{Evidence in implementation} \\
+\hline
+Single Responsibilities Principle & Strong & Responsibilities are separated among \texttt{Problem}, \texttt{Algorithm}, parameter dataclasses, and experiment scripts. \\
+Open/Closed Principle & Strong & New algorithms/problems are primarily introduced via subclassing instead of rewriting core contracts. \\
+Liskov Substitution Principle & Strong & Subclasses preserve base contracts (\texttt{sample/eval/is\_valid}, \texttt{run}) and remain substitutable at call sites. \\
+Interface Segregation Principle & Moderate & \texttt{DiscreteProblem} provides optional interfaces (graph-search/ACO/local-search), reducing forced implementation burden. \\
+Dependency Inversion Principle & Strong & High-level loops depend on abstractions and receive dependencies via constructor injection. \\
+\hline
+\end{tabular}
+\end{table}
+
+Overall, the architecture is intentionally conservative: it favors explicit contracts, low coupling, and experiment reproducibility over highly dynamic metaprogramming. This decision aligns with the project constraints (NumPy + base Python) and improves maintainability for academic benchmarking workflows.

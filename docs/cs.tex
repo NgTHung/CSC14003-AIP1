@@ -1,0 +1,109 @@
+
+% ============================================================
+% Cuckoo Search (CS)
+% ============================================================
+\subsection{Cuckoo Search (CS)}
+
+\subsubsection{Biological Inspiration.}
+The Cuckoo Search algorithm is inspired by the obligate brood parasitism of certain cuckoo species, which lay their eggs in the nests of host birds of other species. If a host bird discovers that an egg is not its own, it will either throw the alien egg away or abandon the nest entirely and build a new one elsewhere. To model the foraging behavior of these birds (and various other animals and insects) when searching for host nests, the algorithm integrates Lévy flights - a type of random walk characterized by a heavy-tailed probability distribution of step sizes. This combination of local search and global exploratory jumps was formalised into an optimization algorithm by Yang \& Deb \autocite{YangDeb2009}.
+
+\subsubsection{Algorithm Description.}
+The algorithm iteratively improves a population of $N$ nests (candidate solutions) through three primary mechanisms:
+\begin{enumerate}
+    \item \textbf{Cuckoo Generation:} For continuous problems, new cuckoos are generated via Lévy flights directed towards the global best solution: 
+    $$x_i^{(t+1)} = x_i^{(t)} + \alpha \cdot L(\beta) \cdot (x_{\text{best}} - x_i^{(t)})$$
+    where $L(\beta)$ is a step size drawn from a Lévy distribution \autocite{YangDeb2009,YangDeb2014Cuckoo}. For discrete problems, mathematical steps are invalid, so Lévy flights are replaced by drawing a random valid neighbor from the problem space.
+    \item \textbf{Evaluation and Replacement:} Each new cuckoo is evaluated against a randomly selected nest $j$ from the population (not necessarily nest $i$). If the cuckoo's fitness is superior, it successfully parasitizes the nest, replacing the host solution.
+    \item \textbf{Abandonment:} To maintain genetic diversity and avoid local optima, a fraction $p_a$ of the worst-performing nests are discovered and abandoned. In continuous domains, these are replaced using biased random walks that mix two random existing nests. In discrete domains, they are replaced with completely fresh random samples.
+\end{enumerate}
+
+\subsubsection{Parameters.}~
+
+\begin{table}[H]
+\centering
+\caption{Cuckoo Search hyperparameters.}
+\label{tab:cs-params}
+\begin{tabular}{l l p{7cm}}
+\hline
+\textbf{Parameter} & \textbf{Symbol} & \textbf{Description} \\
+\hline
+Number of nests     & $N$        & Population size \\
+Discovery rate      & $p_a$      & Fraction of worst nests abandoned each generation \\
+Step size           & $\alpha$   & Scaling factor for Lévy flights \\
+Lévy exponent       & $\beta$    & Controls tail heaviness of Lévy distribution \\
+Iterations          & $T$        & Number of generations \\
+\hline
+\end{tabular}
+\end{table}
+
+\subsubsection{Pseudocode.}~
+
+\begin{algorithm}[H]
+\caption{Cuckoo Search (Continuous \& Discrete)}
+\label{alg:cs}
+\begin{algorithmic}[1]
+  \State Initialize $N$ nests randomly; evaluate fitness
+  \State Precompute $\sigma_u$ for Lévy flights (if continuous)
+  \For{$t = 1$ to $T$}
+    \State Generate $N$ new cuckoos (Lévy flights or random neighbors)
+    \For{each cuckoo $i \in \{1, \dots, N\}$}
+      \State Pick a random nest $j \in \{1, \dots, N\}$
+      \If{$f(\text{cuckoo}_i) < f(\text{nest}_j)$}
+        \State Replace nest $j$ with cuckoo $i$
+      \EndIf
+    \EndFor
+    \State Abandon worst $\lfloor p_a \cdot N \rfloor$ nests
+    \State Replace abandoned nests (biased random walk or fresh samples)
+    \State Update global best solution $x_{\text{best}}$
+  \EndFor
+\end{algorithmic}
+\end{algorithm}
+
+\subsubsection{Implementation Notes.}
+The implementation includes a few practical choices that improve stability and keep the same algorithm usable across different problem types:
+\begin{itemize}
+    \item \textbf{Mantegna's Algorithm:} The Lévy flight step sizes $L(\beta)$ are calculated using Mantegna's algorithm. To optimize the batch generation of these heavy-tailed random steps, the scaling factor $\sigma_u$ is precomputed mathematically during algorithm initialization.
+  \item \textbf{Domain Bounds:} For continuous functions, all new solutions are clamped to the valid search range so the algorithm does not explore undefined space.
+  \item \textbf{Discrete Strategy:} For combinatorial spaces (e.g., TSP, Knapsack), standard arithmetic mutations are not meaningful. The implementation delegates neighborhood exploration and random initialization to the problem instance through \texttt{neighbors()} and \texttt{sample()}, which keeps generated solutions valid without adding repair logic to the algorithm.
+\end{itemize}
+
+\subsubsection{Complexity Analysis of the Current Implementation.}
+Let $N$ denote the number of nests, $d$ the dimensionality, and $T$ the number of iterations.
+\begin{itemize}
+  \item \textbf{Time complexity:} Each iteration includes batched cuckoo generation, batched evaluation, replacement against random targets, and worst-nest abandonment. Excluding objective cost, the main work is $O(Nd)$ for population updates plus $O(N \log N)$ for sorting during abandonment. Including evaluation cost, runtime becomes
+  $$
+  O\big(T\,(Nd + N\log N + N\,C_f)\big),
+  $$
+  where $C_f$ is the average cost of evaluating one candidate.
+  \item \textbf{Space complexity:} Nest storage requires $O(Nd)$ and fitness vectors require $O(N)$. Best-history storage adds $O(Td)$, while optional full-state recording increases memory to $O(TNd)$.
+\end{itemize}
+
+\subsubsection{Performance Profile and Applications.}
+
+\begin{table}[H]
+\centering
+\caption{CS at-a-glance assessment.}
+\label{tab:cs-profile}
+\begin{tabular}{p{3.2cm} p{9.3cm}}
+\hline
+\textbf{Aspect} & \textbf{Summary} \\
+\hline
+Search bias & Lévy-flight exploration with elitist replacement and nest abandonment. \\
+Time complexity & Approximately $O(Nd)$ core updates per iteration (excluding objective cost). \\
+Key risks & Sensitivity to $\alpha$, $\beta$, $p_a$ and possible long-jump over-exploration. \\
+Best fit problems & Multimodal black-box optimization, including adapted discrete neighborhoods. \\
+\hline
+\end{tabular}
+\end{table}
+
+\paragraph{Advantages}
+CS offers an appealing compromise between algorithmic simplicity and global search capability. The Lévy-flight mechanism introduces heavy-tailed perturbations that can generate rare, long-distance moves, improving the probability of escaping local optima relative to purely local random walks \autocite{YangDeb2009,YangDeb2014Cuckoo}. Its population model is compact and easy to implement, and the abandonment operator ($p_a$) provides an explicit diversity-recovery mechanism.
+
+\paragraph{Disadvantages}
+CS remains sensitive to hyperparameters ($\alpha$, $\beta$, $p_a$). In high-dimensional landscapes, overly aggressive long jumps can reduce local refinement efficiency, whereas conservative settings may induce slow mixing and delayed global discovery \autocite{YangDeb2014Cuckoo}.
+
+\paragraph{Convergence Behavior}
+CS convergence is driven by the interaction of two operators: Lévy-flight exploration and elitist replacement/abandonment exploitation. Early iterations typically exhibit broad sampling due to heavy-tailed steps, while repeated selection against randomly chosen nests and replacement of poor solutions progressively concentrate the population around high-quality basins \autocite{YangDeb2009}. This yields strong robustness against shallow local traps, but convergence speed and stability depend on the exploration pressure induced by $\alpha$ and $\beta$ \autocite{YangDeb2014Cuckoo}.
+
+\paragraph{Real-World Applications}
+CS has been applied to engineering design optimization, scheduling and resource-allocation problems, parameter estimation, wireless sensor-network deployment, and feature-selection tasks in machine learning \autocite{YangDeb2014Cuckoo}.

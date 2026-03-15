@@ -1,0 +1,345 @@
+% ============================================================
+% Solution Quality Analysis subsection within the Comparison section
+% ============================================================
+\subsection{Solution Quality Analysis}
+
+This subsection evaluates the final solution quality reached by each algorithm. For continuous benchmarks, box plots summarize the distribution of best fitness over 10 independent runs. The box itself captures the interquartile range (IQR), which is a compact view of typical run-to-run variation, while isolated points show unusual outliers. For discrete benchmarks, bar charts compare the mean best objective value on each instance size.
+
+% ============================================================
+%  CONTINUOUS OPTIMIZATION PROBLEMS
+% ============================================================
+\subsubsection{Continuous Optimization Problems}
+
+Box-plots summarize the distribution of final best fitness (lower is better). Because the $y$-axis relies on a logarithmic scale, vertical compression represents orders-of-magnitude tightening.
+
+\begin{table}[H]
+    \centering
+    \small
+    \begin{tabular}{|p{0.16\textwidth}|p{0.18\textwidth}|p{0.20\textwidth}|p{0.32\textwidth}|}
+        \hline
+        \textbf{Benchmark} & \textbf{Lowest median} & \textbf{Most stable spread} & \textbf{Main quality pattern} \\
+        \hline
+        Ackley & TLBO at $d=10,30$ & TLBO; DE and ABC at $d=2$ & Strong separation in low dimension, then near-total compression except for TLBO. \\
+        \hline
+        Sphere & TLBO overall; PSO also strong at $d=10$ & TLBO & Several methods are elite at $d=2$, but only TLBO stays dominant as $d$ increases. \\
+        \hline
+        Griewank & TLBO overall; ABC competitive at $d=10$ & TLBO & CS becomes highly erratic, while TLBO remains both low and compact. \\
+        \hline
+        Rastrigin & ABC at $d=10$; TLBO and ABC at $d=30$ & ABC at $d=10$ & Exact solutions are common only at $d=2$; higher dimensions compress the entire field upward. \\
+        \hline
+        Rosenbrock & DE at $d=2$, ABC at $d=10$, TLBO at $d=30$ & TLBO at $d=30$ & Valley navigation becomes much less reliable in high dimension. \\
+        \hline
+    \end{tabular}
+    \caption{High-level solution-quality patterns on continuous benchmarks.}
+    \label{tab:quality-cont-summary}
+\end{table}
+
+% == Ackley ==================================================
+\paragraph{Ackley Function.}
+Ackley highlights the difference between a low median and a genuinely stable algorithm.
+\begin{itemize}
+    \item $d=2$: DE, ABC, and TLBO all produce collapsed boxes at roughly $10^{-15}$, which means every run reaches essentially the same best value.
+    \item $d=10$: TLBO is the only method that still keeps a compact box at the bottom near $10^{-14}$.
+    \item $d=30$: TLBO remains isolated around $10^{-11}$, while most other methods compress into a dense block around $10^1$.
+    \item CMA-ES and CS appear more spread out mainly because of occasional good outliers; their typical boxes remain much higher on the plot.
+\end{itemize}
+
+\begin{figure}[H]
+    \centering
+    \begin{subfigure}[b]{0.32\textwidth}
+        \includegraphics[width=\textwidth]{figures/compare_ackley_dim_2_quality.png}
+        \caption{$d=2$}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.32\textwidth}
+        \includegraphics[width=\textwidth]{figures/compare_ackley_dim_10_quality.png}
+        \caption{$d=10$}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.32\textwidth}
+        \includegraphics[width=\textwidth]{figures/compare_ackley_dim_30_quality.png}
+        \caption{$d=30$}
+    \end{subfigure}
+    \caption{Solution quality (box plot of final best fitness) on the Ackley function across dimensionalities.}
+    \label{fig:quality-ackley}
+\end{figure}
+
+% == Sphere ==================================================
+\paragraph{Sphere Function.}
+Sphere gives the clearest picture of how quickly quality can degrade with dimension.
+\begin{itemize}
+    \item $d=2$: GA, DE, PSO, ABC, TLBO, and CMA-ES all achieve extremely small values, often with collapsed or nearly collapsed IQRs below $10^{-30}$.
+    \item $d=10$: PSO and TLBO establish the best medians near $10^{-35}$.
+    \item $d=30$: TLBO remains the clear leader around $10^{-24}$.
+    \item CS becomes highly unstable on this benchmark, with an IQR spanning from about $10^{-2}$ to $10^{2}$, while DE deteriorates from elite performance at $d=2$ to roughly $10^0$ at $d=30$.
+\end{itemize}
+
+\begin{figure}[H]
+    \centering
+    \begin{subfigure}[b]{0.32\textwidth}
+        \includegraphics[width=\textwidth]{figures/compare_sphere_dim_2_quality.png}
+        \caption{$d=2$}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.32\textwidth}
+        \includegraphics[width=\textwidth]{figures/compare_sphere_dim_10_quality.png}
+        \caption{$d=10$}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.32\textwidth}
+        \includegraphics[width=\textwidth]{figures/compare_sphere_dim_30_quality.png}
+        \caption{$d=30$}
+    \end{subfigure}
+    \caption{Solution quality on the Sphere function.}
+    \label{fig:quality-sphere}
+\end{figure}
+
+% == Griewank ================================================
+\paragraph{Griewank Function.}
+Griewank is especially useful for separating reliability from lucky successes.
+\begin{itemize}
+    \item $d=2$: ABC, PSO, DE, and TLBO all reach the lowest region of the plot.
+    \item $d=10$: ABC and TLBO provide the best medians.
+    \item $d=30$: TLBO has both the lowest box, near $10^{-4}$, and one of the most compact spreads.
+    \item CS and CMA-ES show tall IQRs, which means some runs break through local minima while others remain heavily penalized. FA, (1+1)-ES, and SA are consistently poor and stay near the top.
+\end{itemize}
+
+\begin{figure}[H]
+    \centering
+    \begin{subfigure}[b]{0.32\textwidth}
+        \includegraphics[width=\textwidth]{figures/compare_griewank_dim_2_quality.png}
+        \caption{$d=2$}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.32\textwidth}
+        \includegraphics[width=\textwidth]{figures/compare_griewank_dim_10_quality.png}
+        \caption{$d=10$}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.32\textwidth}
+        \includegraphics[width=\textwidth]{figures/compare_griewank_dim_30_quality.png}
+        \caption{$d=30$}
+    \end{subfigure}
+    \caption{Solution quality on the Griewank function.}
+    \label{fig:quality-griewank}
+\end{figure}
+
+% == Rastrigin ===============================================
+\paragraph{Rastrigin Function.}
+Rastrigin shows how quickly multimodality destroys the neat rankings seen in easier problems.
+\begin{itemize}
+    \item $d=2$: DE, PSO, ABC, and TLBO all solve the problem exactly in every run.
+    \item $d=10$: ABC breaks away with a tight box near $10^{-4}$, while TLBO trails around $10^0$.
+    \item $d=30$: every method shifts above $10^1$, so the entire field is pushed into a much worse quality band.
+    \item TLBO and ABC still keep the best medians, but their wider IQRs show that even the strongest methods are no longer consistently close to the optimum.
+\end{itemize}
+
+\begin{figure}[H]
+    \centering
+    \begin{subfigure}[b]{0.32\textwidth}
+        \includegraphics[width=\textwidth]{figures/compare_rastrigin_dim_2_quality.png}
+        \caption{$d=2$}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.32\textwidth}
+        \includegraphics[width=\textwidth]{figures/compare_rastrigin_dim_10_quality.png}
+        \caption{$d=10$}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.32\textwidth}
+        \includegraphics[width=\textwidth]{figures/compare_rastrigin_dim_30_quality.png}
+        \caption{$d=30$}
+    \end{subfigure}
+    \caption{Solution quality on the Rastrigin function.}
+    \label{fig:quality-rastrigin}
+\end{figure}
+
+% == Rosenbrock ==============================================
+\paragraph{Rosenbrock Function.}
+Rosenbrock rewards methods that can keep following a narrow curved valley.
+\begin{itemize}
+    \item $d=2$: DE dominates with a tight IQR near $10^{-28}$. CMA-ES can also do very well, but its box is much taller.
+    \item $d=10$: ABC gives the best overall quality, while HS, SA, and FA remain tightly clustered near $10^{5}$.
+    \item $d=30$: TLBO produces the lowest and tightest box around $26$.
+    \item CS and PSO show very large IQRs, which suggests that success on this landscape becomes strongly seed-dependent in higher dimensions.
+\end{itemize}
+
+\begin{figure}[H]
+    \centering
+    \begin{subfigure}[b]{0.32\textwidth}
+        \includegraphics[width=\textwidth]{figures/compare_rosenbrock_dim_2_quality.png}
+        \caption{$d=2$}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.32\textwidth}
+        \includegraphics[width=\textwidth]{figures/compare_rosenbrock_dim_10_quality.png}
+        \caption{$d=10$}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.32\textwidth}
+        \includegraphics[width=\textwidth]{figures/compare_rosenbrock_dim_30_quality.png}
+        \caption{$d=30$}
+    \end{subfigure}
+    \caption{Solution quality on the Rosenbrock function.}
+    \label{fig:quality-rosenbrock}
+\end{figure}
+
+
+% ============================================================
+%  DISCRETE OPTIMIZATION PROBLEMS
+% ============================================================
+\subsubsection{Discrete Optimization Problems}
+
+Bar charts compare the mean best objective values averaged over 10 runs. For the 0/1 Knapsack problem, higher bars are superior (profit); for TSP and Graph Coloring, lower bars are superior (tour distance and edge conflicts).
+
+\begin{table}[H]
+    \centering
+    \small
+    \begin{tabular}{|p{0.16\textwidth}|p{0.18\textwidth}|p{0.20\textwidth}|p{0.32\textwidth}|}
+        \hline
+        \textbf{Problem} & \textbf{Best mean quality} & \textbf{Strongest competitor} & \textbf{Main quality pattern} \\
+        \hline
+        Knapsack & CS on large instances & HS & Greedy local search is fast but produces weak final profits on large cases. \\
+        \hline
+        TSP & MMAS & AS and ACS & ACO variants dominate once routing structure becomes important. \\
+        \hline
+        Graph Coloring & CS and HC on large instances & ABC & Strong conflict-repair behavior matters more than general stochastic exploration. \\
+        \hline
+    \end{tabular}
+    \caption{High-level solution-quality patterns on discrete benchmarks.}
+    \label{tab:quality-disc-summary}
+\end{table}
+
+% == Knapsack ================================================
+\paragraph{0/1 Knapsack Problem.}
+Knapsack is easy at small scale and much more revealing at large scale.
+\begin{itemize}
+    \item Tiny instance: classical search and most metaheuristics reach the optimal profit quickly.
+    \item Large instance (200 items, cap $=2546$): CS achieves the highest mean profit at roughly 7496, with HS as the nearest competitor.
+    \item HC finishes last among the metaheuristics because its greedy updates trap it in poor local optima.
+    \item SA, FA, and ABC do slightly better than HC, but they remain clearly behind CS.
+\end{itemize}
+
+\begin{figure}[H]
+    \centering
+    \begin{subfigure}[b]{0.475\textwidth}
+        \includegraphics[width=\textwidth]{figures/compare_knapsack_tiny_fitness.png}
+        \caption{Tiny}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.475\textwidth}
+        \includegraphics[width=\textwidth]{figures/compare_knapsack_small_fitness.png}
+        \caption{Small}
+    \end{subfigure}
+    \vskip\baselineskip
+    \begin{subfigure}[b]{0.475\textwidth}
+        \includegraphics[width=\textwidth]{figures/compare_knapsack_medium_fitness.png}
+        \caption{Medium}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.475\textwidth}
+        \includegraphics[width=\textwidth]{figures/compare_knapsack_large_fitness.png}
+        \caption{Large (200 Items)}
+    \end{subfigure}
+    \caption{Solution quality (profit) for the 0/1 Knapsack problem across instance sizes.}
+    \label{fig:quality-knapsack}
+\end{figure}
+
+% == TSP =====================================================
+\paragraph{Travelling Salesman Problem.}
+TSP cleanly separates routing-aware algorithms from general-purpose heuristics.
+\begin{itemize}
+    \item Tiny and small instances: most methods reach the optimum or come very close.
+    \item Large instance (120 cities): MMAS gives the best mean distance, followed by AS and ACS.
+    \item Among the non-ACO methods, CS and ABC remain the most competitive.
+    \item SA, FA, HS, and GSA produce tours that are roughly $5\times$ worse than the ACO group, which makes them poor choices for large routing problems.
+\end{itemize}
+
+\begin{figure}[H]
+    \centering
+    \begin{subfigure}[b]{0.475\textwidth}
+        \includegraphics[width=\textwidth]{figures/compare_tsp_tiny_fitness.png}
+        \caption{Tiny}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.475\textwidth}
+        \includegraphics[width=\textwidth]{figures/compare_tsp_small_fitness.png}
+        \caption{Small}
+    \end{subfigure}
+    \vskip\baselineskip
+    \begin{subfigure}[b]{0.475\textwidth}
+        \includegraphics[width=\textwidth]{figures/compare_tsp_medium_fitness.png}
+        \caption{Medium}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.475\textwidth}
+        \includegraphics[width=\textwidth]{figures/compare_tsp_large_fitness.png}
+        \caption{Large (120 Cities)}
+    \end{subfigure}
+    \caption{Solution quality (tour length) for the TSP across instance sizes.}
+    \label{fig:quality-tsp}
+\end{figure}
+
+% == Graph Coloring ==========================================
+\paragraph{Graph Coloring Problem.}
+Graph Coloring is the best discrete benchmark for comparing large-scale constraint handling.
+\begin{itemize}
+    \item Small instances: most algorithms achieve valid colorings, so the bar charts show little separation.
+    \item Medium instance (20 vertices): ABC reaches 0 conflicts consistently, CS averages around 0.6, and SA and GSA stall near 10 conflicts.
+    \item Large instance (120 vertices): no method reaches a perfect coloring.
+    \item CS and HC return the fewest conflicts, ABC follows closely, and FA, HS, SA, and GSA all remain above 130 conflicts.
+\end{itemize}
+
+\begin{figure}[H]
+    \centering
+    \begin{subfigure}[b]{0.475\textwidth}
+        \includegraphics[width=\textwidth]{figures/compare_graph_coloring_tiny_fitness.png}
+        \caption{Tiny}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.475\textwidth}
+        \includegraphics[width=\textwidth]{figures/compare_graph_coloring_small_fitness.png}
+        \caption{Small}
+    \end{subfigure}
+    \vskip\baselineskip
+    \begin{subfigure}[b]{0.475\textwidth}
+        \includegraphics[width=\textwidth]{figures/compare_graph_coloring_medium_fitness.png}
+        \caption{Medium}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.475\textwidth}
+        \includegraphics[width=\textwidth]{figures/compare_graph_coloring_large_fitness.png}
+        \caption{Large (120 Vertices)}
+    \end{subfigure}
+    \caption{Solution quality for the Graph Coloring problem across instance sizes.}
+    \label{fig:quality-gc}
+\end{figure}
+
+% ============================================================
+%  DISCUSSION AND INSIGHTS
+% ============================================================
+\subsubsection{Discussion and Insights}
+
+\begin{table}[H]
+    \centering
+    \small
+    \begin{tabular}{|p{0.24\textwidth}|p{0.29\textwidth}|p{0.35\textwidth}|}
+        \hline
+        \textbf{Theme} & \textbf{Observed pattern} & \textbf{Interpretation} \\
+        \hline
+        Stability vs. outliers & Some methods have compact IQRs with rare failures, while others have very wide IQRs. & A method with a low median is not automatically reliable; the width of the box matters when judging whether performance is repeatable. \\
+        \hline
+        Dimensionality effect & Several methods look dominant at $d=2$ but degrade sharply by $d=30$. & Low-dimensional results can exaggerate algorithm quality. TLBO and ABC hold up best across the continuous suite. \\
+        \hline
+        Problem fit & The best discrete methods depend strongly on the problem structure. & This matches the general lesson of the No Free Lunch view: performance depends on how well the search bias fits the landscape \autocite{WolpertMacready1997}. \\
+        \hline
+    \end{tabular}
+    \caption{Main lessons from the solution-quality plots.}
+    \label{tab:quality-discussion-summary}
+\end{table}
+
+Two reliability patterns stand out immediately. Some methods, such as TLBO on several continuous benchmarks, combine low medians with compact IQRs, which means the quality is repeatable. Others, such as CS on Sphere or Griewank, can produce good runs, but the spread is wide enough that the average result is much less dependable.
+
+Dimensionality also changes the ranking substantially. DE looks dominant on low-dimensional Sphere and Rosenbrock, but that advantage fades quickly as the search space expands. TLBO and ABC are the only continuous methods that remain near the top of the field across most 30-dimensional cases.
+
+The discrete benchmarks reinforce a broader point: algorithm quality depends heavily on the match between the search mechanism and the problem structure \autocite{WolpertMacready1997}. ACO variants dominate TSP because their construction and pheromone updates align with routing decisions, while CS and ABC remain competitive on Knapsack and Graph Coloring where sustained stochastic improvement and repair-style moves matter more.
