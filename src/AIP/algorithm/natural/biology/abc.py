@@ -70,8 +70,8 @@ class ArtificialBeeColony(Algorithm[Problem, np.ndarray | None, float, ABCParame
     food_sources_history: list[np.ndarray]
     stat: bool
 
+    @override
     def reset(self):
-        "Reset the state of Algorithm"
         self._is_continuous = isinstance(self.problem, ContinuousProblem)
         if self._is_continuous:
             self.n_dim = self.problem.n_dim  # type: ignore[union-attr]

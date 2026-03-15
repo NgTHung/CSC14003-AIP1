@@ -111,22 +111,6 @@ class GeneticAlgorithm(
         """
         super().__init__(configuration, problem)
         self.name = "Genetic Algorithm"
-        self.n_dim = problem.n_dim
-        self.total_bits = configuration.n_bits * self.n_dim
-
-        # Random binary population
-        self.population = np.random.randint(
-            0, 2, size=(configuration.pop_size, self.total_bits), dtype=np.int8
-        )
-
-        # Decode, evaluate, and track the best
-        phenotypes = self._decode_population(self.population)
-        self.fitness = self._evaluate_fitness(phenotypes)
-
-        best_idx = int(np.argmin(self.fitness))
-        self.best_solution = phenotypes[best_idx].copy()
-        self.best_fitness = float(self.fitness[best_idx])
-        self.history = []
 
     def _decode_variable(self, bits: np.ndarray, lower: float, upper: float) -> float:
         """Decode a binary sub-string into a real value.
@@ -427,10 +411,6 @@ class GeneticAlgorithm(
         population[mutation_mask] = 1 - population[mutation_mask]
         return population
 
-    # ------------------------------------------------------------------
-    # Helpers
-    # ------------------------------------------------------------------
-
     def _update_best(self, phenotypes: np.ndarray):
         """Update the global best solution from the current generation.
 
@@ -445,6 +425,25 @@ class GeneticAlgorithm(
             self.best_solution = phenotypes[best_idx].copy()
 
     @override
+    def reset(self):
+        self.n_dim = self.problem.n_dim
+        self.total_bits = self.conf.n_bits * self.n_dim
+
+        # Random binary population
+        self.population = np.random.randint(
+            0, 2, size=(self.conf.pop_size, self.total_bits), dtype=np.int8
+        )
+
+        # Decode, evaluate, and track the best
+        phenotypes = self._decode_population(self.population)
+        self.fitness = self._evaluate_fitness(phenotypes)
+
+        best_idx = int(np.argmin(self.fitness))
+        self.best_solution = phenotypes[best_idx].copy()
+        self.best_fitness = float(self.fitness[best_idx])
+        self.history = []
+    
+    @override
     def run(self) -> np.ndarray:
         """Execute the Genetic Algorithm.
 
@@ -453,6 +452,7 @@ class GeneticAlgorithm(
         np.ndarray
             Best solution (phenotype) found after all generations.
         """
+        self.reset()
         for _ in range(self.conf.cycle):
             mating_pool = self._select()
             offspring = self._crossover(mating_pool)

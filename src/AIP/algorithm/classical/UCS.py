@@ -1,6 +1,7 @@
 """Uniform Cost Search (UCS) algorithm for graph search problems."""
 
 import heapq
+from typing import override
 from AIP.problems.base_problem import DiscreteProblem
 from AIP.algorithm.base_algorithm import Algorithm
 
@@ -20,6 +21,7 @@ class UniformCostSearch(Algorithm[DiscreteProblem, list, float | None, dict]):
     """
 
     name = "Uniform Cost Search"
+    explored_count: int
 
     def __init__(self, configuration: dict, problem: DiscreteProblem):
         """
@@ -57,6 +59,14 @@ class UniformCostSearch(Algorithm[DiscreteProblem, list, float | None, dict]):
         path.reverse()
         return path
 
+    @override
+    def reset(self):
+        self.history = []
+        self.explored_count = 0
+        self.best_solution = []
+        self.best_fitness = None
+    
+    @override
     def run(self) -> list | None:
         """
         Execute UCS algorithm.
@@ -70,11 +80,8 @@ class UniformCostSearch(Algorithm[DiscreteProblem, list, float | None, dict]):
         list or None
             Path from initial state to goal state, or None if no path found.
         """
+        self.reset()
         problem = self.problem
-        self.history = []
-        self.explored_count = 0
-        self.best_solution = []
-        self.best_fitness = None
 
         frontier = []
         heapq.heappush(frontier, (0, problem.initial_state))
@@ -99,7 +106,9 @@ class UniformCostSearch(Algorithm[DiscreteProblem, list, float | None, dict]):
 
             for action in problem.actions(current_state):
                 next_state = problem.result(current_state, action)
-                new_cost = current_cost + problem.cost(current_state, action, next_state)
+                new_cost = current_cost + problem.cost(
+                    current_state, action, next_state
+                )
 
                 if next_state not in explored and (
                     next_state not in cost_so_far or new_cost < cost_so_far[next_state]

@@ -97,32 +97,7 @@ class ParticleSwarmOptimization(
         super().__init__(configuration, problem)
         self.name = "Particle Swarm Optimization"
         self.n_dim = problem.n_dim
-
-        # Initialise positions uniformly within bounds
-        self.positions = problem.sample(configuration.n_particles)
-        self.fitness = cast(np.ndarray, problem.eval(self.positions))
-
-        # Initialise velocities to small random values
-        lower = problem.bounds[:, 0]
-        upper = problem.bounds[:, 1]
-        span = upper - lower
-        self.velocities = np.random.uniform(
-            -span, span, size=(configuration.n_particles, self.n_dim)
-        )
-
-        # Personal bests
-        self.p_best = self.positions.copy()
-        self.p_best_fitness = self.fitness.copy()
-
-        # Global best
-        best_idx = int(np.argmin(self.fitness))
-        self.best_solution = self.positions[best_idx].copy()
-        self.best_fitness = float(self.fitness[best_idx])
-        self.history = []
-
         self.stat = stat
-        if stat:
-            self.particle_position_history = []
 
     def _clamp_position(self, position: np.ndarray) -> np.ndarray:
         """Clamp a position to the problem bounds.
@@ -203,6 +178,34 @@ class ParticleSwarmOptimization(
         self.fitness = cast(np.ndarray, self.problem.eval(self.positions))
 
     @override
+    def reset(self):
+        # Initialise positions uniformly within bounds
+        self.positions = self.problem.sample(self.conf.n_particles)
+        self.fitness = cast(np.ndarray, self.problem.eval(self.positions))
+
+        # Initialise velocities to small random values
+        lower = self.problem.bounds[:, 0]
+        upper = self.problem.bounds[:, 1]
+        span = upper - lower
+        self.velocities = np.random.uniform(
+            -span, span, size=(self.conf.n_particles, self.n_dim)
+        )
+
+        # Personal bests
+        self.p_best = self.positions.copy()
+        self.p_best_fitness = self.fitness.copy()
+
+        # Global best
+        best_idx = int(np.argmin(self.fitness))
+        self.best_solution = self.positions[best_idx].copy()
+        self.best_fitness = float(self.fitness[best_idx])
+        self.history = []
+
+        if self.stat:
+            self.particle_position_history = []
+    
+
+    @override
     def run(self) -> np.ndarray:
         """Execute the Particle Swarm Optimization algorithm.
 
@@ -211,6 +214,7 @@ class ParticleSwarmOptimization(
         np.ndarray
             Best solution found after all cycles.
         """
+        self.reset()
         for _ in range(self.conf.cycle):
             self.update_swarm()
             self._update_best()

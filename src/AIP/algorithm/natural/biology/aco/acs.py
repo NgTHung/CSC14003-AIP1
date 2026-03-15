@@ -84,33 +84,6 @@ class ACS(Algorithm[DiscreteProblem, np.ndarray | None, float, ACSParameter]):
             Discrete optimization problem to solve.
         """
         super().__init__(configuration, problem)
-        n = problem.n_dims
-        self._is_permutation = problem.solution_type == "permutation"
-
-        # Estimate tau0 from a random solution cost
-        sample = problem.sample(1)[0]
-        nn_cost = abs(cast(float, problem.eval(sample)))
-        self.tau0 = 1.0 / (n * nn_cost) if nn_cost > 0 else 0.1
-
-        # Load problem-specific heuristic (e.g. 1/distance for TSP,
-        # value/weight for Knapsack).  Falls back to all-ones when the
-        # problem does not supply one.
-        heuristic = problem.aco_heuristic()
-
-        if self._is_permutation:
-            self.tau = np.full((n, n), self.tau0)
-            self.eta = heuristic if heuristic is not None else np.ones((n, n))
-        else:
-            d = problem.domain_size
-            self.tau = np.full((n, d), self.tau0)
-            self.eta = heuristic if heuristic is not None else np.ones((n, d))
-
-        # Pre-compute eta^beta (constant across iterations)
-        self._eta_beta = self.eta ** self.conf.beta
-
-        self.best_solution = None
-        self.best_fitness = float("inf")
-        self.history = []
 
     def _select_next_permutation(self, current: int, visited: np.ndarray) -> int:
         """Pseudorandom-proportional rule for permutation problems.
@@ -131,7 +104,7 @@ class ACS(Algorithm[DiscreteProblem, np.ndarray | None, float, ACSParameter]):
             # Exploitation: argmax_j { tau_ij * eta_ij^beta }  (no alpha)
             greedy_scores = self.tau[current] * eb
             greedy_scores[visited] = -1.0
-            return int(np.argmax(greedy_scores))
+            return int(np.argmax(greedy_scores)) # type: ignore
 
         # Exploration: roulette-wheel with tau^alpha * eta^beta
         scores = self.tau[current] ** self.conf.alpha * eb
@@ -274,6 +247,36 @@ class ACS(Algorithm[DiscreteProblem, np.ndarray | None, float, ACSParameter]):
             self.tau[positions, vals] += deposit
 
     @override
+    def reset(self):
+        n = self.problem.n_dims
+        self._is_permutation = self.problem.solution_type == "permutation"
+
+        # Estimate tau0 from a random solution cost
+        sample = self.problem.sample(1)[0]
+        nn_cost = abs(cast(float, self.problem.eval(sample)))
+        self.tau0 = 1.0 / (n * nn_cost) if nn_cost > 0 else 0.1
+
+        # Load problem-specific heuristic (e.g. 1/distance for TSP,
+        # value/weight for Knapsack).  Falls back to all-ones when the
+        # problem does not supply one.
+        heuristic = self.problem.aco_heuristic()
+
+        if self._is_permutation:
+            self.tau = np.full((n, n), self.tau0)
+            self.eta = heuristic if heuristic is not None else np.ones((n, n))
+        else:
+            d = self.problem.domain_size
+            self.tau = np.full((n, d), self.tau0)
+            self.eta = heuristic if heuristic is not None else np.ones((n, d))
+
+        # Pre-compute eta^beta (constant across iterations)
+        self._eta_beta = self.eta ** self.conf.beta
+
+        self.best_solution = None
+        self.best_fitness = float("inf")
+        self.history = []
+
+    @override
     def run(self) -> np.ndarray:
         """Execute the ACS algorithm.
 
@@ -282,6 +285,7 @@ class ACS(Algorithm[DiscreteProblem, np.ndarray | None, float, ACSParameter]):
         np.ndarray
             Best solution found.
         """
+        self.reset()
         for _ in range(self.conf.cycle):
             self.construct_solution()
             self.global_pheromone_update()

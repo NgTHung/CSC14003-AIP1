@@ -60,6 +60,7 @@ class AntSystem(
 
     tau: np.ndarray  # pheromone matrix
     eta: np.ndarray  # heuristic information
+    _eta_beta: np.ndarray
     _is_permutation: bool
     _combined: np.ndarray  # pre-computed tau^alpha * eta^beta
 
@@ -74,29 +75,6 @@ class AntSystem(
             Discrete optimization problem to solve.
         """
         super().__init__(configuration, problem)
-        n = problem.n_dims
-        self._is_permutation = problem.solution_type == "permutation"
-
-        # Load problem-specific heuristic (e.g. 1/distance for TSP,
-        # value/weight for Knapsack).  Falls back to all-ones when the
-        # problem does not supply one.
-        heuristic = problem.aco_heuristic()
-
-        if self._is_permutation:
-            self.tau = np.full((n, n), 0.1)
-            self.eta = heuristic if heuristic is not None else np.ones((n, n))
-        else:
-            d = problem.domain_size
-            self.tau = np.full((n, d), 0.1)
-            self.eta = heuristic if heuristic is not None else np.ones((n, d))
-
-        # Pre-compute eta^beta (constant across iterations)
-        self._eta_beta = self.eta**self.conf.beta
-        self._update_combined()
-
-        self.best_solution = None
-        self.best_fitness = float("inf")
-        self.history = []
 
     def _update_combined(self):
         """Recompute the combined score matrix tau^alpha * eta^beta."""
@@ -226,7 +204,34 @@ class AntSystem(
         self.tau = np.clip(self.tau, 0.01, 100.0)
 
     @override
+    def reset(self):
+        n = self.problem.n_dims
+        self._is_permutation = self.problem.solution_type == "permutation"
+
+        # Load problem-specific heuristic (e.g. 1/distance for TSP,
+        # value/weight for Knapsack).  Falls back to all-ones when the
+        # problem does not supply one.
+        heuristic = self.problem.aco_heuristic()
+
+        if self._is_permutation:
+            self.tau = np.full((n, n), 0.1)
+            self.eta = heuristic if heuristic is not None else np.ones((n, n))
+        else:
+            d = self.problem.domain_size
+            self.tau = np.full((n, d), 0.1)
+            self.eta = heuristic if heuristic is not None else np.ones((n, d))
+
+        # Pre-compute eta^beta (constant across iterations)
+        self._eta_beta = self.eta**self.conf.beta
+        self._update_combined()
+
+        self.best_solution = None
+        self.best_fitness = float("inf")
+        self.history = []
+
+    @override
     def run(self) -> np.ndarray:
+        self.reset()
         for _ in range(self.conf.cycle):
             solutions = self.construct_solution()
             self.pheromone_update(solutions)

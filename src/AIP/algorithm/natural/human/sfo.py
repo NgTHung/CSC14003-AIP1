@@ -29,18 +29,12 @@ subsequent adaptations to metaheuristic optimisation.
 """
 
 from dataclasses import dataclass
-from typing import cast
+from typing import cast, override
 
 import numpy as np
 
 from AIP.algorithm.base_algorithm import Algorithm
 from AIP.problems.continuous.continuous import ContinuousProblem
-
-
-# ---------------------------------------------------------------------------
-# Configuration dataclass
-# ---------------------------------------------------------------------------
-
 
 @dataclass
 class SFOConfig:
@@ -78,12 +72,6 @@ class SFOConfig:
     w_decay: float = 0.99
     c_attract: float = 1.5
     c_social: float = 1.5
-
-
-# ---------------------------------------------------------------------------
-# Algorithm class
-# ---------------------------------------------------------------------------
-
 
 class SFO(Algorithm[ContinuousProblem, np.ndarray, float, SFOConfig]):
     """Social Force Optimization (SFO) algorithm.
@@ -137,8 +125,8 @@ class SFO(Algorithm[ContinuousProblem, np.ndarray, float, SFOConfig]):
     # ------------------------------------------------------------------
     # Initialisation
     # ------------------------------------------------------------------
-
-    def _initialise(self) -> None:
+    @override
+    def reset(self):
         """Set up population, velocities, fitness array, and global best.
 
         Called once at the start of :meth:`run`.  Positions are drawn via
@@ -163,11 +151,10 @@ class SFO(Algorithm[ContinuousProblem, np.ndarray, float, SFOConfig]):
 
         # --- Establish the initial global best ---
         self._update_global_best()
+        self.best_fitness = float('inf')
+        self.best_solution = np.array([])
 
-    # ------------------------------------------------------------------
-    # Main optimisation loop
-    # ------------------------------------------------------------------
-
+    @override
     def run(self) -> np.ndarray:
         """Execute the SFO optimisation loop.
 
@@ -176,7 +163,7 @@ class SFO(Algorithm[ContinuousProblem, np.ndarray, float, SFOConfig]):
         np.ndarray, shape (n_dim,)
             The best solution found across all iterations.
         """
-        self._initialise()
+        self.reset()
 
         cfg = self.conf
         lb = self.problem._bounds[:, 0]  # shape (n_dim,)
@@ -215,10 +202,6 @@ class SFO(Algorithm[ContinuousProblem, np.ndarray, float, SFOConfig]):
             w = w * cfg.w_decay
 
         return self.best_solution
-
-    # ------------------------------------------------------------------
-    # Helper utilities
-    # ------------------------------------------------------------------
 
     def _get_best_index(self) -> int:
         """Return the index of the current best agent.

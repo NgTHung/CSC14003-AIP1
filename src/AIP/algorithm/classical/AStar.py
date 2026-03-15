@@ -1,6 +1,7 @@
 """A* Search algorithm for graph search problems."""
 
 import heapq
+from typing import override
 from AIP.problems.base_problem import DiscreteProblem
 from AIP.algorithm.base_algorithm import Algorithm
 
@@ -63,6 +64,14 @@ class AStarSearch(Algorithm[DiscreteProblem, list, float | None, dict]):
         path.reverse()
         return path
 
+    @override
+    def reset(self):
+        self.history = []
+        self.explored_count = 0
+        self.best_solution = []
+        self.best_fitness = None
+    
+    @override
     def run(self) -> list | None:
         """
         Execute A* Search algorithm.
@@ -76,11 +85,8 @@ class AStarSearch(Algorithm[DiscreteProblem, list, float | None, dict]):
         list or None
             Path from initial state to goal state, or None if no path found.
         """
+        self.reset()
         problem = self.problem
-        self.history = []
-        self.explored_count = 0
-        self.best_solution = []
-        self.best_fitness = None
 
         # Priority queue with (f_value, state)
         # f = g + h

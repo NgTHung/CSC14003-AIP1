@@ -75,6 +75,9 @@ class MMAS(Algorithm[DiscreteProblem, np.ndarray | None, float, MMASParameter]):
     tau_min: float
     _is_permutation: bool
     _combined: np.ndarray  # pre-computed tau^alpha * eta^beta
+    _stagnation_counter: int
+    _last_improvement: int
+    _eta_beta: np.ndarray
 
     def __init__(self, configuration: MMASParameter, problem: DiscreteProblem):
         """Initialize MMAS.
@@ -87,36 +90,6 @@ class MMAS(Algorithm[DiscreteProblem, np.ndarray | None, float, MMASParameter]):
             Discrete optimization problem to solve.
         """
         super().__init__(configuration, problem)
-        n = problem.n_dims
-        self._is_permutation = problem.solution_type == "permutation"
-
-        # Initial bounds (will be updated once best solution is found)
-        self.tau_max = 1.0
-        self.tau_min = self.tau_max / (2.0 * n)
-
-        # Load problem-specific heuristic (e.g. 1/distance for TSP,
-        # value/weight for Knapsack).  Falls back to all-ones when the
-        # problem does not supply one.
-        heuristic = problem.aco_heuristic()
-
-        if self._is_permutation:
-            self.tau = np.full((n, n), self.tau_max)
-            self.eta = heuristic if heuristic is not None else np.ones((n, n))
-        else:
-            d = problem.domain_size
-            self.tau = np.full((n, d), self.tau_max)
-            self.eta = heuristic if heuristic is not None else np.ones((n, d))
-
-        # Pre-compute eta^beta (constant across iterations)
-        self._eta_beta = self.eta**self.conf.beta
-        self._update_combined()
-
-        self.best_solution = None
-        self.best_fitness = float("inf")
-        self.history = []
-
-        self._stagnation_counter = 0
-        self._last_improvement = 0
 
     def _update_combined(self):
         """Recompute the combined score matrix tau^alpha * eta^beta."""
@@ -294,6 +267,39 @@ class MMAS(Algorithm[DiscreteProblem, np.ndarray | None, float, MMASParameter]):
             self._stagnation_counter = 0
 
     @override
+    def reset(self):
+        n = self.problem.n_dims
+        self._is_permutation = self.problem.solution_type == "permutation"
+
+        # Initial bounds (will be updated once best solution is found)
+        self.tau_max = 1.0
+        self.tau_min = self.tau_max / (2.0 * n)
+
+        # Load problem-specific heuristic (e.g. 1/distance for TSP,
+        # value/weight for Knapsack).  Falls back to all-ones when the
+        # problem does not supply one.
+        heuristic = self.problem.aco_heuristic()
+
+        if self._is_permutation:
+            self.tau = np.full((n, n), self.tau_max)
+            self.eta = heuristic if heuristic is not None else np.ones((n, n))
+        else:
+            d = self.problem.domain_size
+            self.tau = np.full((n, d), self.tau_max)
+            self.eta = heuristic if heuristic is not None else np.ones((n, d))
+
+        # Pre-compute eta^beta (constant across iterations)
+        self._eta_beta = self.eta**self.conf.beta
+        self._update_combined()
+
+        self.best_solution = None
+        self.best_fitness = float("inf")
+        self.history = []
+
+        self._stagnation_counter = 0
+        self._last_improvement = 0
+
+    @override
     def run(self) -> np.ndarray:
         """Execute the MMAS algorithm.
 
@@ -302,6 +308,7 @@ class MMAS(Algorithm[DiscreteProblem, np.ndarray | None, float, MMASParameter]):
         np.ndarray
             Best solution found.
         """
+        self.reset()
         for iteration in range(self.conf.cycle):
             solutions = self.construct_solution()
             self.pheromone_update(solutions, iteration)

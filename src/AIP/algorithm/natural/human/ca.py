@@ -11,16 +11,12 @@ Proceedings of the Third Annual Conference on Evolutionary Programming.
 """
 
 from dataclasses import dataclass
-from typing import cast
+from typing import cast, override
 import numpy as np
 
 from AIP.algorithm.base_algorithm import Algorithm
 from AIP.problems.continuous.continuous import ContinuousProblem
 
-
-# ---------------------------------------------------------------------------
-# Configuration dataclass
-# ---------------------------------------------------------------------------
 
 @dataclass
 class CAConfig:
@@ -47,6 +43,7 @@ class CAConfig:
         Standard deviation multiplier for the Gaussian exploration step,
         expressed as a fraction of the normative interval width. Default 0.1.
     """
+
     pop_size: int = 50
     iterations: int = 100
     minimization: bool = True
@@ -54,10 +51,6 @@ class CAConfig:
     exploit_ratio: float = 0.8
     explore_sigma: float = 0.1
 
-
-# ---------------------------------------------------------------------------
-# Cultural Algorithm
-# ---------------------------------------------------------------------------
 
 class CA(Algorithm[ContinuousProblem, np.ndarray, float, CAConfig]):
     """Cultural Algorithm (CA) optimizer.
@@ -111,7 +104,9 @@ class CA(Algorithm[ContinuousProblem, np.ndarray, float, CAConfig]):
     normative_l: np.ndarray
     normative_u: np.ndarray
 
-    def __init__(self, configuration: CAConfig, problem: ContinuousProblem, stat: bool = False):
+    def __init__(
+        self, configuration: CAConfig, problem: ContinuousProblem, stat: bool = False
+    ):
         """Initialize Cultural Algorithm.
 
         Parameters
@@ -127,6 +122,26 @@ class CA(Algorithm[ContinuousProblem, np.ndarray, float, CAConfig]):
         super().__init__(configuration, problem)
         self.stat = stat
 
+    @override
+    def reset(self):
+        pop_size = self.conf.pop_size
+        lb = self.problem._bounds[:, 0]
+        ub = self.problem._bounds[:, 1]
+        self.population = self.problem.sample(pop_size)
+
+        self.fitness = cast(np.ndarray, self.problem.eval(self.population))
+
+        self._init_global_best()
+
+        self.normative_l = lb.copy()  # (n_dim,)
+        self.normative_u = ub.copy()  # (n_dim,)
+
+        # Record history
+        self.history = []
+        if self.stat:
+            self.population_history: list = []
+
+    @override
     def run(self) -> np.ndarray:
         """Execute the Cultural Algorithm and return the best solution found.
 
@@ -136,25 +151,11 @@ class CA(Algorithm[ContinuousProblem, np.ndarray, float, CAConfig]):
             The best solution vector discovered during the run.
         """
         # Cache frequently used references
-        lb = self.problem._bounds[:, 0]          # global lower bounds (n_dim,)
-        ub = self.problem._bounds[:, 1]          # global upper bounds (n_dim,)
+        lb = self.problem._bounds[:, 0]  # global lower bounds (n_dim,)
+        ub = self.problem._bounds[:, 1]  # global upper bounds (n_dim,)
         n_dim = self.problem._n_dim
         pop_size = self.conf.pop_size
-
-        self.population = self.problem.sample(pop_size)
-
-        self.fitness = cast(np.ndarray,self.problem.eval(self.population))
-
-        self._init_global_best()
-
-        self.normative_l = lb.copy()             # (n_dim,)
-        self.normative_u = ub.copy()             # (n_dim,)
-
-        # Record history
-        self.history= []
-        if self.stat:
-            self.population_history: list = []
-
+        self.reset()
         # Number of accepted individuals (at least 1)
         k_accept = max(1, int(pop_size * self.conf.accepted_ratio))
 
@@ -168,15 +169,15 @@ class CA(Algorithm[ContinuousProblem, np.ndarray, float, CAConfig]):
             norm_width = self.normative_u - self.normative_l  # (n_dim,)
             candidates_exploit = self.normative_l + r_exploit * norm_width
 
-            sigma = self.conf.explore_sigma * norm_width          # (n_dim,)
-            noise = np.random.randn(n_explore, n_dim) * sigma     # broadcast
+            sigma = self.conf.explore_sigma * norm_width  # (n_dim,)
+            noise = np.random.randn(n_explore, n_dim) * sigma  # broadcast
             candidates_explore = self.population[-n_explore:] + noise
 
             candidates = np.vstack([candidates_exploit, candidates_explore])
 
             candidates = np.clip(candidates, lb, ub)
 
-            new_fitness = self.problem.eval(candidates)           # (pop_size,)
+            new_fitness = self.problem.eval(candidates)  # (pop_size,)
             assert new_fitness is np.ndarray
             self._greedy_update(candidates, new_fitness)
 
@@ -186,7 +187,6 @@ class CA(Algorithm[ContinuousProblem, np.ndarray, float, CAConfig]):
                 self.population_history.append(self.population.copy())
 
         return self.best_solution
-
 
     def _is_better(self, a: np.ndarray, b: np.ndarray) -> np.ndarray:
         """Return a boolean mask where *a* is strictly better than *b*.
@@ -223,9 +223,7 @@ class CA(Algorithm[ContinuousProblem, np.ndarray, float, CAConfig]):
         idx = self._best_index()
         candidate_fit = float(self.fitness[idx])
 
-        if self._is_better(
-            np.array([candidate_fit]), np.array([self.best_fitness])
-        )[0]:
+        if self._is_better(np.array([candidate_fit]), np.array([self.best_fitness]))[0]:
             self.best_fitness = candidate_fit
             self.best_solution = self.population[idx].copy()
 
@@ -248,7 +246,7 @@ class CA(Algorithm[ContinuousProblem, np.ndarray, float, CAConfig]):
             Fitness values of ``candidates``.
         """
         improved = self._is_better(candidate_fitness, self.fitness)  # (pop_size,)
-        improved_2d = improved[:, np.newaxis]                        # (pop_size, 1)
+        improved_2d = improved[:, np.newaxis]  # (pop_size, 1)
 
         self.population = np.where(improved_2d, candidates, self.population)
         self.fitness = np.where(improved, candidate_fitness, self.fitness)
@@ -284,15 +282,15 @@ class CA(Algorithm[ContinuousProblem, np.ndarray, float, CAConfig]):
             Number of individuals in the accepted set.
         """
         if self.conf.minimization:
-            sorted_indices = np.argsort(self.fitness)          # ascending
+            sorted_indices = np.argsort(self.fitness)  # ascending
         else:
-            sorted_indices = np.argsort(self.fitness)[::-1]   # descending
+            sorted_indices = np.argsort(self.fitness)[::-1]  # descending
 
-        accepted_idx = sorted_indices[:k_accept]               # (k_accept,)
-        accepted_pop = self.population[accepted_idx]           # (k_accept, n_dim)
+        accepted_idx = sorted_indices[:k_accept]  # (k_accept,)
+        accepted_pop = self.population[accepted_idx]  # (k_accept, n_dim)
 
-        accepted_min = np.min(accepted_pop, axis=0)            # (n_dim,)
-        accepted_max = np.max(accepted_pop, axis=0)            # (n_dim,)
+        accepted_min = np.min(accepted_pop, axis=0)  # (n_dim,)
+        accepted_max = np.max(accepted_pop, axis=0)  # (n_dim,)
 
         self.normative_l = np.maximum(self.normative_l, accepted_min)
         self.normative_u = np.minimum(self.normative_u, accepted_max)

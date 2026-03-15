@@ -3,7 +3,7 @@ Teaching-Learning-Based Optimization implementation.
 """
 
 from dataclasses import dataclass
-from typing import cast
+from typing import cast, override
 import numpy as np
 from AIP.algorithm.base_algorithm import Algorithm
 from AIP.problems.continuous.continuous import ContinuousProblem
@@ -48,15 +48,19 @@ class TLBO(Algorithm[ContinuousProblem, np.ndarray, float, TLBOConfig]):
         super().__init__(configuration, problem)
         self.stat = stat
 
-    def run(self):
-        """Execute the optimization process."""
+    @override
+    def reset(self):
         self.population = self.problem.sample(self.conf.pop_size)
         self.fitness = cast(np.ndarray, self.problem.eval(self.population))
-
         self.history = []
         if self.stat:
             self.population_history = []
         self._update_global_best()
+    
+    @override
+    def run(self):
+        """Execute the optimization process."""
+        self.reset()
 
         # Get bounds for clipping during movement
         # Note: Accessing protected member _bounds as per ContinuousProblem definition
@@ -130,7 +134,7 @@ class TLBO(Algorithm[ContinuousProblem, np.ndarray, float, TLBOConfig]):
 
         # If there is no best solution yet or a better one is found
         if (
-            not hasattr(self, "bestFitness")
+            not hasattr(self, "best_fitness")
             or (self.conf.minimization and current_best_fit < self.best_fitness)
             or (not self.conf.minimization and current_best_fit > self.best_fitness)
         ):

@@ -147,17 +147,6 @@ class DifferentialEvolution(
 
         super().__init__(configuration, problem)
         self.name = "Differential Evolution"
-        self.n_dim = problem.n_dim
-
-        # Initialise population uniformly within bounds
-        self.population = self._initialize_population()
-        self.fitness = self._evaluate_fitness(self.population)
-
-        # Track global best
-        best_idx = int(np.argmin(self.fitness))
-        self.best_solution = self.population[best_idx].copy()
-        self.best_fitness = float(self.fitness[best_idx])
-        self.history = []
 
     def _initialize_population(self) -> np.ndarray:
         """Generate random individuals uniformly within the problem bounds.
@@ -414,6 +403,20 @@ class DifferentialEvolution(
             self.best_solution = self.population[best_idx].copy()
 
     @override
+    def reset(self):
+        self.n_dim = self.problem.n_dim
+
+        # Initialise population uniformly within bounds
+        self.population = self._initialize_population()
+        self.fitness = self._evaluate_fitness(self.population)
+
+        # Track global best
+        best_idx = int(np.argmin(self.fitness))
+        self.best_solution = self.population[best_idx].copy()
+        self.best_fitness = float(self.fitness[best_idx])
+        self.history = []
+
+    @override
     def run(self) -> np.ndarray:
         """Execute the Differential Evolution algorithm.
 
@@ -427,6 +430,7 @@ class DifferentialEvolution(
         np.ndarray
             Best solution found after all generations.
         """
+        self.reset()
         for _ in range(self.conf.cycle):
             for i in range(self.conf.pop_size):
                 # 1. Mutation → donor vector

@@ -89,43 +89,6 @@ class CMAES(
     ):
         super().__init__(configuration, problem)
         self.name = "CMA-ES"
-        self.n_dim = n = problem.n_dim
-
-        # -- Population sizes --
-        self._lam = configuration.lam or (4 + int(3 * np.log(n)))
-        self._mu = configuration.mu or self._lam // 2
-
-        # -- Recombination weights (log-linear, normalised) --
-        raw_w = np.log(self._mu + 0.5) - np.log(np.arange(1, self._mu + 1))
-        self._weights = raw_w / np.sum(raw_w)
-        self._mu_eff = 1.0 / np.sum(self._weights ** 2)
-
-        # -- Strategy parameter defaults (Hansen 2001) --
-        self._c_sigma = (self._mu_eff + 2) / (n + self._mu_eff + 5)
-        self._d_sigma = (
-            1
-            + 2 * max(0.0, np.sqrt((self._mu_eff - 1) / (n + 1)) - 1)
-            + self._c_sigma
-        )
-        self._c_c = (4 + self._mu_eff / n) / (n + 4 + 2 * self._mu_eff / n)
-        self._c_1 = 2.0 / ((n + 1.3) ** 2 + self._mu_eff)
-        self._c_mu = min(
-            1 - self._c_1,
-            2 * (self._mu_eff - 2 + 1 / self._mu_eff)
-            / ((n + 2) ** 2 + self._mu_eff),
-        )
-        self._chi_n = np.sqrt(n) * (1 - 1 / (4 * n) + 1 / (21 * n ** 2))
-
-        # -- State initialisation --
-        self.mean = problem.sample(1)[0]
-        self.sigma = configuration.sigma
-        self.C = np.eye(n)
-        self.p_sigma = np.zeros(n)
-        self.p_c = np.zeros(n)
-
-        self.best_fitness = float(cast(np.floating, problem.eval(self.mean)))
-        self.best_solution = self.mean.copy()
-        self.history = []
 
     def _clamp(self, x: np.ndarray) -> np.ndarray:
         lower = self.problem.bounds[:, 0]
@@ -153,7 +116,48 @@ class CMAES(
         return B @ D_inv @ B.T
 
     @override
+    def reset(self):
+        self.n_dim = n = self.problem.n_dim
+
+        # -- Population sizes --
+        self._lam = self.conf.lam or (4 + int(3 * np.log(n)))
+        self._mu = self.conf.mu or self._lam // 2
+
+        # -- Recombination weights (log-linear, normalised) --
+        raw_w = np.log(self._mu + 0.5) - np.log(np.arange(1, self._mu + 1))
+        self._weights = raw_w / np.sum(raw_w)
+        self._mu_eff = 1.0 / np.sum(self._weights ** 2)
+
+        # -- Strategy parameter defaults (Hansen 2001) --
+        self._c_sigma = (self._mu_eff + 2) / (n + self._mu_eff + 5)
+        self._d_sigma = (
+            1
+            + 2 * max(0.0, np.sqrt((self._mu_eff - 1) / (n + 1)) - 1)
+            + self._c_sigma
+        )
+        self._c_c = (4 + self._mu_eff / n) / (n + 4 + 2 * self._mu_eff / n)
+        self._c_1 = 2.0 / ((n + 1.3) ** 2 + self._mu_eff)
+        self._c_mu = min(
+            1 - self._c_1,
+            2 * (self._mu_eff - 2 + 1 / self._mu_eff)
+            / ((n + 2) ** 2 + self._mu_eff),
+        )
+        self._chi_n = np.sqrt(n) * (1 - 1 / (4 * n) + 1 / (21 * n ** 2))
+
+        # -- State initialisation --
+        self.mean = self.problem.sample(1)[0]
+        self.sigma = self.conf.sigma
+        self.C = np.eye(n)
+        self.p_sigma = np.zeros(n)
+        self.p_c = np.zeros(n)
+
+        self.best_fitness = float(cast(np.floating, self.problem.eval(self.mean)))
+        self.best_solution = self.mean.copy()
+        self.history = []
+
+    @override
     def run(self) -> np.ndarray:
+        self.reset()
         n = self.n_dim
 
         for gen in range(self.conf.cycle):
