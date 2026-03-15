@@ -79,6 +79,7 @@ class SimulatedAnnealing(
             The optimization problem instance.
         """
         super().__init__(configuration, problem)
+        self.reset()
 
     def _perturb(self, state: np.ndarray) -> np.ndarray:
         """

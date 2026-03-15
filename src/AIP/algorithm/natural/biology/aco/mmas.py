@@ -90,6 +90,7 @@ class MMAS(Algorithm[DiscreteProblem, np.ndarray | None, float, MMASParameter]):
             Discrete optimization problem to solve.
         """
         super().__init__(configuration, problem)
+        self.reset()
 
     def _update_combined(self):
         """Recompute the combined score matrix tau^alpha * eta^beta."""

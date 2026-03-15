@@ -121,6 +121,7 @@ class SFO(Algorithm[ContinuousProblem, np.ndarray, float, SFOConfig]):
         """
         super().__init__(configuration, problem)
         self.stat = stat
+        self.reset()
 
     # ------------------------------------------------------------------
     # Initialisation

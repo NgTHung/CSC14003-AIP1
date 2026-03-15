@@ -99,6 +99,7 @@ class FireflyAlgorithm(Algorithm[Problem, np.ndarray | None, float, FireflyParam
         super().__init__(configuration, problem)
         self.stat = stat
         self.name = "Firefly Algorithm"
+        self.reset()
 
     def _clamp(self, position: np.ndarray) -> np.ndarray:
         """Clamp a position to the problem bounds (continuous only).

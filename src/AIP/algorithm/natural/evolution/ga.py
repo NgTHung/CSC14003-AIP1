@@ -111,6 +111,7 @@ class GeneticAlgorithm(
         """
         super().__init__(configuration, problem)
         self.name = "Genetic Algorithm"
+        self.reset()
 
     def _decode_variable(self, bits: np.ndarray, lower: float, upper: float) -> float:
         """Decode a binary sub-string into a real value.

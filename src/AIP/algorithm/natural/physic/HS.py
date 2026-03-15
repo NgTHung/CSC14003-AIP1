@@ -84,6 +84,7 @@ class HarmonySearch(
             The optimization problem instance.
         """
         super().__init__(configuration, problem)
+        self.reset()
 
     def reset(self) -> None:
         self._is_discrete = isinstance(self.problem, DiscreteProblem)

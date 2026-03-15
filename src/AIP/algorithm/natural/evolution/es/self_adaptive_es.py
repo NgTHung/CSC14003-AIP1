@@ -82,6 +82,7 @@ class SelfAdaptiveES(
 
         super().__init__(configuration, problem)
         self.name = "Self-Adaptive (μ,λ)-ES"
+        self.reset()
 
     def _clamp(self, x: np.ndarray) -> np.ndarray:
         lower = self.problem.bounds[:, 0]

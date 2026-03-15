@@ -64,6 +64,7 @@ class HillClimbing(Algorithm[Problem, Any, float, HillClimbingParameter]):
         self.max_iterations = configuration.iteration
         self.value_history = []
         super().__init__(configuration, problem)
+        self.reset()
 
 
     @override

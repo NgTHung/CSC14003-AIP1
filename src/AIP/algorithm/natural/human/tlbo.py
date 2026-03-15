@@ -47,6 +47,7 @@ class TLBO(Algorithm[ContinuousProblem, np.ndarray, float, TLBOConfig]):
         """
         super().__init__(configuration, problem)
         self.stat = stat
+        self.reset()
 
     @override
     def reset(self):

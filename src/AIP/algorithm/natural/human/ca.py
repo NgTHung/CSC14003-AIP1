@@ -121,6 +121,7 @@ class CA(Algorithm[ContinuousProblem, np.ndarray, float, CAConfig]):
         """
         super().__init__(configuration, problem)
         self.stat = stat
+        self.reset()
 
     @override
     def reset(self):
