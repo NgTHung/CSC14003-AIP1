@@ -15,7 +15,7 @@ from typing import cast, override
 
 import numpy as np
 from AIP.problems import ContinuousProblem
-from AIP.algorithm import Model
+from AIP.algorithm import Algorithm
 
 
 @dataclass
@@ -46,7 +46,7 @@ class SelfAdaptiveESParameter:
 
 
 class SelfAdaptiveES(
-    Model[ContinuousProblem, np.ndarray | None, float, SelfAdaptiveESParameter]
+    Algorithm[ContinuousProblem, np.ndarray | None, float, SelfAdaptiveESParameter]
 ):
     """Self-Adaptive (μ, λ)-ES with intermediate recombination.
 

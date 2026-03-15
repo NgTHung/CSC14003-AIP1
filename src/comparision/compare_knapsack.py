@@ -32,7 +32,8 @@ if _SRC not in sys.path:
 
 from AIP.problems.discrete.knapsack import Knapsack
 from comparision.comparison_utils_discrete import (
-    run_comparison, plot_comparison, plot_convergence, print_summary_table,
+    run_comparison, plot_comparison, plot_convergence, plot_robustness,
+    print_summary_table,
     tune_all_algorithms, load_tuned_config, _CLASSICAL_ALGOS,
     make_output_path, make_data_output_path, save_results_json,
 )
@@ -55,6 +56,8 @@ def main() -> None:
                         help="Problem instance size (default: medium)")
     parser.add_argument("--cycle", type=int, default=500,
                         help="Iterations per run (default: 500)")
+    parser.add_argument("--runs", type=int, default=5,
+                        help="Independent runs per stochastic algorithm (default: 5)")
     parser.add_argument("--seed", type=int, default=42,
                         help="Base random seed")
     parser.add_argument("--save", action="store_true",
@@ -115,6 +118,7 @@ def main() -> None:
     results = run_comparison(
         problem=problem,
         cycle=args.cycle,
+        n_runs=args.runs,
         seed=args.seed,
         tuned_params=tuned_params,
         skip_algos=skip_algos,

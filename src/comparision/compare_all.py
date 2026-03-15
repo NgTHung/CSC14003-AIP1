@@ -176,30 +176,20 @@ def main() -> None:
 
         if not all_algo_names:
             all_algo_names = list(dict.fromkeys(r.algo_name for r in res))
-
-    # ── Build one figure per problem: 1 row × 4 columns each ──────────
-    n_algos = len(all_algo_names)
-    colors = (_COLORS * ((n_algos // len(_COLORS)) + 1))[:n_algos]
-
-    col_titles = ["Convergence Speed", "Solution Quality",
-                  "Computational Time (ms)", "Robustness (Std Dev)"]
-
-    figures: list[tuple[str, matplotlib.figure.Figure]] = []
-
-    for prob_name, res in all_results.items():
-        save_path = None
-        if args.save:
-            fig_dir = os.path.join(os.path.dirname(__file__), "figures")
-            os.makedirs(fig_dir, exist_ok=True)
-            save_path = os.path.join(
-                fig_dir, f"compare_{prob_name.lower()}_dim_{n_dim}.png"
+        for prob_name, res in all_results.items():
+            save_path = None
+            if args.save:
+                fig_dir = os.path.join(os.path.dirname(__file__), "figures")
+                os.makedirs(fig_dir, exist_ok=True)
+                save_path = os.path.join(
+                    fig_dir, f"compare_{prob_name.lower()}_dim_{n_dim}.png"
+                )
+            plot_comparison(
+                results=res,
+                problem_name=prob_name,
+                n_dim=n_dim,
+                save_path=save_path,
             )
-        plot_comparison(
-            results=res,
-            problem_name=prob_name,
-            n_dim=n_dim,
-            save_path=save_path,
-        )
 
     # ── Final ranking table across all problems ──────────────────────
     print(f"\n{'='*80}")
@@ -241,7 +231,6 @@ def main() -> None:
         print(row)
 
     print(f"{'='*80}")
-
 
 if __name__ == "__main__":
     main()

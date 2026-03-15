@@ -4,13 +4,13 @@ from typing import Any
 from dataclasses import dataclass
 from AIP.problems.base_problem import Problem,DiscreteProblem
 from AIP.problems.continuous import ContinuousProblem
-from AIP.algorithm.base_model import Model
+from AIP.algorithm.base_algorithm import Algorithm
 
 @dataclass
 class HillClimbingParameter:
     iteration: int 
 
-class HillClimbing(Model[Problem, Any, float, HillClimbingParameter]):
+class HillClimbing(Algorithm[Problem, Any, float, HillClimbingParameter]):
     """
     Simple Hill Climbing algorithm (first-choice variant).
 

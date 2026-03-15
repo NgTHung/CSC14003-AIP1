@@ -18,7 +18,7 @@ from typing import cast, override
 
 import numpy as np
 from AIP.problems import ContinuousProblem, DiscreteProblem, Problem
-from AIP.algorithm import Model
+from AIP.algorithm import Algorithm
 
 
 @dataclass
@@ -44,7 +44,7 @@ class ABCParameter:
 
 
 class ArtificialBeeColony(
-    Model[Problem, np.ndarray | None, float, ABCParameter]
+    Algorithm[Problem, np.ndarray | None, float, ABCParameter]
 ):
     """Artificial Bee Colony for continuous and discrete optimization.
 
