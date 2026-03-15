@@ -1,7 +1,8 @@
 """Simulated Annealing (SA) algorithm - physics-inspired optimization."""
 
-import numpy as np
 from dataclasses import dataclass
+from typing import override
+import numpy as np
 from AIP.problems.base_problem import Problem, DiscreteProblem
 from AIP.problems.continuous.continuous import ContinuousProblem
 from AIP.algorithm.base_algorithm import Algorithm
@@ -25,6 +26,7 @@ class SimulatedAnnealingParameter:
     n_flips : int
         Number of bits to flip per step for discrete problems.
     """
+
     initial_temperature: float = 100.0
     cooling_rate: float = 0.95
     min_temperature: float = 0.01
@@ -33,7 +35,9 @@ class SimulatedAnnealingParameter:
     n_flips: int = 1
 
 
-class SimulatedAnnealing(Algorithm[Problem, np.ndarray, float | None, SimulatedAnnealingParameter]):
+class SimulatedAnnealing(
+    Algorithm[Problem, np.ndarray, float | None, SimulatedAnnealingParameter]
+):
     """
     Simulated Annealing algorithm.
 
@@ -60,6 +64,8 @@ class SimulatedAnnealing(Algorithm[Problem, np.ndarray, float | None, SimulatedA
     """
 
     name = "Simulated Annealing"
+    _is_discrete: bool
+    trajectory: list[np.ndarray]
 
     def __init__(self, configuration: SimulatedAnnealingParameter, problem: Problem):
         """
@@ -73,13 +79,6 @@ class SimulatedAnnealing(Algorithm[Problem, np.ndarray, float | None, SimulatedA
             The optimization problem instance.
         """
         super().__init__(configuration, problem)
-        self.initial_temperature = configuration.initial_temperature
-        self.cooling_rate = configuration.cooling_rate
-        self.min_temperature = configuration.min_temperature
-        self.max_iterations = configuration.max_iterations
-        self.step_size = configuration.step_size
-        self.n_flips = configuration.n_flips
-        self._is_discrete = isinstance(problem, DiscreteProblem)
 
     def _perturb(self, state: np.ndarray) -> np.ndarray:
         """
@@ -101,8 +100,9 @@ class SimulatedAnnealing(Algorithm[Problem, np.ndarray, float | None, SimulatedA
             Perturbed state.
         """
         if self._is_discrete:
-            return self.problem.perturb(state, n_flips=self.n_flips)
-        perturbation = np.random.randn(len(state)) * self.step_size
+            assert isinstance(self.problem, DiscreteProblem)
+            return self.problem.perturb(state, n_flips=self.conf.n_flips)
+        perturbation = np.random.randn(len(state)) * self.conf.step_size
         new_state = state + perturbation
         if isinstance(self.problem, ContinuousProblem):
             lb = self.problem._bounds[:, 0]
@@ -110,7 +110,16 @@ class SimulatedAnnealing(Algorithm[Problem, np.ndarray, float | None, SimulatedA
             new_state = np.clip(new_state, lb, ub)
         return new_state
 
-    def run(self) -> np.ndarray:
+    @override
+    def reset(self):
+        self._is_discrete = isinstance(self.problem, DiscreteProblem)
+        self.history = []
+        self.trajectory = []
+        self.best_fitness = None
+        self.best_solution = np.array([])
+
+    @override
+    def run(self):
         """
         Execute Simulated Annealing algorithm.
 
@@ -125,20 +134,23 @@ class SimulatedAnnealing(Algorithm[Problem, np.ndarray, float | None, SimulatedA
             Best solution found.
         """
         # Initialize
+        self.reset()
         current_state = self.problem.sample(1).flatten()
         current_energy = self.problem.eval(current_state)
 
         best_state = current_state.copy()
         best_energy = current_energy
 
-        self.history = []
         self.trajectory = [current_state.copy()]
 
-        temperature = self.initial_temperature
+        temperature = self.conf.initial_temperature
         iteration = 0
 
         # Main loop
-        while temperature > self.min_temperature and iteration < self.max_iterations:
+        while (
+            temperature > self.conf.min_temperature
+            and iteration < self.conf.max_iterations
+        ):
             # Generate neighbor
             new_state = self._perturb(current_state)
             new_energy = self.problem.eval(new_state)
@@ -146,20 +158,16 @@ class SimulatedAnnealing(Algorithm[Problem, np.ndarray, float | None, SimulatedA
             # Calculate energy difference
             delta_energy = new_energy - current_energy
 
-            # Accept or reject
-            accepted = False
             if delta_energy < 0:
                 # Better solution - always accept
                 current_state = new_state
                 current_energy = new_energy
-                accepted = True
             else:
                 # Worse solution - accept with probability
                 acceptance_probability = np.exp(-delta_energy / temperature)
                 if np.random.rand() < acceptance_probability:
                     current_state = new_state
                     current_energy = new_energy
-                    accepted = True
 
             # Update best
             if current_energy < best_energy:
@@ -167,7 +175,7 @@ class SimulatedAnnealing(Algorithm[Problem, np.ndarray, float | None, SimulatedA
                 best_energy = current_energy
 
             # Cool down
-            temperature *= self.cooling_rate
+            temperature *= self.conf.cooling_rate
             iteration += 1
 
             # Track history

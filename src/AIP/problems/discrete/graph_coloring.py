@@ -94,10 +94,6 @@ class GraphColoring(DiscreteProblem):
         # Graph-search initial state: all vertices uncolored (-1)
         self._initial_state = tuple([-1] * self.n_vertices)
 
-    # ==================================================================
-    # Problem interface  (population-based / physics-inspired)
-    # ==================================================================
-
     @override
     def sample(self, pop_size: int = 1) -> np.ndarray:
         """Generate random color assignments of shape ``(pop_size, n_vertices)``.
@@ -146,10 +142,6 @@ class GraphColoring(DiscreteProblem):
             return False
         return self._count_conflicts(x) == 0
 
-    # ==================================================================
-    # Local-search interface  (single-vertex re-coloring)
-    # ==================================================================
-
     @override
     def random_neighbor(self, state: np.ndarray) -> np.ndarray:
         """Recolor one random vertex to a different random color.
@@ -190,10 +182,6 @@ class GraphColoring(DiscreteProblem):
                     nbr[v] = float(color)
                     nbrs.append(nbr)
         return nbrs
-
-    # ==================================================================
-    # Graph-search interface  (classical algorithms)
-    # ==================================================================
 
     @property  # type: ignore[override]
     @override
@@ -261,10 +249,6 @@ class GraphColoring(DiscreteProblem):
         """
         return 0.0
 
-    # ==================================================================
-    # Utility helpers
-    # ==================================================================
-
     def decode_coloring(self, x: np.ndarray) -> dict:
         """Extract coloring info from a solution vector.
 
@@ -303,10 +287,6 @@ class GraphColoring(DiscreteProblem):
         final = path[-1] if path else self._initial_state
         x = np.array(final, dtype=float)
         return self.decode_coloring(x)
-
-    # ==================================================================
-    # Factory methods
-    # ==================================================================
 
     @staticmethod
     def from_file(filepath: str | Path) -> GraphColoring:

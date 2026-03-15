@@ -26,11 +26,6 @@ from AIP.problems import ContinuousProblem
 from AIP.algorithm import Algorithm
 
 
-# ======================================================================
-# Configuration
-# ======================================================================
-
-
 class SelectionMethod(Enum):
     """Available parent-selection strategies."""
 
@@ -82,11 +77,6 @@ class GAParameter:
     crossover: CrossoverMethod = CrossoverMethod.TWO_SITE
 
 
-# ======================================================================
-# Genetic Algorithm
-# ======================================================================
-
-
 class GeneticAlgorithm(
     Algorithm[ContinuousProblem, np.ndarray | None, float, GAParameter]
 ):
@@ -104,14 +94,12 @@ class GeneticAlgorithm(
     5. **Elitism** — The best individual found so far is preserved.
     """
 
-    population: np.ndarray      # shape (pop_size, total_bits), dtype int8
-    fitness: np.ndarray         # shape (pop_size,)
-    n_dim: int                  # number of decision variables
-    total_bits: int             # n_bits * n_dim
+    population: np.ndarray  # shape (pop_size, total_bits), dtype int8
+    fitness: np.ndarray  # shape (pop_size,)
+    n_dim: int  # number of decision variables
+    total_bits: int  # n_bits * n_dim
 
-    def __init__(
-        self, configuration: GAParameter, problem: ContinuousProblem
-    ):
+    def __init__(self, configuration: GAParameter, problem: ContinuousProblem):
         """Initialize the Genetic Algorithm.
 
         Parameters
@@ -123,26 +111,6 @@ class GeneticAlgorithm(
         """
         super().__init__(configuration, problem)
         self.name = "Genetic Algorithm"
-        self.n_dim = problem.n_dim
-        self.total_bits = configuration.n_bits * self.n_dim
-
-        # Random binary population
-        self.population = np.random.randint(
-            0, 2, size=(configuration.pop_size, self.total_bits), dtype=np.int8
-        )
-
-        # Decode, evaluate, and track the best
-        phenotypes = self._decode_population(self.population)
-        self.fitness = self._evaluate_fitness(phenotypes)
-
-        best_idx = int(np.argmin(self.fitness))
-        self.best_solution = phenotypes[best_idx].copy()
-        self.best_fitness = float(self.fitness[best_idx])
-        self.history = []
-
-    # ------------------------------------------------------------------
-    # Encoding / Decoding
-    # ------------------------------------------------------------------
 
     def _decode_variable(self, bits: np.ndarray, lower: float, upper: float) -> float:
         """Decode a binary sub-string into a real value.
@@ -218,10 +186,6 @@ class GeneticAlgorithm(
         """
         return np.array([self._decode_individual(chrom) for chrom in population])
 
-    # ------------------------------------------------------------------
-    # Fitness evaluation
-    # ------------------------------------------------------------------
-
     def _evaluate_fitness(self, phenotypes: np.ndarray) -> np.ndarray:
         """Evaluate the objective function for decoded phenotypes.
 
@@ -265,10 +229,6 @@ class GeneticAlgorithm(
             return np.ones(len(objective_values)) / len(objective_values)
         return transformed / total
 
-    # ------------------------------------------------------------------
-    # Selection
-    # ------------------------------------------------------------------
-
     def _roulette_wheel_selection(self) -> np.ndarray:
         """Select individuals using roulette-wheel (fitness-proportionate).
 
@@ -281,9 +241,7 @@ class GeneticAlgorithm(
             Indices of selected individuals, shape ``(pop_size,)``.
         """
         probs = self._fitness_to_selection_prob(self.fitness)
-        return np.random.choice(
-            self.conf.pop_size, size=self.conf.pop_size, p=probs
-        )
+        return np.random.choice(self.conf.pop_size, size=self.conf.pop_size, p=probs)
 
     def _stochastic_remainder_selection(self) -> np.ndarray:
         """Select individuals using stochastic remainder selection.
@@ -318,9 +276,7 @@ class GeneticAlgorithm(
             else:
                 frac_probs = np.ones(self.conf.pop_size) / self.conf.pop_size
 
-            extras = np.random.choice(
-                self.conf.pop_size, size=remaining, p=frac_probs
-            )
+            extras = np.random.choice(self.conf.pop_size, size=remaining, p=frac_probs)
             selected.extend(extras.tolist())
 
         # If we somehow over-filled, truncate
@@ -342,10 +298,6 @@ class GeneticAlgorithm(
             indices = self._stochastic_remainder_selection()
 
         return self.population[indices].copy()
-
-    # ------------------------------------------------------------------
-    # Crossover
-    # ------------------------------------------------------------------
 
     def _one_site_crossover(
         self, parent1: np.ndarray, parent2: np.ndarray
@@ -392,7 +344,9 @@ class GeneticAlgorithm(
         tuple[np.ndarray, np.ndarray]
             Two offspring chromosomes.
         """
-        sites = sorted(np.random.choice(range(1, self.total_bits), size=2, replace=False))
+        sites = sorted(
+            np.random.choice(range(1, self.total_bits), size=2, replace=False)
+        )
         s1, s2 = sites[0], sites[1]
 
         child1 = parent1.copy()
@@ -437,10 +391,6 @@ class GeneticAlgorithm(
 
         return offspring
 
-    # ------------------------------------------------------------------
-    # Mutation
-    # ------------------------------------------------------------------
-
     def _mutate(self, population: np.ndarray) -> np.ndarray:
         """Apply bit-flip mutation to the population.
 
@@ -461,10 +411,6 @@ class GeneticAlgorithm(
         population[mutation_mask] = 1 - population[mutation_mask]
         return population
 
-    # ------------------------------------------------------------------
-    # Helpers
-    # ------------------------------------------------------------------
-
     def _update_best(self, phenotypes: np.ndarray):
         """Update the global best solution from the current generation.
 
@@ -478,10 +424,25 @@ class GeneticAlgorithm(
             self.best_fitness = float(self.fitness[best_idx])
             self.best_solution = phenotypes[best_idx].copy()
 
-    # ------------------------------------------------------------------
-    # Main loop
-    # ------------------------------------------------------------------
+    @override
+    def reset(self):
+        self.n_dim = self.problem.n_dim
+        self.total_bits = self.conf.n_bits * self.n_dim
 
+        # Random binary population
+        self.population = np.random.randint(
+            0, 2, size=(self.conf.pop_size, self.total_bits), dtype=np.int8
+        )
+
+        # Decode, evaluate, and track the best
+        phenotypes = self._decode_population(self.population)
+        self.fitness = self._evaluate_fitness(phenotypes)
+
+        best_idx = int(np.argmin(self.fitness))
+        self.best_solution = phenotypes[best_idx].copy()
+        self.best_fitness = float(self.fitness[best_idx])
+        self.history = []
+    
     @override
     def run(self) -> np.ndarray:
         """Execute the Genetic Algorithm.
@@ -491,24 +452,16 @@ class GeneticAlgorithm(
         np.ndarray
             Best solution (phenotype) found after all generations.
         """
+        self.reset()
         for _ in range(self.conf.cycle):
-            # 1. Selection — build mating pool
             mating_pool = self._select()
-
-            # 2. Crossover — recombine parents
             offspring = self._crossover(mating_pool)
-
-            # 3. Mutation — bit-flip perturbation
             offspring = self._mutate(offspring)
-
-            # 4. Replace population with offspring
             self.population = offspring
 
-            # 5. Evaluate new generation
             phenotypes = self._decode_population(self.population)
             self.fitness = self._evaluate_fitness(phenotypes)
 
-            # 6. Track best
             self._update_best(phenotypes)
 
             if self.best_solution is not None:

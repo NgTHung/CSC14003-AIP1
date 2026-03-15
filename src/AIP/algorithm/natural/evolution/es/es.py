@@ -119,6 +119,10 @@ class EvolutionStrategy(
                 )
 
     @override
+    def reset(self):
+        self._inner.reset()
+
+    @override
     def run(self) -> np.ndarray:
         """Run the chosen ES variant and sync results back to the façade."""
         result = self._inner.run()

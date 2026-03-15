@@ -1,6 +1,7 @@
 """Breadth-First Search (BFS) algorithm for graph search problems."""
 
 from collections import deque
+from typing import override
 from AIP.problems.base_problem import DiscreteProblem
 from AIP.algorithm.base_algorithm import Algorithm
 
@@ -20,6 +21,7 @@ class BreadthFirstSearch(Algorithm[DiscreteProblem, list, float | None, dict]):
     """
 
     name = "Breadth First Search"
+    explored_count: int
 
     def __init__(self, configuration: dict, problem: DiscreteProblem):
         """
@@ -57,6 +59,14 @@ class BreadthFirstSearch(Algorithm[DiscreteProblem, list, float | None, dict]):
         path.reverse()
         return path
 
+    @override
+    def reset(self):
+        self.history = []
+        self.explored_count = 0
+        self.best_solution = []
+        self.best_fitness = None
+
+    @override
     def run(self) -> list | None:
         """
         Execute BFS algorithm.
@@ -70,11 +80,8 @@ class BreadthFirstSearch(Algorithm[DiscreteProblem, list, float | None, dict]):
         list or None
             Path from initial state to goal state, or None if no path found.
         """
+        self.reset()
         problem = self.problem
-        self.history = []
-        self.explored_count = 0
-        self.best_solution = []
-        self.best_fitness = None
 
         frontier = deque([problem.initial_state])
         frontier_set = {problem.initial_state}

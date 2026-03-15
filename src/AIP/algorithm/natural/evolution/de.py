@@ -35,12 +35,6 @@ import numpy as np
 from AIP.problems import ContinuousProblem
 from AIP.algorithm import Algorithm
 
-
-# ======================================================================
-# Configuration
-# ======================================================================
-
-
 class MutationStrategy(Enum):
     """Available DE mutation strategies (``DE/x/y``)."""
 
@@ -105,12 +99,6 @@ class DEParameter:
     crossover_type: DECrossoverType = DECrossoverType.BIN
     variable_type: VariableType = VariableType.CONTINUOUS
 
-
-# ======================================================================
-# Differential Evolution
-# ======================================================================
-
-
 class DifferentialEvolution(
     Algorithm[ContinuousProblem, np.ndarray | None, float, DEParameter]
 ):
@@ -159,21 +147,6 @@ class DifferentialEvolution(
 
         super().__init__(configuration, problem)
         self.name = "Differential Evolution"
-        self.n_dim = problem.n_dim
-
-        # Initialise population uniformly within bounds
-        self.population = self._initialize_population()
-        self.fitness = self._evaluate_fitness(self.population)
-
-        # Track global best
-        best_idx = int(np.argmin(self.fitness))
-        self.best_solution = self.population[best_idx].copy()
-        self.best_fitness = float(self.fitness[best_idx])
-        self.history = []
-
-    # ------------------------------------------------------------------
-    # Initialisation
-    # ------------------------------------------------------------------
 
     def _initialize_population(self) -> np.ndarray:
         """Generate random individuals uniformly within the problem bounds.
@@ -187,10 +160,6 @@ class DifferentialEvolution(
             Population matrix of shape ``(pop_size, n_dim)``.
         """
         return self.problem.sample(self.conf.pop_size)
-
-    # ------------------------------------------------------------------
-    # Fitness evaluation
-    # ------------------------------------------------------------------
 
     def _evaluate_fitness(self, vectors: np.ndarray) -> np.ndarray:
         """Evaluate objective values for one or more solution vectors.
@@ -216,10 +185,6 @@ class DifferentialEvolution(
 
         result = self.problem.eval(eval_vectors)
         return np.atleast_1d(np.asarray(result, dtype=float))
-
-    # ------------------------------------------------------------------
-    # Mutation
-    # ------------------------------------------------------------------
 
     def _pick_random_indices(
         self, target_idx: int, count: int
@@ -308,10 +273,6 @@ class DifferentialEvolution(
             raise ValueError(f"Unknown mutation strategy: {strategy}")
 
         return donor
-
-    # ------------------------------------------------------------------
-    # Crossover
-    # ------------------------------------------------------------------
 
     def _crossover(
         self, target: np.ndarray, donor: np.ndarray
@@ -403,10 +364,6 @@ class DifferentialEvolution(
 
         return trial
 
-    # ------------------------------------------------------------------
-    # Boundary handling
-    # ------------------------------------------------------------------
-
     def _handle_boundaries(self, vector: np.ndarray) -> np.ndarray:
         """Repair components that exceed the problem bounds.
 
@@ -438,10 +395,6 @@ class DifferentialEvolution(
 
         return vector
 
-    # ------------------------------------------------------------------
-    # Helpers
-    # ------------------------------------------------------------------
-
     def _update_best(self):
         """Update the global best from the current population."""
         best_idx = int(np.argmin(self.fitness))
@@ -449,9 +402,19 @@ class DifferentialEvolution(
             self.best_fitness = float(self.fitness[best_idx])
             self.best_solution = self.population[best_idx].copy()
 
-    # ------------------------------------------------------------------
-    # Main loop
-    # ------------------------------------------------------------------
+    @override
+    def reset(self):
+        self.n_dim = self.problem.n_dim
+
+        # Initialise population uniformly within bounds
+        self.population = self._initialize_population()
+        self.fitness = self._evaluate_fitness(self.population)
+
+        # Track global best
+        best_idx = int(np.argmin(self.fitness))
+        self.best_solution = self.population[best_idx].copy()
+        self.best_fitness = float(self.fitness[best_idx])
+        self.history = []
 
     @override
     def run(self) -> np.ndarray:
@@ -467,6 +430,7 @@ class DifferentialEvolution(
         np.ndarray
             Best solution found after all generations.
         """
+        self.reset()
         for _ in range(self.conf.cycle):
             for i in range(self.conf.pop_size):
                 # 1. Mutation → donor vector

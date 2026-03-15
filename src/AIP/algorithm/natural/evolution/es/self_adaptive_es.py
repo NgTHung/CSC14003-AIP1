@@ -82,20 +82,6 @@ class SelfAdaptiveES(
 
         super().__init__(configuration, problem)
         self.name = "Self-Adaptive (μ,λ)-ES"
-        self.n_dim = problem.n_dim
-
-        self.population = problem.sample(configuration.mu)
-        self.sigmas = np.full(
-            (configuration.mu, self.n_dim), configuration.sigma_init
-        )
-        self.fitness = np.array(
-            [float(cast(np.floating, problem.eval(x))) for x in self.population]
-        )
-
-        best_idx = int(np.argmin(self.fitness))
-        self.best_solution = self.population[best_idx].copy()
-        self.best_fitness = float(self.fitness[best_idx])
-        self.history = []
 
     def _clamp(self, x: np.ndarray) -> np.ndarray:
         lower = self.problem.bounds[:, 0]
@@ -116,7 +102,25 @@ class SelfAdaptiveES(
         return x_recomb, sigma_recomb
 
     @override
+    def reset(self):
+        self.n_dim = self.problem.n_dim
+
+        self.population = self.problem.sample(self.conf.mu)
+        self.sigmas = np.full(
+            (self.conf.mu, self.n_dim), self.conf.sigma_init
+        )
+        self.fitness = np.array(
+            [float(cast(np.floating, self.problem.eval(x))) for x in self.population]
+        )
+
+        best_idx = int(np.argmin(self.fitness))
+        self.best_solution = self.population[best_idx].copy()
+        self.best_fitness = float(self.fitness[best_idx])
+        self.history = []
+
+    @override
     def run(self) -> np.ndarray:
+        self.reset()
         tau = 1.0 / np.sqrt(2.0 * self.n_dim)
         sigma_min = 1e-12  # floor to prevent σ collapse
 
@@ -155,7 +159,7 @@ class SelfAdaptiveES(
             if self.fitness[0] < self.best_fitness:
                 self.best_fitness = float(self.fitness[0])
                 self.best_solution = self.population[0].copy()
-
-            self.history.append(self.best_fitness)
+            if self.best_solution is not None:
+                self.history.append(self.best_solution.copy())
 
         return cast(np.ndarray, self.best_solution)

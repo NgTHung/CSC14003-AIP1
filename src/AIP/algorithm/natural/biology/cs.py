@@ -50,9 +50,7 @@ class CuckooSearchParameter:
     iteration: int
 
 
-class CuckooSearch(
-    Algorithm[Problem, np.ndarray | None, float, CuckooSearchParameter]
-):
+class CuckooSearch(Algorithm[Problem, np.ndarray | None, float, CuckooSearchParameter]):
     """Cuckoo Search for continuous and discrete optimization.
 
     Algorithm outline per iteration:
@@ -89,32 +87,8 @@ class CuckooSearch(
             ``nests_history`` for later analysis or visualisation.
             Defaults to False to save memory.
         """
-        super().__init__(configuration, problem)
-        self._is_continuous = isinstance(problem, ContinuousProblem)
-        if self._is_continuous:
-            self.n_dim = problem.n_dim  # type: ignore[union-attr]
-        else:
-            self.n_dim = problem.n_dims  # type: ignore[union-attr]
-        self.nests = problem.sample(configuration.n_nests)
-        self.fitness = cast(np.ndarray, problem.eval(self.nests))
-
-        # Precompute Mantegna's sigma_u for continuous Lévy flights
-        if self._is_continuous:
-            beta = configuration.beta
-            num = gamma(1 + beta) * sin(pi * beta / 2)
-            den = gamma((1 + beta) / 2) * beta * 2 ** ((beta - 1) / 2)
-            self.sigma_u = (num / den) ** (1 / beta)
-        else:
-            self.sigma_u = 0.0  # unused for discrete
-
-        best_idx = int(np.argmin(self.fitness))
-        self.best_solution = self.nests[best_idx].copy()
-        self.best_fitness = float(self.fitness[best_idx])
-        self.history = []
-
         self.stat = stat
-        if stat:
-            self.nests_history = []
+        super().__init__(configuration, problem)
 
     def _levy_flight(self, shape: tuple[int, ...] | int) -> np.ndarray:
         """Generate Lévy flight steps using Mantegna's algorithm.
@@ -196,10 +170,9 @@ class CuckooSearch(
             New candidate solutions of shape (n_nests, n_dim).
         """
         if not self._is_continuous:
-            return np.array([
-                self._generate_cuckoo_discrete(i)
-                for i in range(self.conf.n_nests)
-            ])
+            return np.array(
+                [self._generate_cuckoo_discrete(i) for i in range(self.conf.n_nests)]
+            )
 
         n = self.conf.n_nests
         steps = self._levy_flight((n, self.n_dim))  # (n_nests, n_dim)
@@ -209,6 +182,7 @@ class CuckooSearch(
             self.best_solution - self.nests
         )
         return self._clamp(new_nests)
+
     def evaluate_cuckoos(self, cuckoos: np.ndarray):
         """Evaluate cuckoos and compare each against a randomly chosen nest.
 
@@ -285,6 +259,33 @@ class CuckooSearch(
             self.best_solution = new_nests[best_new_idx].copy()
 
     @override
+    def reset(self):
+        self._is_continuous = isinstance(self.problem, ContinuousProblem)
+        if self._is_continuous:
+            self.n_dim = self.problem.n_dim  # type: ignore[union-attr]
+        else:
+            self.n_dim = self.problem.n_dims  # type: ignore[union-attr]
+        self.nests = self.problem.sample(self.conf.n_nests)
+        self.fitness = cast(np.ndarray, self.problem.eval(self.nests))
+
+        # Precompute Mantegna's sigma_u for continuous Lévy flights
+        if self._is_continuous:
+            beta = self.conf.beta
+            num = gamma(1 + beta) * sin(pi * beta / 2)
+            den = gamma((1 + beta) / 2) * beta * 2 ** ((beta - 1) / 2)
+            self.sigma_u = (num / den) ** (1 / beta)
+        else:
+            self.sigma_u = 0.0  # unused for discrete
+
+        best_idx = int(np.argmin(self.fitness))
+        self.best_solution = self.nests[best_idx].copy()
+        self.best_fitness = float(self.fitness[best_idx])
+        self.history = []
+
+        if self.stat:
+            self.nests_history = []
+
+    @override
     def run(self) -> np.ndarray:
         """Execute the Cuckoo Search algorithm.
 
@@ -293,6 +294,7 @@ class CuckooSearch(
         np.ndarray
             Best solution found.
         """
+        self.reset()
         for _ in range(self.conf.iteration):
             # Batch generate and evaluate cuckoos via Lévy flights
             cuckoos = self.generate_cuckoos()

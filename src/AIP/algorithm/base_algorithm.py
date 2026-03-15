@@ -4,10 +4,12 @@ Defines a generic `Model` interface that stores configuration, problem
 instances, and solution history for algorithm implementations.
 """
 
-from AIP.problems import Problem, DiscreteProblem
+from abc import ABC, abstractmethod
+
+from AIP.problems import Problem
 
 
-class Algorithm[Prob: Problem, T, Tr, Opt]:
+class Algorithm[Prob: Problem, T, Tr, Opt](ABC):
     """Generic optimization model interface.
 
     Type parameters
@@ -46,7 +48,7 @@ class Algorithm[Prob: Problem, T, Tr, Opt]:
         """
         self.conf = configuration
         self.problem = problem
-
+    @abstractmethod
     def run(self) -> T | None:
         """
         Execute the algorithm.
@@ -85,24 +87,7 @@ class Algorithm[Prob: Problem, T, Tr, Opt]:
         """
         self.conf = config
 
-
-class SearchGraphAlgorithm[T, Tr, Opt](Algorithm[DiscreteProblem, T, Tr, Opt]):
-    """Generic graph search algorithm interface.
-
-    Type parameters
-    -------
-    T: The solution representation type (typically list for path).
-    Tr: The fitness/score type (typically None or dict for search stats).
-    Opt: The configuration/options type for the algorithm.
-
-    Attributes
-    -------
-    history: Collected states visited during execution.
-    best_solution: The best solution (path) found.
-    conf: Algorithm configuration/options.
-    best_fitness: Best fitness value (typically None for search).
-    problem: Problem instance to solve.
-    name: Human-readable name of the algorithm.
-    """
-
-    name: str = "Generic Search Algorithm"
+    @abstractmethod
+    def reset(self):
+        """Reset internal algorithm state before a fresh run."""
+        raise NotImplementedError

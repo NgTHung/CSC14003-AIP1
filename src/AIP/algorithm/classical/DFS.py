@@ -1,5 +1,7 @@
 """Depth-First Search (DFS) algorithm for graph search problems."""
 
+from typing import override
+
 from AIP.problems.base_problem import DiscreteProblem
 from AIP.algorithm.base_algorithm import Algorithm
 
@@ -18,6 +20,7 @@ class DepthFirstSearch(Algorithm[DiscreteProblem, list, float | None, dict]):
     """
 
     name = "Depth First Search"
+    explored_count: int
 
     def __init__(self, configuration: dict, problem: DiscreteProblem):
         """
@@ -55,6 +58,14 @@ class DepthFirstSearch(Algorithm[DiscreteProblem, list, float | None, dict]):
         path.reverse()
         return path
 
+    @override
+    def reset(self):
+        self.history = []
+        self.explored_count = 0
+        self.best_solution = []
+        self.best_fitness = None
+
+    @override
     def run(self) -> list | None:
         """
         Execute DFS algorithm.
@@ -68,11 +79,8 @@ class DepthFirstSearch(Algorithm[DiscreteProblem, list, float | None, dict]):
         list or None
             Path from initial state to goal state, or None if no path found.
         """
+        self.reset()
         problem = self.problem
-        self.history = []
-        self.explored_count = 0
-        self.best_solution = []
-        self.best_fitness = None
 
         frontier = [problem.initial_state]
         explored = set()

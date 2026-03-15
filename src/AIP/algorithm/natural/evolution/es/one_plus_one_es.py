@@ -67,16 +67,6 @@ class OnePlusOneES(
     ):
         super().__init__(configuration, problem)
         self.name = "(1+1)-ES"
-        self.n_dim = problem.n_dim
-        self.sigma = configuration.sigma
-
-        if configuration.adaptation_interval <= 0:
-            self.conf.adaptation_interval = 10 * self.n_dim
-
-        self.solution = problem.sample(1)[0]
-        self.best_fitness = float(cast(np.floating, problem.eval(self.solution)))
-        self.best_solution = self.solution.copy()
-        self.history = []
 
     def _clamp(self, x: np.ndarray) -> np.ndarray:
         lower = self.problem.bounds[:, 0]
@@ -84,7 +74,21 @@ class OnePlusOneES(
         return np.clip(x, lower, upper)
 
     @override
+    def reset(self):
+        self.n_dim = self.problem.n_dim
+        self.sigma = self.conf.sigma
+
+        if self.conf.adaptation_interval <= 0:
+            self.conf.adaptation_interval = 10 * self.n_dim
+
+        self.solution = self.problem.sample(1)[0]
+        self.best_fitness = float(cast(np.floating, self.problem.eval(self.solution)))
+        self.best_solution = self.solution.copy()
+        self.history = []
+
+    @override
     def run(self) -> np.ndarray:
+        self.reset()
         n_success = 0
         interval = self.conf.adaptation_interval
 
@@ -111,7 +115,7 @@ class OnePlusOneES(
                     self.sigma /= self.conf.a      # decrease step
                 # success_rate == 1/5 → keep σ unchanged
                 n_success = 0
-
-            self.history.append(self.best_fitness)
+            if self.best_solution is not None:
+                self.history.append(self.best_solution.copy())
 
         return cast(np.ndarray, self.best_solution)

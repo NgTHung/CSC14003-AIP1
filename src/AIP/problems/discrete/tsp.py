@@ -17,7 +17,6 @@ standard minimization algorithms find the shortest tour.
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
 from typing import override
 
@@ -26,7 +25,6 @@ import numpy as np
 from AIP.problems.base_problem import DiscreteProblem
 
 _DATA_DIR = Path(__file__).resolve().parent / "data"
-
 
 class TSP(DiscreteProblem):
     """Travelling Salesman Problem.
@@ -73,10 +71,6 @@ class TSP(DiscreteProblem):
 
         # For graph search: start at city 0
         self._initial_state = (0, frozenset([0]))
-
-    # ==================================================================
-    # Problem interface  (population-based / physics-inspired)
-    # ==================================================================
 
     @override
     def sample(self, pop_size: int = 1) -> np.ndarray:
@@ -145,10 +139,6 @@ class TSP(DiscreteProblem):
         np.fill_diagonal(eta, 1e-10)
         return eta
 
-    # ==================================================================
-    # Local-search interface  (2-opt neighborhood)
-    # ==================================================================
-
     @override
     def random_neighbor(self, state: np.ndarray) -> np.ndarray:
         """Return a single random 2-opt neighbour.
@@ -187,10 +177,6 @@ class TSP(DiscreteProblem):
                 nbrs.append(nbr)
         return nbrs
 
-    # ==================================================================
-    # Graph-search interface  (classical algorithms)
-    # ==================================================================
-
     @property  # type: ignore[override]
     @override
     def initial_state(self):
@@ -200,7 +186,7 @@ class TSP(DiscreteProblem):
     @override
     def actions(self, state) -> list[int]:
         """Return list of unvisited cities (or city 0 if all visited)."""
-        current, visited = state
+        _, visited = state
         if len(visited) == self.n_cities:
             # All cities visited — only action is to return home
             return [0]
@@ -209,7 +195,7 @@ class TSP(DiscreteProblem):
     @override
     def result(self, state, action) -> tuple[int, frozenset]:
         """Move to *action* city."""
-        current, visited = state
+        _, visited = state
         return (action, visited | frozenset([action]))
 
     @override
@@ -254,10 +240,6 @@ class TSP(DiscreteProblem):
                 h += min(self.dist_matrix[node, c] for c in candidates)
         return float(h)
 
-    # ==================================================================
-    # Utility helpers
-    # ==================================================================
-
     def decode_permutation(self, perm: np.ndarray) -> dict:
         """Extract tour info from a permutation solution.
 
@@ -301,10 +283,6 @@ class TSP(DiscreteProblem):
             "tour_names": [self.city_names[c] for c in tour],
             "total_distance": total_dist,
         }
-
-    # ==================================================================
-    # Factory methods
-    # ==================================================================
 
     @staticmethod
     def from_file(filepath: str | Path) -> TSP:

@@ -1,10 +1,12 @@
 """Gravitational Search Algorithm (GSA) - physics-inspired optimization."""
 
-import numpy as np
 from dataclasses import dataclass
+from typing import override
+import numpy as np
 from AIP.problems.base_problem import Problem, DiscreteProblem
 from AIP.problems.continuous.continuous import ContinuousProblem
 from AIP.algorithm.base_algorithm import Algorithm
+
 
 @dataclass
 class GravitationalSearchParameter:
@@ -19,12 +21,16 @@ class GravitationalSearchParameter:
     alpha : float
         Gravitational constant reduction coefficient.
     """
+
     iteration: int
     G0: float
     alpha: float
     pop_size: int
 
-class GravitationalSearchAlgorithm(Algorithm[Problem, np.ndarray, float | None, GravitationalSearchParameter]):
+
+class GravitationalSearchAlgorithm(
+    Algorithm[Problem, np.ndarray, float | None, GravitationalSearchParameter]
+):
     """
     Gravitational Search Algorithm (GSA).
 
@@ -43,6 +49,9 @@ class GravitationalSearchAlgorithm(Algorithm[Problem, np.ndarray, float | None, 
     """
 
     name = "Gravitational Search Algorithm"
+    population_history: list[np.ndarray]
+    _is_discrete: bool
+    _is_permutation: bool
 
     def __init__(self, configuration: GravitationalSearchParameter, problem: Problem):
         """
@@ -55,15 +64,6 @@ class GravitationalSearchAlgorithm(Algorithm[Problem, np.ndarray, float | None, 
             The optimization problem instance.
         """
         super().__init__(configuration, problem)
-        self.pop_size = configuration.pop_size
-        self.max_iterations = configuration.iteration
-        self.G0 = configuration.G0
-        self.alpha = configuration.alpha
-        self._is_discrete = isinstance(problem, DiscreteProblem)
-        self._is_permutation = (
-            self._is_discrete
-            and getattr(problem, 'solution_type', None) == 'permutation'
-        )
 
     @staticmethod
     def _sigmoid(x: np.ndarray) -> np.ndarray:
@@ -118,6 +118,17 @@ class GravitationalSearchAlgorithm(Algorithm[Problem, np.ndarray, float | None, 
             return np.clip(positions, lb, ub)
         return positions
 
+    @override
+    def reset(self):
+        self._is_discrete = isinstance(self.problem, DiscreteProblem)
+        self._is_permutation = (
+            self._is_discrete
+            and getattr(self.problem, "solution_type", None) == "permutation"
+        )
+        self.best_fitness = None
+        self.best_solution = np.array([])
+
+    @override
     def run(self) -> np.ndarray:
         """
         Execute GSA algorithm.
@@ -132,11 +143,13 @@ class GravitationalSearchAlgorithm(Algorithm[Problem, np.ndarray, float | None, 
             Best solution found.
         """
         # Initialize population
-        positions = self.problem.sample(self.pop_size)
+        positions = self.problem.sample(self.conf.pop_size)
         velocities = np.zeros_like(positions)
 
         # Evaluate initial population
-        fitness = np.array([self.problem.eval(positions[i]) for i in range(self.pop_size)])
+        fitness = np.array(
+            [self.problem.eval(positions[i]) for i in range(self.conf.pop_size)]
+        )
 
         # Track best
         best_idx = np.argmin(fitness)
@@ -147,22 +160,22 @@ class GravitationalSearchAlgorithm(Algorithm[Problem, np.ndarray, float | None, 
         self.population_history = [positions.copy()]
 
         # Main loop
-        for iteration in range(self.max_iterations):
+        for iteration in range(self.conf.iteration):
             # Update gravitational constant
-            G = self.G0 * np.exp(-self.alpha * iteration / self.max_iterations)
+            G = self.conf.G0 * np.exp(-self.conf.alpha * iteration / self.conf.iteration)
 
             # Calculate mass
             M = self._calculate_mass(fitness)
 
             # Kbest: only the K best agents exert force, K decreases linearly
-            K = max(1, int(self.pop_size * (1 - iteration / self.max_iterations)))
+            K = max(1, int(self.conf.pop_size * (1 - iteration / self.conf.iteration)))
             kbest_indices = np.argsort(fitness)[:K]
 
             # Calculate forces and accelerations
             dim = positions.shape[1]
             acceleration = np.zeros_like(positions)
 
-            for i in range(self.pop_size):
+            for i in range(self.conf.pop_size):
                 force = np.zeros(dim)
 
                 for j in kbest_indices:
@@ -171,14 +184,16 @@ class GravitationalSearchAlgorithm(Algorithm[Problem, np.ndarray, float | None, 
                         R = np.linalg.norm(positions[i] - positions[j]) + 1e-10
 
                         # Calculate gravitational force
-                        force += np.random.rand() * M[j] * (positions[j] - positions[i]) / R
+                        force += (
+                            np.random.rand() * M[j] * (positions[j] - positions[i]) / R
+                        )
 
                 # Calculate acceleration (F = ma => a = F/m)
                 if M[i] > 0:
                     acceleration[i] = G * force / M[i]
 
             # Update velocities and positions
-            velocities = np.random.rand(self.pop_size, dim) * velocities + acceleration
+            velocities = np.random.rand(self.conf.pop_size, dim) * velocities + acceleration
             positions = positions + velocities
 
             # Clamp positions to problem bounds
@@ -191,7 +206,9 @@ class GravitationalSearchAlgorithm(Algorithm[Problem, np.ndarray, float | None, 
                 positions = self._discretize(positions)
 
             # Evaluate new population
-            fitness = np.array([self.problem.eval(positions[i]) for i in range(self.pop_size)])
+            fitness = np.array(
+                [self.problem.eval(positions[i]) for i in range(self.conf.pop_size)]
+            )
 
             # Update best
             current_best_idx = np.argmin(fitness)

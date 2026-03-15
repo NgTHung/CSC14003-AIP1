@@ -1,6 +1,7 @@
 """A* Search algorithm for graph search problems."""
 
 import heapq
+from typing import override
 from AIP.problems.base_problem import DiscreteProblem
 from AIP.algorithm.base_algorithm import Algorithm
 
@@ -25,6 +26,7 @@ class AStarSearch(Algorithm[DiscreteProblem, list, float | None, dict]):
     """
 
     name = "A* Search"
+    explored_count: int
 
     def __init__(self, configuration: dict, problem: DiscreteProblem):
         """
@@ -62,6 +64,14 @@ class AStarSearch(Algorithm[DiscreteProblem, list, float | None, dict]):
         path.reverse()
         return path
 
+    @override
+    def reset(self):
+        self.history = []
+        self.explored_count = 0
+        self.best_solution = []
+        self.best_fitness = None
+    
+    @override
     def run(self) -> list | None:
         """
         Execute A* Search algorithm.
@@ -75,11 +85,8 @@ class AStarSearch(Algorithm[DiscreteProblem, list, float | None, dict]):
         list or None
             Path from initial state to goal state, or None if no path found.
         """
+        self.reset()
         problem = self.problem
-        self.history = []
-        self.explored_count = 0
-        self.best_solution = []
-        self.best_fitness = None
 
         # Priority queue with (f_value, state)
         # f = g + h
@@ -94,14 +101,13 @@ class AStarSearch(Algorithm[DiscreteProblem, list, float | None, dict]):
         g_score = {problem.initial_state: 0}
 
         while frontier:
-            current_f, current_state = heapq.heappop(frontier)
+            _, current_state = heapq.heappop(frontier)
 
             if current_state in explored:
                 continue
 
             explored.add(current_state)
             current_g = g_score[current_state]
-            current_h = problem.heuristic(current_state)
             self.explored_count += 1
 
             if problem.is_goal(current_state):

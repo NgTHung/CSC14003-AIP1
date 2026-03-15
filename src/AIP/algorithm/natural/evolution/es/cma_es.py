@@ -89,18 +89,46 @@ class CMAES(
     ):
         super().__init__(configuration, problem)
         self.name = "CMA-ES"
-        self.n_dim = n = problem.n_dim
 
-        # ── Population sizes ──
-        self._lam = configuration.lam or (4 + int(3 * np.log(n)))
-        self._mu = configuration.mu or self._lam // 2
+    def _clamp(self, x: np.ndarray) -> np.ndarray:
+        lower = self.problem.bounds[:, 0]
+        upper = self.problem.bounds[:, 1]
+        return np.clip(x, lower, upper)
 
-        # ── Recombination weights (log-linear, normalised) ──
+    def _sqrt_c(self) -> np.ndarray:
+        """Compute C^{1/2} via eigen-decomposition.
+
+        Returns
+        -------
+        np.ndarray
+            Matrix square-root of C, shape (n, n).
+        """
+        eigenvalues, B = np.linalg.eigh(self.C)
+        eigenvalues = np.maximum(eigenvalues, 1e-20)  # numerical safety
+        D = np.diag(np.sqrt(eigenvalues))
+        return B @ D @ B.T
+
+    def _inv_sqrt_c(self) -> np.ndarray:
+        """Compute C^{-1/2} via eigen-decomposition."""
+        eigenvalues, B = np.linalg.eigh(self.C)
+        eigenvalues = np.maximum(eigenvalues, 1e-20)
+        D_inv = np.diag(1.0 / np.sqrt(eigenvalues))
+        return B @ D_inv @ B.T
+
+    @override
+    def reset(self):
+        self.n_dim = n = self.problem.n_dim
+
+        # -- Population sizes --
+        self._lam = self.conf.lam or (4 + int(3 * np.log(n)))
+        self._mu = self.conf.mu or self._lam // 2
+
+        # -- Recombination weights (log-linear, normalised) --
         raw_w = np.log(self._mu + 0.5) - np.log(np.arange(1, self._mu + 1))
         self._weights = raw_w / np.sum(raw_w)
         self._mu_eff = 1.0 / np.sum(self._weights ** 2)
 
-        # ── Strategy parameter defaults (Hansen 2001) ──
+        # -- Strategy parameter defaults (Hansen 2001) --
         self._c_sigma = (self._mu_eff + 2) / (n + self._mu_eff + 5)
         self._d_sigma = (
             1
@@ -116,57 +144,25 @@ class CMAES(
         )
         self._chi_n = np.sqrt(n) * (1 - 1 / (4 * n) + 1 / (21 * n ** 2))
 
-        # ── State initialisation ──
-        self.mean = problem.sample(1)[0]
-        self.sigma = configuration.sigma
+        # -- State initialisation --
+        self.mean = self.problem.sample(1)[0]
+        self.sigma = self.conf.sigma
         self.C = np.eye(n)
         self.p_sigma = np.zeros(n)
         self.p_c = np.zeros(n)
 
-        self.best_fitness = float(cast(np.floating, problem.eval(self.mean)))
+        self.best_fitness = float(cast(np.floating, self.problem.eval(self.mean)))
         self.best_solution = self.mean.copy()
         self.history = []
 
-    # ------------------------------------------------------------------
-    # Helpers
-    # ------------------------------------------------------------------
-
-    def _clamp(self, x: np.ndarray) -> np.ndarray:
-        lower = self.problem.bounds[:, 0]
-        upper = self.problem.bounds[:, 1]
-        return np.clip(x, lower, upper)
-
-    def _sqrt_C(self) -> np.ndarray:
-        """Compute C^{1/2} via eigen-decomposition.
-
-        Returns
-        -------
-        np.ndarray
-            Matrix square-root of C, shape (n, n).
-        """
-        eigenvalues, B = np.linalg.eigh(self.C)
-        eigenvalues = np.maximum(eigenvalues, 1e-20)  # numerical safety
-        D = np.diag(np.sqrt(eigenvalues))
-        return B @ D @ B.T
-
-    def _inv_sqrt_C(self) -> np.ndarray:
-        """Compute C^{-1/2} via eigen-decomposition."""
-        eigenvalues, B = np.linalg.eigh(self.C)
-        eigenvalues = np.maximum(eigenvalues, 1e-20)
-        D_inv = np.diag(1.0 / np.sqrt(eigenvalues))
-        return B @ D_inv @ B.T
-
-    # ------------------------------------------------------------------
-    # Main loop
-    # ------------------------------------------------------------------
-
     @override
     def run(self) -> np.ndarray:
+        self.reset()
         n = self.n_dim
 
         for gen in range(self.conf.cycle):
-            sqrt_C = self._sqrt_C()
-            inv_sqrt_C = self._inv_sqrt_C()
+            sqrt_C = self._sqrt_c()
+            inv_sqrt_C = self._inv_sqrt_c()
 
             # 1. Sampling — x_k = m + σ C^{1/2} z_k
             z = np.random.randn(self._lam, n)                 # N(0, I)
@@ -247,7 +243,7 @@ class CMAES(
             if fitness[best_gen_idx] < self.best_fitness:
                 self.best_fitness = float(fitness[best_gen_idx])
                 self.best_solution = offspring[best_gen_idx].copy()
-
-            self.history.append(self.best_fitness)
+            if self.best_solution is not None:
+                self.history.append(self.best_solution.copy())
 
         return cast(np.ndarray, self.best_solution)

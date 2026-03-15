@@ -10,28 +10,26 @@ Usage
 -----
     cd src
     python -m comparision.compare_all [--cycle 200] [--runs 10] [--seed 42] [--save]
+    python -m comparision.compare_all --save --output-dir outputs/run_01
+    python -m comparision.compare_all --save --save-json
+
+Output
+------
+    --output-dir sets the output root directory.
+    Figures are saved to <root>/figures and JSON files to <root>/data.
+    If omitted, root defaults to current working directory.
 """
 
 from __future__ import annotations
 
 import argparse
-import os
-import sys
 
 import numpy as np
-
-_SRC = os.path.join(os.path.dirname(__file__), os.pardir)
-if _SRC not in sys.path:
-    sys.path.insert(0, os.path.abspath(_SRC))
-
-import matplotlib
-import matplotlib.figure
-import matplotlib.pyplot as plt
 
 from AIP.problems.continuous.ackley import Ackley
 from AIP.problems.continuous.griewank import Griewank
 from AIP.problems.continuous.rastrigin import Rastrigin
-from AIP.problems.continuous.Rosenbrock import Rosenbrock
+from AIP.problems.continuous.rosenbrock import Rosenbrock
 from AIP.problems.continuous.sphere import Sphere
 
 from comparision.comparison_utils import (
@@ -40,104 +38,57 @@ from comparision.comparison_utils import (
     print_summary_table,
     tune_all_algorithms,
     load_tuned_config,
+    make_output_path,
+    make_data_output_path,
+    save_results_json,
     _group_by_algo,
-    _COLORS,
     RunResult,
 )
 
 
-# ── All five benchmark problems ──────────────────────────────────────
+# -- All five benchmark problems --------------------------------------
 PROBLEMS = {
-    "Ackley":     lambda d: Ackley(n_dim=d),
-    "Griewank":   lambda d: Griewank(n_dim=d),
-    "Rastrigin":  lambda d: Rastrigin(n_dim=d),
+    "Ackley": lambda d: Ackley(n_dim=d),
+    "Griewank": lambda d: Griewank(n_dim=d),
+    "Rastrigin": lambda d: Rastrigin(n_dim=d),
     "Rosenbrock": lambda d: Rosenbrock(n_dim=d),
-    "Sphere":     lambda d: Sphere(n_dim=d),
+    "Sphere": lambda d: Sphere(n_dim=d),
 }
-
-
-def _plot_row(
-    axes,
-    results: list[RunResult],
-    problem_name: str,
-    algo_names: list[str],
-    colors: list[str],
-) -> None:
-    """Draw one row (4 sub-plots) for a single problem."""
-
-    grouped = _group_by_algo(results)
-
-    # 1. Convergence Speed
-    ax = axes[0]
-    for idx, name in enumerate(algo_names):
-        if name not in grouped:
-            continue
-        curves = [r.fitness_curve for r in grouped[name]]
-        max_len = max(len(c) for c in curves)
-        arr = np.full((len(curves), max_len), np.nan)
-        for i, c in enumerate(curves):
-            arr[i, :len(c)] = c
-        mean_c = np.nanmean(arr, axis=0)
-        std_c = np.nanstd(arr, axis=0)
-        x = np.arange(1, max_len + 1)
-        ax.plot(x, mean_c, label=name, color=colors[idx], linewidth=1.2)
-        ax.fill_between(x, mean_c - std_c, mean_c + std_c,
-                        color=colors[idx], alpha=0.10)
-    ax.set_yscale("log")
-    ax.set_ylabel(problem_name, fontsize=11, fontweight="bold")
-    ax.set_xlabel("Iteration", fontsize=9)
-    ax.grid(True, alpha=0.25, which="both", linestyle="--")
-    ax.tick_params(labelsize=7)
-
-    # 2. Solution Quality
-    ax = axes[1]
-    box_data = [
-        [r.best_fitness for r in grouped.get(n, [])] or [np.nan]
-        for n in algo_names
-    ]
-    bp = ax.boxplot(box_data, tick_labels=algo_names, patch_artist=True, widths=0.6)
-    for patch, c in zip(bp["boxes"], colors):
-        patch.set_facecolor(c)
-        patch.set_alpha(0.55)
-    ax.tick_params(axis="x", rotation=60, labelsize=6)
-    ax.tick_params(axis="y", labelsize=7)
-    ax.grid(True, alpha=0.25, axis="y", linestyle="--")
-
-    # 3. Computational Time
-    ax = axes[2]
-    means_t = [np.mean([r.time_ms for r in grouped.get(n, [])]) if n in grouped else 0
-               for n in algo_names]
-    stds_t = [np.std([r.time_ms for r in grouped.get(n, [])]) if n in grouped else 0
-              for n in algo_names]
-    ax.bar(algo_names, means_t, yerr=stds_t, capsize=3,
-           color=colors, alpha=0.65, edgecolor="black", linewidth=0.4)
-    ax.tick_params(axis="x", rotation=60, labelsize=6)
-    ax.tick_params(axis="y", labelsize=7)
-    ax.grid(True, alpha=0.25, axis="y", linestyle="--")
-
-    # 4. Robustness (std dev)
-    ax = axes[3]
-    stds_f = [np.std([r.best_fitness for r in grouped.get(n, [])]) if n in grouped else 0
-              for n in algo_names]
-    ax.bar(algo_names, stds_f, color=colors, alpha=0.65,
-           edgecolor="black", linewidth=0.4)
-    ax.tick_params(axis="x", rotation=60, labelsize=6)
-    ax.tick_params(axis="y", labelsize=7)
-    ax.grid(True, alpha=0.25, axis="y", linestyle="--")
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Combined comparison across all continuous problems")
+        description="Combined comparison across all continuous problems"
+    )
     parser.add_argument("--dim", type=int, default=2, help="Problem dimensionality")
     parser.add_argument("--cycle", type=int, default=200, help="Iterations per run")
     parser.add_argument("--runs", type=int, default=10, help="Independent runs")
     parser.add_argument("--seed", type=int, default=42, help="Base random seed")
-    parser.add_argument("--save", action="store_true", help="Save figure instead of showing")
-    parser.add_argument("--tune", action="store_true",
-                        help="Tune algorithm parameters per problem via grid search")
-    parser.add_argument("--tune-runs", type=int, default=5,
-                        help="Independent runs per config during tuning (default: 5)")
+    parser.add_argument(
+        "--save", action="store_true", help="Save figure instead of showing"
+    )
+    parser.add_argument(
+        "--output-dir",
+        type=str,
+        default=None,
+        help="Output root; saves figures to <root>/figures and JSON to <root>/data (default: .)",
+    )
+    parser.add_argument(
+        "--save-json",
+        action="store_true",
+        help="Save per-problem raw comparison results as JSON",
+    )
+    parser.add_argument(
+        "--tune",
+        action="store_true",
+        help="Tune algorithm parameters per problem via grid search",
+    )
+    parser.add_argument(
+        "--tune-runs",
+        type=int,
+        default=5,
+        help="Independent runs per config during tuning (default: 5)",
+    )
     args = parser.parse_args()
 
     n_dim = args.dim
@@ -154,13 +105,17 @@ def main() -> None:
         if args.tune:
             print(f"\n>>> Tuning parameters for {prob_name}...")
             tuned_params = tune_all_algorithms(
-                problem=prob, cycle=args.cycle,
-                n_runs=args.tune_runs, seed=args.seed,
+                problem=prob,
+                cycle=args.cycle,
+                n_runs=args.tune_runs,
+                seed=args.seed,
             )
         else:
             tuned_params = load_tuned_config(prob_name)
             if tuned_params:
-                print(f">>> Loaded tuned config for {prob_name} ({len(tuned_params)} algos)")
+                print(
+                    f">>> Loaded tuned config for {prob_name} ({len(tuned_params)} algos)"
+                )
             else:
                 print(f">>> No saved config for {prob_name}, using defaults.")
 
@@ -176,22 +131,38 @@ def main() -> None:
 
         if not all_algo_names:
             all_algo_names = list(dict.fromkeys(r.algo_name for r in res))
-        for prob_name, res in all_results.items():
-            save_path = None
-            if args.save:
-                fig_dir = os.path.join(os.path.dirname(__file__), "figures")
-                os.makedirs(fig_dir, exist_ok=True)
-                save_path = os.path.join(
-                    fig_dir, f"compare_{prob_name.lower()}_dim_{n_dim}.png"
-                )
-            plot_comparison(
-                results=res,
-                problem_name=prob_name,
-                n_dim=n_dim,
-                save_path=save_path,
+
+        save_path = None
+        if args.save:
+            save_path = make_output_path(
+                f"compare_{prob_name.lower()}_dim_{n_dim}.png", args.output_dir
             )
 
-    # ── Final ranking table across all problems ──────────────────────
+        plot_comparison(
+            results=res,
+            problem_name=prob_name,
+            n_dim=n_dim,
+            save_path=save_path,
+        )
+
+        if args.save_json:
+            saved_json = save_results_json(
+                res,
+                make_data_output_path(
+                    f"compare_{prob_name.lower()}_dim_{n_dim}.json", args.output_dir
+                ),
+                metadata={
+                    "problem": prob_name,
+                    "problem_type": "continuous",
+                    "n_dim": n_dim,
+                    "cycle": args.cycle,
+                    "runs": args.runs,
+                    "seed": args.seed,
+                },
+            )
+            print(f"Results JSON saved to: {saved_json}")
+
+    # -- Final ranking table across all problems ----------------------
     print(f"\n{'='*80}")
     print("  OVERALL RANKING  (lower mean fitness = better)")
     print(f"{'='*80}")
@@ -231,6 +202,7 @@ def main() -> None:
         print(row)
 
     print(f"{'='*80}")
+
 
 if __name__ == "__main__":
     main()

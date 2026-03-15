@@ -1,12 +1,38 @@
 """Harmony Search (HS) algorithm - music-inspired optimization."""
 
+from dataclasses import dataclass
 import numpy as np
 from AIP.problems.base_problem import Problem, DiscreteProblem
 from AIP.problems.continuous.continuous import ContinuousProblem
 from AIP.algorithm.base_algorithm import Algorithm
 
 
-class HarmonySearch(Algorithm[Problem, np.ndarray, float | None, dict]):
+@dataclass
+class HarmonySearchParameter:
+    """Configuration parameters for Harmony Search.
+
+    hms : int
+        Harmony Memory Size.
+    hmcr : float
+        Harmony Memory Consideration Rate (0-1).
+    par : float
+        Pitch Adjustment Rate (0-1).
+    bw : float
+        Bandwidth for pitch adjustment.
+    max_iterations : int
+        Maximum number of iterations.
+    """
+
+    hms: int = 20
+    hmcr: float = 0.9
+    par: float = 0.3
+    bw: float = 0.1
+    max_iterations: int = 1000
+
+
+class HarmonySearch(
+    Algorithm[Problem, np.ndarray, float | None, HarmonySearchParameter]
+):
     """
     Harmony Search algorithm.
 
@@ -37,34 +63,38 @@ class HarmonySearch(Algorithm[Problem, np.ndarray, float | None, dict]):
     """
 
     name = "Harmony Search"
+    harmony_memory_history: list[np.ndarray]
+    _is_discrete: bool
+    _is_permutation: bool
 
-    def __init__(self, configuration: dict, problem: Problem):
+    def __init__(
+        self,
+        configuration: HarmonySearchParameter,
+        problem: Problem,
+    ):
         """
         Initialize Harmony Search algorithm.
 
         Parameters
         ----------
-        configuration : dict
-            Configuration with keys:
-            - 'hms': Harmony Memory Size (default: 20)
-            - 'hmcr': Harmony Memory Consideration Rate (default: 0.9)
-            - 'par': Pitch Adjustment Rate (default: 0.3)
-            - 'bw': Bandwidth for adjustment (default: 0.1)
-            - 'max_iterations': Max iterations (default: 1000)
+        configuration : HarmonySearchParameter or dict
+            Dataclass with HS hyperparameters. A dict is also accepted and
+            will be converted for backward compatibility.
         problem : Problem
             The optimization problem instance.
         """
         super().__init__(configuration, problem)
-        self.hms = configuration.get('hms', 20)
-        self.hmcr = configuration.get('hmcr', 0.9)
-        self.par = configuration.get('par', 0.3)
-        self.bw = configuration.get('bw', 0.1)
-        self.max_iterations = configuration.get('max_iterations', 1000)
-        self._is_discrete = isinstance(problem, DiscreteProblem)
+
+    def reset(self) -> None:
+        self._is_discrete = isinstance(self.problem, DiscreteProblem)
         self._is_permutation = (
             self._is_discrete
-            and getattr(problem, 'solution_type', None) == 'permutation'
+            and getattr(self.problem, "solution_type", None) == "permutation"
         )
+        self.history = []
+        self.harmony_memory_history = []
+        self.best_fitness = None
+        self.best_solution = np.array([])
 
     def _improvise_harmony(self, harmony_memory: np.ndarray) -> np.ndarray:
         """
@@ -96,21 +126,22 @@ class HarmonySearch(Algorithm[Problem, np.ndarray, float | None, dict]):
         new_harmony = np.zeros(dim)
 
         for i in range(dim):
-            if np.random.rand() < self.hmcr:
+            if np.random.rand() < self.conf.hmcr:
                 # Memory consideration: pick value from harmony memory
-                idx = np.random.randint(0, self.hms)
+                idx = np.random.randint(0, self.conf.hms)
                 new_harmony[i] = harmony_memory[idx, i]
 
                 # Pitch adjustment
-                if np.random.rand() < self.par:
+                if np.random.rand() < self.conf.par:
                     if self._is_discrete:
                         # Delegate to problem's perturb for correct handling
                         # of non-binary discrete (e.g. graph coloring)
+                        assert isinstance(self.problem, DiscreteProblem)
                         tmp = new_harmony.copy()
                         tmp = self.problem.perturb(tmp)
                         new_harmony[i] = tmp[i]
                     else:
-                        new_harmony[i] += self.bw * (np.random.rand() - 0.5) * 2
+                        new_harmony[i] += self.conf.bw * (np.random.rand() - 0.5) * 2
                         if isinstance(self.problem, ContinuousProblem):
                             lb = self.problem._bounds[i, 0]
                             ub = self.problem._bounds[i, 1]
@@ -128,12 +159,13 @@ class HarmonySearch(Algorithm[Problem, np.ndarray, float | None, dict]):
         Instead of per-dimension mixing (which breaks permutations),
         pick a whole solution from memory and optionally perturb it.
         """
-        if np.random.rand() < self.hmcr:
+        assert isinstance(self.problem, DiscreteProblem)
+        if np.random.rand() < self.conf.hmcr:
             # Memory consideration: pick a full solution from memory
-            idx = np.random.randint(0, self.hms)
+            idx = np.random.randint(0, self.conf.hms)
             new_harmony = harmony_memory[idx].copy()
             # Pitch adjustment: apply 2-opt swap(s)
-            if np.random.rand() < self.par:
+            if np.random.rand() < self.conf.par:
                 new_harmony = self.problem.perturb(new_harmony)
         else:
             # Randomization: generate a fresh random permutation
@@ -153,22 +185,25 @@ class HarmonySearch(Algorithm[Problem, np.ndarray, float | None, dict]):
         np.ndarray
             Best solution found.
         """
+        self.reset()
+
         # Initialize harmony memory
-        harmony_memory = self.problem.sample(self.hms)
+        harmony_memory = self.problem.sample(self.conf.hms)
 
         # Evaluate harmony memory
-        fitness = np.array([self.problem.eval(harmony_memory[i]) for i in range(self.hms)])
+        fitness = np.array(
+            [self.problem.eval(harmony_memory[i]) for i in range(self.conf.hms)]
+        )
 
         # Track best
         best_idx = np.argmin(fitness)
         best_solution = harmony_memory[best_idx].copy()
         best_fitness = fitness[best_idx]
 
-        self.history = []
         self.harmony_memory_history = [harmony_memory.copy()]
 
         # Main loop
-        for iteration in range(self.max_iterations):
+        for _ in range(self.conf.max_iterations):
             # Improvise new harmony
             new_harmony = self._improvise_harmony(harmony_memory)
             new_fitness = self.problem.eval(new_harmony)

@@ -97,31 +97,8 @@ class FireflyAlgorithm(Algorithm[Problem, np.ndarray | None, float, FireflyParam
             or visualisation. Defaults to False to save memory.
         """
         super().__init__(configuration, problem)
-        self.name = "Firefly Algorithm"
-        self._is_continuous = isinstance(problem, ContinuousProblem)
-        if self._is_continuous:
-            self.n_dim = problem.n_dim  # type: ignore[union-attr]
-        else:
-            self.n_dim = problem.n_dims  # type: ignore[union-attr]
-
-        # Initialise firefly positions uniformly within bounds
-        self.positions = problem.sample(configuration.n_fireflies)
-        self.fitness = cast(np.ndarray, problem.eval(self.positions))
-        self.light_intensity = self._compute_light_intensity(self.fitness)
-
-        # Track the global best
-        best_idx = int(np.argmin(self.fitness))
-        self.best_solution = self.positions[best_idx].copy()
-        self.best_fitness = float(self.fitness[best_idx])
-        self.history = []
-
         self.stat = stat
-        if stat:
-            self.firefly_pos_history = []
-
-    # ------------------------------------------------------------------
-    # Helpers
-    # ------------------------------------------------------------------
+        self.name = "Firefly Algorithm"
 
     def _clamp(self, position: np.ndarray) -> np.ndarray:
         """Clamp a position to the problem bounds (continuous only).
@@ -191,10 +168,6 @@ class FireflyAlgorithm(Algorithm[Problem, np.ndarray | None, float, FireflyParam
             self.best_fitness = float(self.fitness[best_idx])
             self.best_solution = self.positions[best_idx].copy()
 
-    # ------------------------------------------------------------------
-    # Core update
-    # ------------------------------------------------------------------
-
     def move_fireflies(self, alpha: float):
         """Perform one iteration of the Firefly Algorithm movement step.
 
@@ -248,8 +221,6 @@ class FireflyAlgorithm(Algorithm[Problem, np.ndarray | None, float, FireflyParam
         else:
             for i in range(n):
                 for j in range(n):
-                    # For discrete: use intrinsic brightness comparison
-                    # (no meaningful Euclidean distance)
                     if self.light_intensity[j] > self.light_intensity[i]:
                         discrete_problem = cast(DiscreteProblem, self.problem)
                         self.positions[i] = discrete_problem.random_neighbor(
@@ -261,9 +232,27 @@ class FireflyAlgorithm(Algorithm[Problem, np.ndarray | None, float, FireflyParam
                             self._compute_light_intensity(
                                 np.array([self.fitness[i]]))[0])
 
-    # ------------------------------------------------------------------
-    # Main loop
-    # ------------------------------------------------------------------
+    @override
+    def reset(self):
+        self._is_continuous = isinstance(self.problem, ContinuousProblem)
+        if self._is_continuous:
+            self.n_dim = self.problem.n_dim  # type: ignore[union-attr]
+        else:
+            self.n_dim = self.problem.n_dims  # type: ignore[union-attr]
+
+        # Initialise firefly positions uniformly within bounds
+        self.positions = self.problem.sample(self.conf.n_fireflies)
+        self.fitness = cast(np.ndarray, self.problem.eval(self.positions))
+        self.light_intensity = self._compute_light_intensity(self.fitness)
+
+        # Track the global best
+        best_idx = int(np.argmin(self.fitness))
+        self.best_solution = self.positions[best_idx].copy()
+        self.best_fitness = float(self.fitness[best_idx])
+        self.history = []
+
+        if self.stat:
+            self.firefly_pos_history = []
 
     @override
     def run(self) -> np.ndarray:
@@ -274,6 +263,7 @@ class FireflyAlgorithm(Algorithm[Problem, np.ndarray | None, float, FireflyParam
         np.ndarray
             Best solution found after all cycles.
         """
+        self.reset()
         alpha = self.conf.alpha
 
         for _ in range(self.conf.cycle):

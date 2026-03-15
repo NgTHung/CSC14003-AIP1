@@ -179,7 +179,7 @@ def test_simple_graph():
 
 def test_grid_graph():
     print("\n" + "=" * 60)
-    print("  GRID GRAPH 5×5  —  (0,0) ➜ (4,4)")
+    print("  GRID GRAPH 5x5  —  (0,0) ➜ (4,4)")
     print("=" * 60)
 
     problem = SimpleGraph.create_grid_graph(rows=5, cols=5)
@@ -204,8 +204,8 @@ def test_grid_graph():
         })
         histories[name] = algo.history
 
-    plot_comparison(results, "Grid 5×5 — Algorithm Comparison")
-    plot_explored_over_steps(histories, "Grid 5×5 — Explored Nodes per Step")
+    plot_comparison(results, "Grid 5x5 — Algorithm Comparison")
+    plot_explored_over_steps(histories, "Grid 5x5 — Explored Nodes per Step")
 
 
 # ---------------------------------------------------------------------------

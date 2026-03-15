@@ -19,6 +19,7 @@ class Problem(ABC):
         If True, the objective is to minimize the fitness function.
         If False, the objective is to maximize it.
     """
+
     _name: str = "Base Problem"
 
     def __init__(self, name: str):
@@ -131,10 +132,14 @@ class DiscreteProblem(Problem):
         Number of possible values per dimension (assignment problems).
     """
 
-    def __init__(self, n_dims: int, minimize: bool = True,
-                 name: str = "Discrete Problem",
-                 solution_type: str = "assignment",
-                 domain_size: int = 2):
+    def __init__(
+        self,
+        n_dims: int,
+        minimize: bool = True,
+        name: str = "Discrete Problem",
+        solution_type: str = "assignment",
+        domain_size: int = 2,
+    ):
         """
         Parameters
         ----------
@@ -160,10 +165,6 @@ class DiscreteProblem(Problem):
         self.minimize = minimize
         self.solution_type = solution_type
         self.domain_size = domain_size
-
-    # ------------------------------------------------------------------
-    # Local-search interface
-    # ------------------------------------------------------------------
 
     def random_state(self) -> np.ndarray:
         """Generate a single random valid solution.
@@ -274,10 +275,6 @@ class DiscreteProblem(Problem):
         """
         return value1 < value2 if self.minimize else value1 > value2
 
-    # ------------------------------------------------------------------
-    # Graph-search interface  (optional — override in subclass)
-    # ------------------------------------------------------------------
-
     @property
     def initial_state(self):
         """Starting state for graph search.  Override in subclass."""
@@ -286,30 +283,31 @@ class DiscreteProblem(Problem):
             "classical graph search."
         )
 
+    @abstractmethod
     def actions(self, state) -> list:
         """Available actions from *state*.  Override for graph search."""
         raise NotImplementedError("actions() not implemented for this problem.")
 
+    @abstractmethod
     def result(self, state, action):
         """State resulting from *action*.  Override for graph search."""
         raise NotImplementedError("result() not implemented for this problem.")
 
+    @abstractmethod
     def cost(self, state, action, next_state) -> float:
         """Step cost.  Override for graph search."""
         raise NotImplementedError("cost() not implemented for this problem.")
 
+    @abstractmethod
     def is_goal(self, state) -> bool:
         """Goal test.  Override for graph search."""
         raise NotImplementedError("is_goal() not implemented for this problem.")
 
+    @abstractmethod
     def heuristic(self, state) -> float:
         """Admissible heuristic.  Override for informed graph search."""
         return 0.0
-
-    # ------------------------------------------------------------------
-    # ACO heuristic interface  (optional — override in subclass)
-    # ------------------------------------------------------------------
-
+    
     def aco_heuristic(self) -> np.ndarray | None:
         """Return a heuristic matrix for Ant Colony Optimization.
 
@@ -322,6 +320,3 @@ class DiscreteProblem(Problem):
         algorithms fall back to an all-ones matrix in that case.
         """
         return None
-
-
-

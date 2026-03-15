@@ -11,7 +11,6 @@ from __future__ import annotations
 
 import json
 import os
-import sys
 import time
 import random
 import itertools
@@ -21,11 +20,6 @@ from typing import Any, Callable, Literal
 
 import numpy as np
 
-# ── Ensure ``src/`` is on the import path ────────────────────────────────
-_SRC = os.path.join(os.path.dirname(__file__), os.pardir)
-if _SRC not in sys.path:
-    sys.path.insert(0, os.path.abspath(_SRC))
-
 import matplotlib.pyplot as plt
 
 from AIP.problems.base_problem import DiscreteProblem
@@ -33,38 +27,43 @@ from AIP.problems.discrete.tsp import TSP
 from AIP.problems.discrete.knapsack import Knapsack
 from AIP.problems.discrete.graph_coloring import GraphColoring
 
-# ── Algorithm imports ────────────────────────────────────────────────────
 # Classical graph-search
 from AIP.algorithm.classical.DFS import DepthFirstSearch
 from AIP.algorithm.classical.BFS import BreadthFirstSearch
 from AIP.algorithm.classical.UCS import UniformCostSearch
 from AIP.algorithm.classical.GreedyBestFirst import GreedyBestFirstSearch
 from AIP.algorithm.classical.AStar import AStarSearch
+
 # Local search
 from AIP.algorithm.local.HillClimbing import HillClimbing, HillClimbingParameter
+
 # Natural-inspired
-from AIP.algorithm.natural.physic.SA import SimulatedAnnealing, SimulatedAnnealingParameter
-from AIP.algorithm.natural.physic.HS import HarmonySearch
-from AIP.algorithm.natural.physic.GSA import GravitationalSearchAlgorithm, GravitationalSearchParameter
+from AIP.algorithm.natural.physic.SA import (
+    SimulatedAnnealing,
+    SimulatedAnnealingParameter,
+)
+from AIP.algorithm.natural.physic.HS import HarmonySearch, HarmonySearchParameter
+from AIP.algorithm.natural.physic.GSA import (
+    GravitationalSearchAlgorithm,
+    GravitationalSearchParameter,
+)
 from AIP.algorithm.natural.biology.abc import ArtificialBeeColony, ABCParameter
 from AIP.algorithm.natural.biology.cs import CuckooSearch, CuckooSearchParameter
 from AIP.algorithm.natural.biology.fa import FireflyAlgorithm, FireflyParameter
 from AIP.algorithm.natural.biology.aco import (
-    AntSystem, AntSystemParameter,
-    ACS, ACSParameter,
-    MMAS, MMASParameter,
+    AntSystem,
+    AntSystemParameter,
+    ACS,
+    ACSParameter,
+    MMAS,
+    MMASParameter,
 )
 
-# ── Algorithm categories ──────────────────────────────────────────────────
 # Classical algorithms are deterministic graph-search; they only need one run
 # and produce no iterative convergence curve.
 _CLASSICAL_ALGOS = {"DFS", "BFS", "UCS", "Greedy", "A*"}
 # Algorithms that need a random initial state passed to run()
 _NEEDS_INITIAL_STATE = {"HC"}
-
-# =====================================================================
-# Config directory for persisting tuned parameters
-# =====================================================================
 
 _CONFIGS_DIR = os.path.join(os.path.dirname(__file__), "configs")
 
@@ -111,11 +110,6 @@ def load_tuned_config(
     if algo_names is not None:
         data = {k: v for k, v in data.items() if k in algo_names}
     return data if data else None
-
-
-# =====================================================================
-# Parameter grids for tuning (discrete algorithms)
-# =====================================================================
 
 # --- Common grids (work for all discrete problems) ---
 PARAM_GRIDS_COMMON: dict[str, dict[str, list]] = {
@@ -187,11 +181,6 @@ def get_param_grids(
         grids.update(PARAM_GRIDS_TSP)
     return grids
 
-
-# =====================================================================
-# Algorithm builder — creates an algorithm from name + param dict
-# =====================================================================
-
 def build_algo(
     algo_name: str,
     params: dict,
@@ -217,7 +206,7 @@ def build_algo(
         A ready-to-run algorithm instance.
     """
     match algo_name:
-        # ── Classical graph-search (no hyperparameters) ────────────
+        # -- Classical graph-search (no hyperparameters) ------------
         case "DFS":
             return DepthFirstSearch({}, problem)
         case "BFS":
@@ -228,7 +217,7 @@ def build_algo(
             return GreedyBestFirstSearch({}, problem)
         case "A*":
             return AStarSearch({}, problem)
-        # ── Local search ─────────────────────────────────────────
+        # -- Local search -----------------------------------------
         case "HC":
             cfg = HillClimbingParameter(
                 iteration=params.get("iteration", cycle),
@@ -245,13 +234,13 @@ def build_algo(
             return SimulatedAnnealing(cfg, problem)
         case "HS":
             return HarmonySearch(
-                {
-                    "hms": params.get("hms", 30),
-                    "hmcr": params.get("hmcr", 0.9),
-                    "par": params.get("par", 0.3),
-                    "bw": params.get("bw", 0.1),
-                    "max_iterations": params.get("max_iterations", cycle),
-                },
+                HarmonySearchParameter(
+                    hms=params.get("hms", 30),
+                    hmcr=params.get("hmcr", 0.9),
+                    par=params.get("par", 0.3),
+                    bw=params.get("bw", 0.1),
+                    max_iterations=params.get("max_iterations", cycle),
+                ),
                 problem,
             )
         case "ABC":
@@ -322,11 +311,6 @@ def build_algo(
         case _:
             raise ValueError(f"Unknown discrete algorithm: {algo_name}")
 
-
-# =====================================================================
-# Parameter tuning via grid search
-# =====================================================================
-
 def tune_algorithm(
     algo_name: str,
     problem: DiscreteProblem,
@@ -349,7 +333,7 @@ def tune_algorithm(
     total = len(combinations)
 
     print(f"\n{'=' * 65}")
-    print(f"  Tuning {algo_name}  |  {total} configs × {n_runs} runs")
+    print(f"  Tuning {algo_name}  |  {total} configs x {n_runs} runs")
     print(f"  Problem: {problem._name}  |  Cycle: {cycle}")
     print(f"{'=' * 65}")
 
@@ -374,8 +358,7 @@ def tune_algorithm(
 
         mean_f = float(np.mean(fitnesses))
         print(
-            f"  [{idx:>{len(str(total))}}/{total}] "
-            f"{params}  ->  Mean: {mean_f:.8e}"
+            f"  [{idx:>{len(str(total))}}/{total}] " f"{params}  ->  Mean: {mean_f:.8e}"
         )
 
         if mean_f < best_mean:
@@ -410,7 +393,13 @@ def tune_all_algorithms(
     for name in algo_names:
         if name in grids:
             tuned[name] = tune_algorithm(
-                name, problem, problem_config_name, cycle, n_runs, seed, save=save,
+                name,
+                problem,
+                problem_config_name,
+                cycle,
+                n_runs,
+                seed,
+                save=save,
             )
         else:
             print(f"  [SKIP] No parameter grid for {name}")
@@ -423,7 +412,9 @@ def tune_all_algorithms(
     return tuned
 
 
-def _problem_type(problem: DiscreteProblem) -> Literal["TSP", "Knapsack", "GraphColoring"]:
+def _problem_type(
+    problem: DiscreteProblem,
+) -> Literal["TSP", "Knapsack", "GraphColoring"]:
     """Determine problem type string."""
     if isinstance(problem, TSP):
         return "TSP"
@@ -432,11 +423,6 @@ def _problem_type(problem: DiscreteProblem) -> Literal["TSP", "Knapsack", "Graph
     elif isinstance(problem, GraphColoring):
         return "GraphColoring"
     raise ValueError(f"Unknown discrete problem type: {type(problem)}")
-
-
-# =====================================================================
-# Registry — default (name, builder_fn) pairs
-# =====================================================================
 
 ALGO_REGISTRY_CLASSICAL: dict[str, Callable] = {
     "DFS": lambda prob, cyc: build_algo("DFS", {}, prob, cyc),
@@ -486,19 +472,15 @@ def build_algo_registry(
     registry: dict[str, Callable] = {}
     for name in base:
         params = tuned_params.get(name, {})
-        registry[name] = (
-            lambda prob, cyc, _n=name, _p=params: build_algo(_n, _p, prob, cyc)
+        registry[name] = lambda prob, cyc, _n=name, _p=params: build_algo(
+            _n, _p, prob, cyc
         )
     return registry
-
-
-# =====================================================================
-# Data collection
-# =====================================================================
 
 @dataclass
 class RunResult:
     """Result of a single algorithm run."""
+
     algo_name: str
     run_id: int
     best_fitness: float
@@ -600,7 +582,9 @@ def run_comparison(
             continue
         builder = registry[name]
         actual_runs = 1 if name in _CLASSICAL_ALGOS else n_runs
-        print(f"\n-- {name} ({actual_runs} run{'s' if actual_runs > 1 else ''}, timeout={timeout:.0f}s) --")
+        print(
+            f"\n-- {name} ({actual_runs} run{'s' if actual_runs > 1 else ''}, timeout={timeout:.0f}s) --"
+        )
         for rid in range(1, actual_runs + 1):
             np.random.seed(seed + rid)
             random.seed(seed + rid)
@@ -637,8 +621,10 @@ def run_comparison(
             # Classical algos may return best_fitness=None when no solution found
             bf_raw = model.best_fitness
             if bf_raw is None:
-                print(f"  NO SOLUTION FOUND — skipping  "
-                      f"Time={(t1 - t0) * 1000.0:.1f} ms")
+                print(
+                    f"  NO SOLUTION FOUND — skipping  "
+                    f"Time={(t1 - t0) * 1000.0:.1f} ms"
+                )
                 continue
             else:
                 bf = float(bf_raw)
@@ -646,30 +632,41 @@ def run_comparison(
             curve = _extract_fitness_curve(name, model, problem)
 
             # Capture best solution vector
-            sol = getattr(model, 'best_solution', None)
+            sol = getattr(model, "best_solution", None)
 
-            results.append(RunResult(
-                algo_name=name,
-                run_id=rid,
-                best_fitness=bf,
-                time_ms=(t1 - t0) * 1000.0,
-                fitness_curve=curve,
-                best_solution=sol,
-            ))
-            print(f"  Run {rid:>{len(str(actual_runs))}}/{actual_runs}  "
-                  f"Fitness={bf:.8e}  Time={results[-1].time_ms:.1f} ms")
+            results.append(
+                RunResult(
+                    algo_name=name,
+                    run_id=rid,
+                    best_fitness=bf,
+                    time_ms=(t1 - t0) * 1000.0,
+                    fitness_curve=curve,
+                    best_solution=sol,
+                )
+            )
+            print(
+                f"  Run {rid:>{len(str(actual_runs))}}/{actual_runs}  "
+                f"Fitness={bf:.8e}  Time={results[-1].time_ms:.1f} ms"
+            )
 
     return results
 
-
-# =====================================================================
-# Plotting helpers
-# =====================================================================
-
 _COLORS = [
-    "#4C72B0", "#DD8452", "#55A868", "#C44E52", "#8172B3",
-    "#937860", "#DA8BC3", "#8C8C8C", "#CCB974", "#64B5CD",
-    "#E377C2", "#7F7F7F", "#BCBD22", "#17BECF", "#AEC7E8",
+    "#4C72B0",
+    "#DD8452",
+    "#55A868",
+    "#C44E52",
+    "#8172B3",
+    "#937860",
+    "#DA8BC3",
+    "#8C8C8C",
+    "#CCB974",
+    "#64B5CD",
+    "#E377C2",
+    "#7F7F7F",
+    "#BCBD22",
+    "#17BECF",
+    "#AEC7E8",
 ]
 
 
@@ -746,7 +743,7 @@ def plot_comparison(
     negate_fitness: bool = False,
     fitness_label: str = "Best Fitness",
 ) -> None:
-    """Generate a 1×2 comparison figure for discrete problems.
+    """Generate a 1*2 comparison figure for discrete problems.
 
     Sub-plots
     ---------
@@ -779,23 +776,39 @@ def plot_comparison(
         save_fitness = None
         save_time = None
 
-    # ── 1. Best Fitness (separate window) ────────────────────────────
+    # -- 1. Best Fitness (separate window) ----------------------------
     fig1, ax1 = plt.subplots(figsize=(10, 7))
     fig1.suptitle(
         f"{fitness_label} — {problem_name}{title_suffix}",
-        fontsize=16, fontweight="bold", y=0.98,
+        fontsize=16,
+        fontweight="bold",
+        y=0.98,
     )
     means_f = [sign * np.mean([r.best_fitness for r in grouped[n]]) for n in algo_names]
     stds_f = [np.std([r.best_fitness for r in grouped[n]]) for n in algo_names]
-    bars = ax1.bar(algo_names, means_f, yerr=stds_f, capsize=4,
-                   color=colors, alpha=0.7, edgecolor="black", linewidth=0.5)
+    bars = ax1.bar(
+        algo_names,
+        means_f,
+        yerr=stds_f,
+        capsize=4,
+        color=colors,
+        alpha=0.7,
+        edgecolor="black",
+        linewidth=0.5,
+    )
     ax1.set_ylabel(fitness_label, fontsize=11)
     ax1.set_title(fitness_label, fontsize=13, fontweight="bold")
     ax1.tick_params(axis="x", rotation=45)
     ax1.grid(True, alpha=0.3, axis="y", linestyle="--")
     for bar, m in zip(bars, means_f):
-        ax1.text(bar.get_x() + bar.get_width() / 2, bar.get_height(),
-                 f"{m:.2f}", ha="center", va="bottom", fontsize=7)
+        ax1.text(
+            bar.get_x() + bar.get_width() / 2,
+            bar.get_height(),
+            f"{m:.2f}",
+            ha="center",
+            va="bottom",
+            fontsize=7,
+        )
     fig1.tight_layout(rect=(0, 0, 1, 0.95))
 
     if save_fitness:
@@ -803,23 +816,39 @@ def plot_comparison(
         fig1.savefig(save_fitness, dpi=150, bbox_inches="tight")
         print(f"\nFitness figure saved to: {save_fitness}")
 
-    # ── 2. Computational Time (separate window) ──────────────────────
+    # -- 2. Computational Time (separate window) -------
     fig2, ax2 = plt.subplots(figsize=(10, 7))
     fig2.suptitle(
         f"Computational Time — {problem_name}{title_suffix}",
-        fontsize=16, fontweight="bold", y=0.98,
+        fontsize=16,
+        fontweight="bold",
+        y=0.98,
     )
     means_t = [np.mean([r.time_ms for r in grouped[n]]) for n in algo_names]
     stds_t = [np.std([r.time_ms for r in grouped[n]]) for n in algo_names]
-    bars = ax2.bar(algo_names, means_t, yerr=stds_t, capsize=4,
-                   color=colors, alpha=0.7, edgecolor="black", linewidth=0.5)
+    bars = ax2.bar(
+        algo_names,
+        means_t,
+        yerr=stds_t,
+        capsize=4,
+        color=colors,
+        alpha=0.7,
+        edgecolor="black",
+        linewidth=0.5,
+    )
     ax2.set_ylabel("Time (ms)", fontsize=11)
     ax2.set_title("Computational Time", fontsize=13, fontweight="bold")
     ax2.tick_params(axis="x", rotation=45)
     ax2.grid(True, alpha=0.3, axis="y", linestyle="--")
     for bar, m in zip(bars, means_t):
-        ax2.text(bar.get_x() + bar.get_width() / 2, bar.get_height(),
-                 f"{m:.0f}", ha="center", va="bottom", fontsize=7)
+        ax2.text(
+            bar.get_x() + bar.get_width() / 2,
+            bar.get_height(),
+            f"{m:.0f}",
+            ha="center",
+            va="bottom",
+            fontsize=7,
+        )
     fig2.tight_layout(rect=(0, 0, 1, 0.95))
 
     if save_time:
@@ -879,7 +908,9 @@ def plot_convergence(
     fig.suptitle(
         f"Convergence Speed — {problem_name}"
         + (f"  ({problem_desc})" if problem_desc else ""),
-        fontsize=16, fontweight="bold", y=0.98,
+        fontsize=16,
+        fontweight="bold",
+        y=0.98,
     )
 
     # Find the max iteration length across iterative algorithms for x-axis
@@ -897,13 +928,19 @@ def plot_convergence(
         if name in _SINGLE_POINT_ALGOS:
             # Draw a horizontal dashed line across the full x-axis
             val = sign * curves[0][0]
-            ax.axhline(y=val, label=name, color=colors[idx],
-                        linewidth=1.4, linestyle="--", alpha=0.7)
+            ax.axhline(
+                y=val,
+                label=name,
+                color=colors[idx],
+                linewidth=1.4,
+                linestyle="--",
+                alpha=0.7,
+            )
         else:
             # Plot iterative convergence curve
             arr = np.full((len(curves), curve_len), np.nan)
             for i, c in enumerate(curves):
-                arr[i, :len(c)] = c
+                arr[i, : len(c)] = c
             mean_c = sign * np.nanmean(arr, axis=0)
             x = np.arange(1, curve_len + 1)
             ax.plot(x, mean_c, label=name, color=colors[idx], linewidth=1.6)
@@ -976,25 +1013,28 @@ def plot_robustness(
     else:
         save_quality = save_robust = None
 
-    # ── 1. Solution Quality — box-plot ───────────────────────────────
+    # -- 1. Solution Quality — box-plot -------------------------------
     fig1, ax1 = plt.subplots(figsize=(10, 7))
     fig1.suptitle(
         f"Solution Quality — {problem_name}{title_suffix}",
-        fontsize=16, fontweight="bold", y=0.98,
+        fontsize=16,
+        fontweight="bold",
+        y=0.98,
     )
-    box_data = [
-        [sign * r.best_fitness for r in grouped[name]]
-        for name in algo_names
-    ]
+    box_data = [[sign * r.best_fitness for r in grouped[name]] for name in algo_names]
     bp = ax1.boxplot(
-        box_data, tick_labels=algo_names, patch_artist=True, widths=0.6,
+        box_data,
+        tick_labels=algo_names,
+        patch_artist=True,
+        widths=0.6,
     )
     for patch, c in zip(bp["boxes"], colors):
         patch.set_facecolor(c)
         patch.set_alpha(0.55)
     ax1.set_ylabel(fitness_label, fontsize=11)
-    ax1.set_title("Solution Quality (box-plot over runs)", fontsize=13,
-                  fontweight="bold")
+    ax1.set_title(
+        "Solution Quality (box-plot over runs)", fontsize=13, fontweight="bold"
+    )
     ax1.tick_params(axis="x", rotation=45)
     ax1.grid(True, alpha=0.3, axis="y", linestyle="--")
     fig1.tight_layout(rect=(0, 0, 1, 0.95))
@@ -1004,17 +1044,27 @@ def plot_robustness(
         fig1.savefig(save_quality, dpi=150, bbox_inches="tight")
         print(f"\nQuality figure saved to: {save_quality}")
 
-    # ── 2. Robustness — std dev + CV ─────────────────────────────────
+    # -- 2. Robustness — std dev + CV ---------------------------------
     fig2, ax2 = plt.subplots(figsize=(10, 7))
     fig2.suptitle(
         f"Robustness — {problem_name}{title_suffix}",
-        fontsize=16, fontweight="bold", y=0.98,
+        fontsize=16,
+        fontweight="bold",
+        y=0.98,
     )
     stds_f = [np.std([r.best_fitness for r in grouped[n]]) for n in algo_names]
     x_pos = np.arange(n_algos)
     width = 0.4
-    ax2.bar(x_pos - width / 2, stds_f, width, label="Std Dev (fitness)",
-            color=colors, alpha=0.6, edgecolor="black", linewidth=0.5)
+    ax2.bar(
+        x_pos - width / 2,
+        stds_f,
+        width,
+        label="Std Dev (fitness)",
+        color=colors,
+        alpha=0.6,
+        edgecolor="black",
+        linewidth=0.5,
+    )
     ax2.set_ylabel("Std Dev of " + fitness_label, fontsize=11)
     ax2.set_title("Robustness", fontsize=13, fontweight="bold")
     ax2.set_xticks(x_pos)
@@ -1023,10 +1073,12 @@ def plot_robustness(
 
     ax2r = ax2.twinx()
     means_f = [np.mean([r.best_fitness for r in grouped[n]]) for n in algo_names]
-    cv = np.array([s / abs(m) if abs(m) > 1e-30 else 0.0
-                   for s, m in zip(stds_f, means_f)])
-    ax2r.plot(x_pos, cv, "D-", color="red", markersize=5, linewidth=1.2,
-              label="CV (Std/Mean)")
+    cv = np.array(
+        [s / abs(m) if abs(m) > 1e-30 else 0.0 for s, m in zip(stds_f, means_f)]
+    )
+    ax2r.plot(
+        x_pos, cv, "D-", color="red", markersize=5, linewidth=1.2, label="CV (Std/Mean)"
+    )
     ax2r.set_ylabel("Coefficient of Variation", fontsize=10, color="red")
     ax2r.tick_params(axis="y", labelcolor="red")
 
@@ -1074,12 +1126,13 @@ def print_summary_table(
     multi = any(len(runs) > 1 for runs in grouped.values())
 
     if multi:
-        header = (f"  {'Algorithm':<8s} | {'Mean ' + fitness_label:>14s} "
-                  f"| {'Std':>14s} | {'Best':>14s} | {'Worst':>14s} "
-                  f"| {'Mean Time(ms)':>14s}")
+        header = (
+            f"  {'Algorithm':<8s} | {'Mean ' + fitness_label:>14s} "
+            f"| {'Std':>14s} | {'Best':>14s} | {'Worst':>14s} "
+            f"| {'Mean Time(ms)':>14s}"
+        )
     else:
-        header = (f"  {'Algorithm':<8s} | {fitness_label:>14s} "
-                  f"| {'Time(ms)':>14s}")
+        header = f"  {'Algorithm':<8s} | {fitness_label:>14s} " f"| {'Time(ms)':>14s}"
     sep = "  " + "-" * len(header.strip())
 
     print(f"\n{'=' * len(header.strip())}")
@@ -1092,8 +1145,12 @@ def print_summary_table(
         if multi:
             mean_f = sign * float(np.mean(fits))
             std_f = float(np.std(fits))
-            best_f = sign * float(np.min(fits)) if sign > 0 else sign * float(np.max(fits))
-            worst_f = sign * float(np.max(fits)) if sign > 0 else sign * float(np.min(fits))
+            best_f = (
+                sign * float(np.min(fits)) if sign > 0 else sign * float(np.max(fits))
+            )
+            worst_f = (
+                sign * float(np.max(fits)) if sign > 0 else sign * float(np.min(fits))
+            )
             print(
                 f"  {name:<8s} | {mean_f:>14.6e} | {std_f:>14.6e} "
                 f"| {best_f:>14.6e} | {worst_f:>14.6e} "
@@ -1101,10 +1158,7 @@ def print_summary_table(
             )
         else:
             display_fit = sign * fits[0]
-            print(
-                f"  {name:<8s} | {display_fit:>14.6e} "
-                f"| {times[0]:>14.1f}"
-            )
+            print(f"  {name:<8s} | {display_fit:>14.6e} " f"| {times[0]:>14.1f}")
         if format_solution is not None:
             sol = grouped[name][0].best_solution
             if sol is not None:

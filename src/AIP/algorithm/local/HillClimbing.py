@@ -1,14 +1,18 @@
 """Hill Climbing algorithm for local search problems."""
 
-from typing import Any
+from typing import Any, cast, override
 from dataclasses import dataclass
-from AIP.problems.base_problem import Problem,DiscreteProblem
+
+import numpy as np
+from AIP.problems.base_problem import Problem, DiscreteProblem
 from AIP.problems.continuous import ContinuousProblem
 from AIP.algorithm.base_algorithm import Algorithm
 
+
 @dataclass
 class HillClimbingParameter:
-    iteration: int 
+    iteration: int
+
 
 class HillClimbing(Algorithm[Problem, Any, float, HillClimbingParameter]):
     """
@@ -39,7 +43,8 @@ class HillClimbing(Algorithm[Problem, Any, float, HillClimbingParameter]):
     """
 
     name = "Hill Climbing (First-Choice)"
-
+    current_value: float
+    current_state: np.ndarray
     def __init__(
         self,
         configuration: HillClimbingParameter,
@@ -56,13 +61,25 @@ class HillClimbing(Algorithm[Problem, Any, float, HillClimbingParameter]):
         problem : DiscreteProblem
             A problem with random_state/neighbors/value/is_better methods.
         """
-        super().__init__(configuration, problem)
         self.max_iterations = configuration.iteration
-        self.current_state = None
-        self.current_value = None
-        self.history = []
         self.value_history = []
+        super().__init__(configuration, problem)
 
+
+    @override
+    def reset(self, initial_state=None):
+        if initial_state is None:
+            self.current_state = self.problem.sample(1).flatten()
+        else:
+            self.current_state = initial_state
+
+        self.current_value = cast(float,self.problem.eval(self.current_state))
+        self.history = [self.current_value]
+        self.value_history = []
+        self.best_fitness = float("inf")
+        self.best_solution = []
+
+    @override
     def run(self, initial_state=None):
         """
         Execute Hill Climbing algorithm.
@@ -81,23 +98,17 @@ class HillClimbing(Algorithm[Problem, Any, float, HillClimbingParameter]):
         tuple
             (best_state, best_value) - the best state found and its value.
         """
-        # Initialize
-        if initial_state is None:
-            self.current_state = self.problem.sample(1).flatten()
-        else:
-            self.current_state = initial_state
-
-        self.current_value = self.problem.eval(self.current_state)
-        self.history = [self.current_value]
-
+        self.reset(initial_state)
+        assert self.current_state is not None
+        assert self.current_value is not None
         # Main loop
-        for iteration in range(self.max_iterations):
+        for _ in range(self.max_iterations):
             # Get all neighbors
 
             neighbors = None
-            if isinstance(self.problem,DiscreteProblem):
+            if isinstance(self.problem, DiscreteProblem):
                 neighbors = self.problem.neighbors(self.current_state)
-            elif isinstance(self.problem,ContinuousProblem):
+            elif isinstance(self.problem, ContinuousProblem):
                 neighbors = self.problem.neighbors(self.current_state)
 
             if not neighbors:
@@ -106,10 +117,15 @@ class HillClimbing(Algorithm[Problem, Any, float, HillClimbingParameter]):
             # Find first improving neighbor
             found_better = False
             for neighbor in neighbors:
-                neighbor_value = self.problem.eval(neighbor)
+                neighbor_value = cast(float,self.problem.eval(neighbor))
 
                 # Check if neighbor is better
-                if (isinstance(self.problem,DiscreteProblem) or isinstance(self.problem,ContinuousProblem))  and self.problem.is_better(float(neighbor_value), float(self.current_value)):
+                if (
+                    isinstance(self.problem, DiscreteProblem)
+                    or isinstance(self.problem, ContinuousProblem)
+                ) and self.problem.is_better(
+                    float(neighbor_value), float(self.current_value)
+                ):
                     self.current_state = neighbor
                     self.current_value = neighbor_value
                     found_better = True
@@ -120,10 +136,10 @@ class HillClimbing(Algorithm[Problem, Any, float, HillClimbingParameter]):
             # Local optimum reached
             if not found_better:
                 break
-    
+
         self.best_solution = self.current_state
         self.best_fitness = float(self.current_value)
-        return self.current_state   
+        return self.current_state
 
     def get_statistics(self) -> dict:
         """
@@ -135,8 +151,7 @@ class HillClimbing(Algorithm[Problem, Any, float, HillClimbingParameter]):
             Dictionary with search statistics.
         """
         return {
-            'history fitness': self.history,
-            'best fitness': self.best_fitness,
-            'best solution': self.best_solution
-
+            "history fitness": self.history,
+            "best fitness": self.best_fitness,
+            "best solution": self.best_solution,
         }

@@ -43,9 +43,7 @@ class ABCParameter:
     iteration: int
 
 
-class ArtificialBeeColony(
-    Algorithm[Problem, np.ndarray | None, float, ABCParameter]
-):
+class ArtificialBeeColony(Algorithm[Problem, np.ndarray | None, float, ABCParameter]):
     """Artificial Bee Colony for continuous and discrete optimization.
 
     Algorithm outline per iteration:
@@ -63,14 +61,33 @@ class ArtificialBeeColony(
     operator is applied instead, preserving solution feasibility.
     """
 
-    food_sources: np.ndarray   # shape (n_bees, n_dim)
-    fitness: np.ndarray        # shape (n_bees,)
-    fit_values: np.ndarray     # transformed fitness for probability calc
-    trials: np.ndarray         # stagnation counters per source
+    food_sources: np.ndarray  # shape (n_bees, n_dim)
+    fitness: np.ndarray  # shape (n_bees,)
+    fit_values: np.ndarray  # transformed fitness for probability calc
+    trials: np.ndarray  # stagnation counters per source
     n_dim: int
     _is_continuous: bool
     food_sources_history: list[np.ndarray]
     stat: bool
+
+    @override
+    def reset(self):
+        self._is_continuous = isinstance(self.problem, ContinuousProblem)
+        if self._is_continuous:
+            self.n_dim = self.problem.n_dim  # type: ignore[union-attr]
+        else:
+            self.n_dim = self.problem.n_dims  # type: ignore[union-attr]
+        self.food_sources = self.problem.sample(self.conf.n_bees)
+        self.fitness = cast(np.ndarray, self.problem.eval(self.food_sources))
+        self.fit_values = self._calculate_fit(self.fitness)
+        self.trials = np.zeros(self.conf.n_bees, dtype=int)
+
+        best_idx = int(np.argmin(self.fitness))
+        self.best_solution = self.food_sources[best_idx].copy()
+        self.best_fitness = float(self.fitness[best_idx])
+        self.history = []
+        if self.stat:
+            self.food_sources_history = []
 
     def __init__(
         self, configuration: ABCParameter, problem: Problem, stat: bool = False
@@ -90,28 +107,9 @@ class ArtificialBeeColony(
             into ``food_sources_history`` for later analysis or
             visualisation. Defaults to False to save memory.
         """
-        super().__init__(configuration, problem)
-        self._is_continuous = isinstance(problem, ContinuousProblem)
-        if self._is_continuous:
-            self.n_dim = problem.n_dim  # type: ignore[union-attr]
-        else:
-            self.n_dim = problem.n_dims  # type: ignore[union-attr]
-        self.food_sources = problem.sample(configuration.n_bees)
-        self.fitness = cast(np.ndarray, problem.eval(self.food_sources))
-        self.fit_values = self._calculate_fit(self.fitness)
-        self.trials = np.zeros(configuration.n_bees, dtype=int)
-
-        best_idx = int(np.argmin(self.fitness))
-        self.best_solution = self.food_sources[best_idx].copy()
-        self.best_fitness = float(self.fitness[best_idx])
-        self.history = []
         self.stat = stat
-        if stat:
-            self.food_sources_history = []
-
-    # ------------------------------------------------------------------
-    # Helpers
-    # ------------------------------------------------------------------
+        self.conf = configuration
+        super().__init__(configuration, problem)
 
     @staticmethod
     def _calculate_fit(objective_values: np.ndarray) -> np.ndarray:
@@ -184,9 +182,8 @@ class ArtificialBeeColony(
             k = np.random.randint(0, self.conf.n_bees)
 
         phi = np.random.uniform(-1, 1)
-        candidate[j] = (
-            self.food_sources[idx, j]
-            + phi * (self.food_sources[idx, j] - self.food_sources[k, j])
+        candidate[j] = self.food_sources[idx, j] + phi * (
+            self.food_sources[idx, j] - self.food_sources[k, j]
         )
         return self._clamp(candidate)
 
@@ -239,10 +236,6 @@ class ArtificialBeeColony(
             self.best_fitness = float(self.fitness[best_idx])
             self.best_solution = self.food_sources[best_idx].copy()
 
-    # ------------------------------------------------------------------
-    # Phases
-    # ------------------------------------------------------------------
-
     def employed_bee_phase(self):
         """Employed bee phase: local search around each food source.
 
@@ -257,9 +250,9 @@ class ArtificialBeeColony(
             if candidate_fitness < self.fitness[i]:
                 self.food_sources[i] = candidate
                 self.fitness[i] = candidate_fitness
-                self.fit_values[i] = self._calculate_fit(
-                    np.array([candidate_fitness])
-                )[0]
+                self.fit_values[i] = self._calculate_fit(np.array([candidate_fitness]))[
+                    0
+                ]
                 self.trials[i] = 0
             else:
                 self.trials[i] += 1
@@ -288,9 +281,9 @@ class ArtificialBeeColony(
             if candidate_fitness < self.fitness[i]:
                 self.food_sources[i] = candidate
                 self.fitness[i] = candidate_fitness
-                self.fit_values[i] = self._calculate_fit(
-                    np.array([candidate_fitness])
-                )[0]
+                self.fit_values[i] = self._calculate_fit(np.array([candidate_fitness]))[
+                    0
+                ]
                 self.trials[i] = 0
             else:
                 self.trials[i] += 1
@@ -305,17 +298,9 @@ class ArtificialBeeColony(
         for i in range(self.conf.n_bees):
             if self.trials[i] > self.conf.limit:
                 self.food_sources[i] = self.problem.sample(1)[0]
-                self.fitness[i] = cast(
-                    float, self.problem.eval(self.food_sources[i])
-                )
-                self.fit_values[i] = self._calculate_fit(
-                    np.array([self.fitness[i]])
-                )[0]
+                self.fitness[i] = cast(float, self.problem.eval(self.food_sources[i]))
+                self.fit_values[i] = self._calculate_fit(np.array([self.fitness[i]]))[0]
                 self.trials[i] = 0
-
-    # ------------------------------------------------------------------
-    # Main loop
-    # ------------------------------------------------------------------
 
     @override
     def run(self) -> np.ndarray:
@@ -326,6 +311,7 @@ class ArtificialBeeColony(
         np.ndarray
             Best solution found after all cycles.
         """
+        self.reset()
         for _ in range(self.conf.iteration):
             self.employed_bee_phase()
             self.onlooker_bee_phase()
