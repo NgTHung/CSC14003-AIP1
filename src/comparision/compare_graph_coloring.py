@@ -35,6 +35,7 @@ from comparision.comparison_utils_discrete import (
     run_comparison, plot_comparison, plot_convergence, plot_robustness,
     print_summary_table,
     tune_all_algorithms, load_tuned_config, _CLASSICAL_ALGOS,
+    make_output_path, make_data_output_path, save_results_json,
 )
 
 _SIZE_FACTORIES = {
@@ -61,6 +62,10 @@ def main() -> None:
                         help="Base random seed")
     parser.add_argument("--save", action="store_true",
                         help="Save figure instead of showing")
+    parser.add_argument("--output-dir", type=str, default=None,
+                        help="Output root; saves figures to <root>/figures and JSON to <root>/data (default: .)")
+    parser.add_argument("--save-json", action="store_true",
+                        help="Save raw comparison results as JSON")
     parser.add_argument("--tune", action="store_true",
                         help="Force re-tuning via grid search")
     parser.add_argument("--tune-runs", type=int, default=3,
@@ -130,9 +135,8 @@ def main() -> None:
     print_summary_table(results, fitness_label="Conflicts",
                         format_solution=_fmt_gc)
 
-    save_path = os.path.join(
-        os.path.dirname(__file__), "figures",
-        f"compare_graph_coloring_{args.size}.png",
+    save_path = make_output_path(
+        f"compare_graph_coloring_{args.size}.png", args.output_dir
     ) if args.save else None
 
     plot_comparison(
@@ -144,9 +148,8 @@ def main() -> None:
         fitness_label="Conflicts",
     )
 
-    conv_save_path = os.path.join(
-        os.path.dirname(__file__), "figures",
-        f"convergence_graph_coloring_{args.size}.png",
+    conv_save_path = make_output_path(
+        f"convergence_graph_coloring_{args.size}.png", args.output_dir
     ) if args.save else None
 
     plot_convergence(
@@ -158,19 +161,22 @@ def main() -> None:
         fitness_label="Conflicts",
     )
 
-    robust_save_path = os.path.join(
-        os.path.dirname(__file__), "figures",
-        f"robustness_graph_coloring_{args.size}.png",
-    ) if args.save else None
-
-    plot_robustness(
-        results,
-        problem_name="Graph Coloring",
-        problem_desc=(f"{args.size}, {problem.n_vertices} vertices, "
-                      f"{len(problem.edges)} edges, {problem.n_colors} colors"),
-        save_path=robust_save_path,
-        fitness_label="Conflicts",
-    )
+    if args.save_json:
+        saved_json = save_results_json(
+            results,
+            make_data_output_path(f"compare_graph_coloring_{args.size}.json", args.output_dir),
+            metadata={
+                "problem": "GraphColoring",
+                "problem_type": "discrete",
+                "size": args.size,
+                "n_vertices": problem.n_vertices,
+                "n_edges": len(problem.edges),
+                "n_colors": problem.n_colors,
+                "cycle": args.cycle,
+                "seed": args.seed,
+            },
+        )
+        print(f"\nResults JSON saved to: {saved_json}")
 
 
 if __name__ == "__main__":

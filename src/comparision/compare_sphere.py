@@ -23,6 +23,7 @@ from AIP.problems.continuous.sphere import Sphere
 from comparision.comparison_utils import (
     run_comparison, plot_comparison, print_summary_table,
     tune_all_algorithms, load_tuned_config,
+    make_output_path, make_data_output_path, save_results_json,
 )
 
 
@@ -33,6 +34,10 @@ def main() -> None:
     parser.add_argument("--runs", type=int, default=10, help="Independent runs")
     parser.add_argument("--seed", type=int, default=42, help="Base random seed")
     parser.add_argument("--save", action="store_true", help="Save figure instead of showing")
+    parser.add_argument("--output-dir", type=str, default=None,
+                        help="Output root; saves figures to <root>/figures and JSON to <root>/data (default: .)")
+    parser.add_argument("--save-json", action="store_true",
+                        help="Save raw comparison results as JSON")
     parser.add_argument("--tune", action="store_true",
                         help="Force re-tuning via grid search (overwrites saved config)")
     parser.add_argument("--tune-runs", type=int, default=5,
@@ -70,11 +75,24 @@ def main() -> None:
 
     print_summary_table(results)
 
-    save_path = os.path.join(
-        os.path.dirname(__file__), "figures", "compare_sphere.png"
-    ) if args.save else None
+    save_path = make_output_path("compare_sphere.png", args.output_dir) if args.save else None
 
     plot_comparison(results, problem_name="Sphere", n_dim=n_dim, save_path=save_path)
+
+    if args.save_json:
+        saved_json = save_results_json(
+            results,
+            make_data_output_path("compare_sphere.json", args.output_dir),
+            metadata={
+                "problem": "Sphere",
+                "problem_type": "continuous",
+                "n_dim": n_dim,
+                "cycle": args.cycle,
+                "runs": args.runs,
+                "seed": args.seed,
+            },
+        )
+        print(f"\nResults JSON saved to: {saved_json}")
 
 
 if __name__ == "__main__":

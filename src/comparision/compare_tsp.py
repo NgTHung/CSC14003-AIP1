@@ -33,6 +33,7 @@ from comparision.comparison_utils_discrete import (
     run_comparison, plot_comparison, plot_convergence, plot_robustness,
     print_summary_table,
     tune_all_algorithms, load_tuned_config, _CLASSICAL_ALGOS,
+    make_output_path, make_data_output_path, save_results_json,
 )
 
 _SIZE_FACTORIES = {
@@ -59,6 +60,10 @@ def main() -> None:
                         help="Base random seed")
     parser.add_argument("--save", action="store_true",
                         help="Save figure instead of showing")
+    parser.add_argument("--output-dir", type=str, default=None,
+                        help="Output root; saves figures to <root>/figures and JSON to <root>/data (default: .)")
+    parser.add_argument("--save-json", action="store_true",
+                        help="Save raw comparison results as JSON")
     parser.add_argument("--tune", action="store_true",
                         help="Force re-tuning via grid search")
     parser.add_argument("--tune-runs", type=int, default=3,
@@ -125,9 +130,7 @@ def main() -> None:
     print_summary_table(results, fitness_label="Distance",
                         format_solution=_fmt_tsp)
 
-    save_path = os.path.join(
-        os.path.dirname(__file__), "figures", f"compare_tsp_{args.size}.png"
-    ) if args.save else None
+    save_path = make_output_path(f"compare_tsp_{args.size}.png", args.output_dir) if args.save else None
 
     plot_comparison(
         results,
@@ -137,9 +140,8 @@ def main() -> None:
         fitness_label="Distance",
     )
 
-    conv_save_path = os.path.join(
-        os.path.dirname(__file__), "figures",
-        f"convergence_tsp_{args.size}.png",
+    conv_save_path = make_output_path(
+        f"convergence_tsp_{args.size}.png", args.output_dir
     ) if args.save else None
 
     plot_convergence(
@@ -150,18 +152,20 @@ def main() -> None:
         fitness_label="Distance",
     )
 
-    robust_save_path = os.path.join(
-        os.path.dirname(__file__), "figures",
-        f"robustness_tsp_{args.size}.png",
-    ) if args.save else None
-
-    plot_robustness(
-        results,
-        problem_name="TSP",
-        problem_desc=f"{args.size}, {problem.n_cities} cities",
-        save_path=robust_save_path,
-        fitness_label="Distance",
-    )
+    if args.save_json:
+        saved_json = save_results_json(
+            results,
+            make_data_output_path(f"compare_tsp_{args.size}.json", args.output_dir),
+            metadata={
+                "problem": "TSP",
+                "problem_type": "discrete",
+                "size": args.size,
+                "n_cities": problem.n_cities,
+                "cycle": args.cycle,
+                "seed": args.seed,
+            },
+        )
+        print(f"\nResults JSON saved to: {saved_json}")
 
 
 if __name__ == "__main__":
