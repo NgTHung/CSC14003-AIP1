@@ -178,7 +178,6 @@ class CA(Algorithm[ContinuousProblem, np.ndarray, float, CAConfig]):
             candidates = np.clip(candidates, lb, ub)
 
             new_fitness = self.problem.eval(candidates)  # (pop_size,)
-            assert new_fitness is np.ndarray
             self._greedy_update(candidates, new_fitness)
 
             self._update_global_best()
